@@ -25,7 +25,7 @@ export async function POST(request: Request) {
         const userText = event.message.text.trim();
         const userId = event.source.userId;
 
-        if (userText === 'ของาน') {
+        if (userText === 'ดูงาน') {
           const activeTrip = await Trip.findOne({
             driverId: userId,
             status: { $in: ['pending', 'in_progress'] }
