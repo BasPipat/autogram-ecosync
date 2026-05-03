@@ -14,18 +14,20 @@ export async function GET() {
   }
 }
 
+// ... (ส่วน GET และ DELETE เหมือนเดิม) ...
+
 export async function PUT(req: Request) {
   try {
-    const { userId, newRole, name, companyName, phone, password } = await req.json();
+    const { userId, newRole, name, companyName, phone, password, username } = await req.json();
     await connectToDatabase();
 
     const updateData: any = {};
+    if (username !== undefined) updateData.username = username; // 🟢 บันทึก User ID ใหม่
     if (newRole) updateData.role = newRole;
     if (name !== undefined) updateData.name = name;
     if (companyName !== undefined) updateData.companyName = companyName;
     if (phone !== undefined) updateData.phone = phone;
     
-    // 🟢 ถ้ามีการส่งรหัสผ่านใหม่มา ให้เข้ารหัสก่อนบันทึก
     if (password && password.trim() !== "") {
       const hashedPassword = await bcrypt.hash(password, 10);
       updateData.password = hashedPassword;
@@ -34,8 +36,6 @@ export async function PUT(req: Request) {
     const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true });
     return NextResponse.json({ message: 'อัปเดตข้อมูลสำเร็จ!', user: updatedUser });
   } catch (error) {
-    return NextResponse.json({ error: 'อัปเดตข้อมูลไม่สำเร็จ' }, { status: 500 });
+    return NextResponse.json({ error: 'ชื่อผู้ใช้งาน (User ID) นี้อาจจะซ้ำกับคนอื่น' }, { status: 500 });
   }
 }
-
-// ... ฟังก์ชัน DELETE เหมือนเดิม ...
