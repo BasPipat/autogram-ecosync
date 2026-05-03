@@ -4,8 +4,9 @@ export interface IUser extends Document {
   name: string;
   email: string;
   password?: string;
-  role: 'superadmin' | 'admin' | 'client_admin' | 'client_user' | 'driver';
-  companyName?: string; // 👈 เพิ่มฟิลด์ชื่อบริษัทลูกค้า
+  // อัปเดตชื่อยศตามที่บอสกำหนด
+  role: 'system_owner' | 'operator' | 'corporate_admin' | 'coordinator' | 'driver';
+  companyName?: string;
   customerId?: mongoose.Types.ObjectId;
   image?: string;
 }
@@ -16,9 +17,8 @@ const UserSchema = new Schema({
   password: { type: String },
   role: { 
     type: String, 
-    // อัปเดตรายชื่อยศทั้งหมด
-    enum: ['superadmin', 'admin', 'client_admin', 'client_user', 'driver'], 
-    default: 'client_user' // ให้คนที่สมัครใหม่เป็นแค่ลูกน้องฝั่งลูกค้าไว้ก่อน
+    enum: ['system_owner', 'operator', 'corporate_admin', 'coordinator', 'driver'], 
+    default: 'coordinator' // ค่าเริ่มต้นเวลาสมัครสมาชิกใหม่
   },
   companyName: { type: String },
   customerId: { type: Schema.Types.ObjectId, ref: 'Customer' },

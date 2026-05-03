@@ -52,15 +52,21 @@ export default function ManageUsersPage() {
     }
   };
 
-  // ฟังก์ชันช่วยกำหนดสีป้ายให้สวยงามตามระดับยศ
+  // 🟢 ฟังก์ชันช่วยกำหนดสีป้ายให้ตรงตามชื่อ Role ใหม่ของบอส
   const getRoleBadge = (role: string) => {
     switch(role) {
-      case 'superadmin': return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 border border-purple-200">SUPER ADMIN</span>;
-      case 'admin': return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200">ADMIN</span>;
-      case 'client_admin': return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200">CLIENT ADMIN</span>;
-      case 'client_user': return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">CLIENT USER</span>;
-      case 'driver': return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">DRIVER (LINE)</span>;
-      default: return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">{role.toUpperCase()}</span>;
+      case 'system_owner': 
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 border border-purple-200">SYSTEM OWNER</span>;
+      case 'operator': 
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700 border border-indigo-200">OPERATOR</span>;
+      case 'corporate_admin': 
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200">CORPORATE ADMIN</span>;
+      case 'coordinator': 
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">COORDINATOR</span>;
+      case 'driver': 
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">DRIVER (LINE OA)</span>;
+      default: 
+        return <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">{role.toUpperCase()}</span>;
     }
   };
 
@@ -99,22 +105,23 @@ export default function ManageUsersPage() {
                       {getRoleBadge(user.role)}
                     </td>
                     <td className="p-4">
+                      {/* 🟢 ส่วนการเลือกสิทธิ์ที่ปรับชื่อใหม่ตามกลุ่ม */}
                       <select 
-                        className="p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none bg-white cursor-pointer w-full max-w-[220px]"
+                        className="p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none bg-white cursor-pointer w-full max-w-[260px]"
                         value={user.role}
                         onChange={(e) => handleRoleChange(user._id, e.target.value)}
-                        disabled={user.email === 'l3aspipat@gmail.com'} // บอสล็อกสเปกไว้ไม่ให้ปลดตัวเอง
+                        disabled={user.email === 'l3aspipat@gmail.com'}
                       >
                         <optgroup label="--- ฝั่งองค์กรลูกค้า ---">
-                          <option value="client_user">Client User (พนักงานประสานงาน)</option>
-                          <option value="client_admin">Client Admin (ผู้จัดการลูกค้า)</option>
+                          <option value="corporate_admin">Corporate Admin (ผู้จัดการฝั่งลูกค้า)</option>
+                          <option value="coordinator">Logistics Coordinator (ผู้ประสานงาน)</option>
                         </optgroup>
                         <optgroup label="--- ฝั่งเจ้าหน้าที่ Autogram ---">
-                          <option value="admin">Admin (เจ้าหน้าที่ส่วนกลาง)</option>
-                          <option value="superadmin">Super Admin (เจ้าของระบบ)</option>
+                          <option value="system_owner">System Owner (ผู้ดูแลระบบสูงสุด)</option>
+                          <option value="operator">Autogram Operator (เจ้าหน้าที่ส่วนกลาง)</option>
                         </optgroup>
                         <optgroup label="--- ระบบอื่นๆ ---">
-                          <option value="driver">Driver (คนขับรถผูก LINE OA)</option>
+                          <option value="driver">Driver (คนขับรถผ่าน LINE OA)</option>
                         </optgroup>
                       </select>
                     </td>
