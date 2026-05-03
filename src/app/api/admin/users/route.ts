@@ -1,12 +1,23 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 import { connectToDatabase } from '@/lib/mongodb';
 import { User } from '@/models/User';
 import bcrypt from 'bcryptjs';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+async function requireAuth(req: NextRequest) {
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  return token;
+}
+
+export async function GET(req: NextRequest) {
   try {
+    const token = await requireAuth(req);
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     await connectToDatabase();
     const users = await User.find({}).select('-password').sort({ createdAt: -1 });
     return NextResponse.json(users);
@@ -15,8 +26,13 @@ export async function GET() {
   }
 }
 
-export async function PUT(req: Request) {
+export async function PUT(req: NextRequest) {
   try {
+    const token = await requireAuth(req);
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { userId, newRole, name, companyName, phone, password, username } = await req.json();
     await connectToDatabase();
 
@@ -41,8 +57,13 @@ export async function PUT(req: Request) {
 }
 
 // 🟢 อัปเดตใหม่: เปลี่ยนมารับค่าจาก Body แทน URL ป้องกัน Vercel อ่านค่าพลาด
-export async function DELETE(req: Request) {
+export async function DELETE(req: NextRequest) {
   try {
+    const token = await requireAuth(req);
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const url = new URL(req.url);
     const userIdFromQuery = url.searchParams.get('userId');
     const body = await req.json().catch(() => ({} as { userId?: string }));

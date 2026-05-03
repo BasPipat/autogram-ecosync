@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Trip } from '@/models/Trip';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+async function requireAuth(req: NextRequest) {
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  return token;
+}
+
+export async function GET(req: NextRequest) {
   try {
+    const token = await requireAuth(req);
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     await connectToDatabase();
     const trips = await Trip.find({}).sort({ createdAt: -1 });
     return NextResponse.json(trips);
@@ -16,6 +27,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const token = await requireAuth(req);
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const data = await req.json();
     await connectToDatabase();
 

@@ -1,72 +1,84 @@
-'use client';
-import SidebarLayout from '@/components/SidebarLayout';
+﻿'use client';
 
-export default function DashboardPage() {
+import { useState } from 'react';
+import { signIn } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    const result = await signIn('credentials', {
+      redirect: false,
+      email: identifier,
+      password,
+      callbackUrl: '/'
+    });
+
+    setLoading(false);
+
+    if (result?.error) {
+      setError(result.error);
+      return;
+    }
+
+    if (result?.ok) {
+      router.push(result.url || '/');
+    }
+  };
+
   return (
-    <SidebarLayout>
-      <div className="p-8">
-        {/* หัวข้อหน้าเว็บ */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-slate-800">Autogram Eco-Sync</h1>
-          <p className="text-sm text-slate-500">Sustainability Dashboard & Integrity Vault</p>
-        </div>
+    <div className="flex min-h-screen items-center justify-center bg-slate-900 px-4">
+      <div className="w-full max-w-md p-8 bg-white rounded-3xl shadow-2xl">
+        <h2 className="text-3xl font-bold text-center text-slate-900 mb-3">เข้าสู่ระบบ</h2>
+        <p className="text-center text-slate-500 mb-6">ล็อกอินด้วย Email หรือ User ID ของคุณ</p>
 
-        {/* สรุปตัวเลขสำคัญ (ตามแบบในรูปของบอสเป๊ะๆ) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center">
-            <div>
-              <p className="text-sm text-slate-500 mb-1">ยอดคาร์บอนสะสม (kgCO2e)</p>
-              <p className="text-3xl font-bold text-green-600">0.00</p>
-            </div>
-            <div className="p-3 bg-green-50 text-green-500 rounded-lg text-2xl">
-              🍃
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center">
-            <div>
-              <p className="text-sm text-slate-500 mb-1">เที่ยววิ่งทั้งหมด (Trips)</p>
-              <p className="text-3xl font-bold text-slate-800">0</p>
-            </div>
-            <div className="p-3 bg-blue-50 text-blue-500 rounded-lg text-2xl">
-              🚚
-            </div>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center">
-            <div>
-              <p className="text-sm text-slate-500 mb-1">POD ที่ตรวจสอบแล้ว</p>
-              <p className="text-3xl font-bold text-slate-800">0</p>
-            </div>
-            <div className="p-3 bg-orange-50 text-orange-500 rounded-lg text-2xl">
-              📄
-            </div>
-          </div>
-        </div>
+        {error && <div className="mb-4 rounded-lg bg-red-100 px-4 py-3 text-sm text-red-700">{error}</div>}
 
-        {/* ตารางรายการเดินรถล่าสุด */}
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="p-6 border-b border-slate-100">
-            <h2 className="font-bold text-slate-800">รายการเดินรถล่าสุด</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Email หรือ User ID</label>
+            <input
+              type="text"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              className="w-full mt-2 rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200"
+              placeholder="กรอก Email หรือ User ID"
+              required
+            />
           </div>
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 text-slate-500 text-sm border-b border-slate-100">
-                <th className="p-4 font-medium">รหัสงาน (Trip ID)</th>
-                <th className="p-4 font-medium">เส้นทาง</th>
-                <th className="p-4 font-medium">คาร์บอน (kgCO2e)</th>
-                <th className="p-4 font-medium">สถานะหลักฐาน (POD)</th>
-                <th className="p-4 font-medium">จัดการ</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td colSpan={5} className="p-12 text-center text-slate-400">
-                  ยังไม่มีข้อมูล
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700">รหัสผ่าน</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full mt-2 rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200"
+              placeholder="กรอกรหัสผ่าน"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-2xl bg-orange-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-slate-500">
+          ยังไม่มีบัญชี? <a href="/register" className="font-semibold text-orange-500 hover:underline">สมัครสมาชิก</a>
+        </p>
       </div>
-    </SidebarLayout>
+    </div>
   );
 }

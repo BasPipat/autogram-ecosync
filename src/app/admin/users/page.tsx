@@ -46,10 +46,20 @@ export default function ManageUsersPage() {
     fetchUsers();
   }, [session, status, router]);
 
+  if (status === 'loading') {
+    return (
+      <SidebarLayout>
+        <div className="min-h-screen flex items-center justify-center text-slate-500">
+          กำลังตรวจสอบสิทธิ์ผู้ใช้งาน...
+        </div>
+      </SidebarLayout>
+    );
+  }
+
   const currentUser = allUsers.find(u => u.email === session?.user?.email);
 
   const displayedUsers = allUsers.filter(user => {
-    if (!currentUser) return true;
+    if (!currentUser) return false;
     const isAutogram = ['system_owner', 'operator', 'admin', 'superadmin'].includes(currentUser.role);
     if (isAutogram) return true;
     if (currentUser.role === 'corporate_admin') return user.companyName === currentUser.companyName;

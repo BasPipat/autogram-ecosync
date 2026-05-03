@@ -9,17 +9,22 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email", placeholder: "email@company.com" },
+        email: { label: "Email หรือ User ID", type: "text", placeholder: "email@company.com หรือ user123" },
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("กรุณากรอกอีเมลและรหัสผ่านให้ครบถ้วน");
+          throw new Error("กรุณากรอก Email หรือ User ID และรหัสผ่านให้ครบถ้วน");
         }
 
         await connectToDatabase();
         
-        const user = await User.findOne({ email: credentials.email });
+        const user = await User.findOne({
+          $or: [
+            { email: credentials.email },
+            { username: credentials.email }
+          ]
+        });
         
         if (!user) {
           throw new Error("ไม่พบบัญชีผู้ใช้งานระบบ");
