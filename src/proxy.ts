@@ -12,5 +12,5 @@ export default proxy;
 
 // กำหนดเส้นทางที่ต้องการล็อคประตู
 export const config = { 
-  matcher: ["/dashboard/:path*"] 
+  matcher: ["/", "/dashboard/:path*"] 
 };
