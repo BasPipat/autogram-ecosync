@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import SidebarLayout from '@/components/SidebarLayout';
 import { Truck, MapPin, Leaf, PlusCircle, ExternalLink, Loader2, MapPinned, X, Route, Package } from 'lucide-react';
 import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
@@ -13,7 +15,8 @@ const libraries: ("places")[] = ["places"];
 export default function ManageTripsPage() {
   const [trips, setTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   const [form, setForm] = useState({
@@ -28,8 +31,15 @@ export default function ManageTripsPage() {
   
   const autocompleteRef = useRef<any>(null);
 
-  useEffect(() => { fetchSession(); }, []);
-  useEffect(() => { if (sessionEmail) fetchInitialData(); }, [sessionEmail]);
+  useEffect(() => {
+    if (status === 'loading') return;
+    if (!session) {
+      router.push('/login');
+      return;
+    }
+
+    fetchInitialData();
+  }, [status, session, router]);
 
   // 🟢 Effect: คำนวณระยะทางอัตโนมัติ
   useEffect(() => {
@@ -46,20 +56,12 @@ export default function ManageTripsPage() {
     }
   }, [form.distance, form.weight]);
 
-  const fetchSession = async () => {
-    try {
-      const res = await fetch('/api/auth/session');
-      const session = await res.json();
-      if (session?.user?.email) setSessionEmail(session.user.email);
-    } catch(e) {}
-  };
-
   const fetchInitialData = async () => {
     setLoading(true);
     try {
       const userRes = await fetch('/api/admin/users');
       const users = await userRes.json();
-      const me = users.find((u: any) => u.email === sessionEmail);
+      const me = users.find((u: any) => u.email === session?.user?.email);
       setCurrentUser(me);
 
       const tripRes = await fetch('/api/admin/trips', { cache: 'no-store' });

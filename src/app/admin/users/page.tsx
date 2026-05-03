@@ -1,5 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import SidebarLayout from '@/components/SidebarLayout';
 
 interface IUser {
@@ -15,20 +17,11 @@ interface IUser {
 export default function ManageUsersPage() {
   const [allUsers, setAllUsers] = useState<IUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ username: '', name: '', companyName: '', phone: '', password: '' });
-
-  const fetchSession = async () => {
-    try {
-      const res = await fetch('/api/auth/session');
-      const session = await res.json();
-      if (session?.user?.email) setSessionEmail(session.user.email);
-    } catch {
-      // ignore fetch errors
-    }
-  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -44,15 +37,16 @@ export default function ManageUsersPage() {
   };
 
   useEffect(() => {
-    const load = async () => {
-      await fetchUsers();
-      await fetchSession();
-    };
+    if (status === 'loading') return;
+    if (!session) {
+      router.push('/login');
+      return;
+    }
 
-    load();
-  }, []);
+    fetchUsers();
+  }, [session, status, router]);
 
-  const currentUser = allUsers.find(u => u.email === sessionEmail);
+  const currentUser = allUsers.find(u => u.email === session?.user?.email);
 
   const displayedUsers = allUsers.filter(user => {
     if (!currentUser) return true;
@@ -189,7 +183,7 @@ export default function ManageUsersPage() {
                         className="mt-1 p-1.5 border rounded text-[11px] outline-none bg-white cursor-pointer"
                         value={user.role}
                         onChange={(e) => handleRoleChange(user._id, e.target.value)}
-                        disabled={user.email === sessionEmail && (user.role === 'system_owner' || user.role === 'admin')}
+                        disabled={user.email === session?.user?.email && (user.role === 'system_owner' || user.role === 'admin')}
                       >
                         {['system_owner', 'admin', 'operator'].includes(currentUser?.role || '') && (
                           <optgroup label="ฝั่ง Autogram">
@@ -213,7 +207,7 @@ export default function ManageUsersPage() {
                     ) : (
                       <div className="flex flex-col gap-1">
                         <button onClick={() => handleEditClick(user)} className="text-blue-600 bg-blue-50 border border-blue-100 py-1.5 rounded text-xs font-bold hover:bg-blue-100">แก้ไข</button>
-                        <button onClick={() => handleDeleteUser(user._id, user.name)} disabled={user.email === sessionEmail} className="text-red-600 bg-red-50 border border-red-100 py-1.5 rounded text-xs font-bold disabled:opacity-20 hover:bg-red-100">ลบ</button>
+                        <button onClick={() => handleDeleteUser(user._id, user.name)} disabled={user.email === session?.user?.email} className="text-red-600 bg-red-50 border border-red-100 py-1.5 rounded text-xs font-bold disabled:opacity-20 hover:bg-red-100">ลบ</button>
                       </div>
                     )}
                   </td>
