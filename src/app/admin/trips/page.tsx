@@ -1,14 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import SidebarLayout from '@/components/SidebarLayout';
 import { Truck, MapPin, Leaf, PlusCircle, ExternalLink, Loader2, MapPinned, X } from 'lucide-react';
-import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
+// 🟢 เพิ่ม Autocomplete เข้ามาเพื่อทำระบบค้นหาสถานที่
+import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCJBdRCt3l2Lp8KdPPMb4TlLjIFdS2R-_E"; // 🟢 API Key ของบอส
-
+const GOOGLE_MAPS_API_KEY = "AIzaSyCJBdRCt3l2Lp8KdPPMb4TlLjIFdS2R-_E";
 const mapContainerStyle = { width: '100%', height: '400px', borderRadius: '0.5rem' };
 const defaultCenter = { lat: 13.7563, lng: 100.5018 }; // เริ่มต้นที่กรุงเทพฯ
+
+// 🟢 ต้องประกาศ libraries ไว้ข้างนอก ป้องกันระบบรีเฟรชรัวๆ
+const libraries: ("places")[] = ["places"]; 
 
 export default function ManageTripsPage() {
   const [trips, setTrips] = useState<any[]>([]);
@@ -20,9 +23,13 @@ export default function ManageTripsPage() {
     tripId: '', origin: '', originMapUrl: '', destination: '', destinationMapUrl: '', carbon: '', companyName: ''
   });
 
-  // 🟢 State สำหรับจัดการ Popup แผนที่
+  // State สำหรับจัดการ Popup แผนที่ และจุดศูนย์กลางแผนที่
   const [mapModal, setMapModal] = useState({ isOpen: false, target: '' });
   const [markerPos, setMarkerPos] = useState<{lat: number, lng: number} | null>(null);
+  const [mapCenter, setMapCenter] = useState(defaultCenter);
+  
+  // Ref สำหรับเก็บกล่องค้นหา
+  const autocompleteRef = useRef<any>(null);
 
   useEffect(() => { fetchSession(); }, []);
   useEffect(() => { if (sessionEmail) fetchInitialData(); }, [sessionEmail]);
@@ -54,21 +61,32 @@ export default function ManageTripsPage() {
     } catch (e) {} finally { setLoading(false); }
   };
 
-  // 🟢 เปิด Popup แผนที่
   const openMapPicker = (target: 'origin' | 'destination') => {
     setMapModal({ isOpen: true, target });
-    setMarkerPos(null); // เคลียร์หมุดเก่า
+    setMarkerPos(null); 
+    setMapCenter(defaultCenter); // รีเซ็ตแผนที่กลับมากรุงเทพตอนเปิดใหม่
   };
 
-  // 🟢 กดคลิกบนแผนที่เพื่อปักหมุด
   const handleMapClick = (e: any) => {
     setMarkerPos({ lat: e.latLng.lat(), lng: e.latLng.lng() });
   };
 
-  // 🟢 กดยืนยันพิกัดที่ปักหมุด
+  // 🟢 ฟังก์ชันเมื่อบอสพิมพ์ค้นหาแล้วกดเลือกสถานที่
+  const onPlaceChanged = () => {
+    if (autocompleteRef.current !== null) {
+      const place = autocompleteRef.current.getPlace();
+      if (place.geometry && place.geometry.location) {
+        const lat = place.geometry.location.lat();
+        const lng = place.geometry.location.lng();
+        setMarkerPos({ lat, lng }); // ปักหมุด
+        setMapCenter({ lat, lng }); // เลื่อนแผนที่ไปตรงนั้น
+      }
+    }
+  };
+
   const confirmLocation = () => {
     if (!markerPos) return;
-    const mapUrl = `https://www.google.com/maps?q=${markerPos.lat},${markerPos.lng}`;
+    const mapUrl = `http://googleusercontent.com/maps.google.com/?q=${markerPos.lat},${markerPos.lng}`;
     
     if (mapModal.target === 'origin') {
       setForm({ ...form, originMapUrl: mapUrl });
@@ -130,7 +148,7 @@ export default function ManageTripsPage() {
                     <input type="text" required placeholder="เช่น ท่าเรือแหลมฉบัง" className="w-full p-2.5 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.origin} onChange={e => setForm({...form, origin: e.target.value})} />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-blue-500 uppercase mb-1">พิกัดแผนที่ (คลิกปุ่มเพื่อปักหมุด)</label>
+                    <label className="block text-[11px] font-bold text-blue-500 uppercase mb-1">พิกัดแผนที่ (คลิกปุ่มเพื่อค้นหา/ปักหมุด)</label>
                     <div className="flex gap-2">
                       <input type="url" readOnly placeholder="พิกัดจะแสดงที่นี่..." className="flex-1 p-2.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-500 outline-none" value={form.originMapUrl} />
                       <button type="button" onClick={() => openMapPicker('origin')} className="bg-blue-600 hover:bg-blue-700 text-white px-4 flex items-center justify-center rounded-lg text-xs font-bold transition-colors whitespace-nowrap shadow-sm shadow-blue-200">
@@ -150,7 +168,7 @@ export default function ManageTripsPage() {
                     <input type="text" required placeholder="เช่น คลังสินค้าวังน้อย" className="w-full p-2.5 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-green-500" value={form.destination} onChange={e => setForm({...form, destination: e.target.value})} />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-green-600 uppercase mb-1">พิกัดแผนที่ (คลิกปุ่มเพื่อปักหมุด)</label>
+                    <label className="block text-[11px] font-bold text-green-600 uppercase mb-1">พิกัดแผนที่ (คลิกปุ่มเพื่อค้นหา/ปักหมุด)</label>
                     <div className="flex gap-2">
                       <input type="url" readOnly placeholder="พิกัดจะแสดงที่นี่..." className="flex-1 p-2.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-500 outline-none" value={form.destinationMapUrl} />
                       <button type="button" onClick={() => openMapPicker('destination')} className="bg-green-600 hover:bg-green-700 text-white px-4 flex items-center justify-center rounded-lg text-xs font-bold transition-colors whitespace-nowrap shadow-sm shadow-green-200">
@@ -188,7 +206,6 @@ export default function ManageTripsPage() {
           </div>
         )}
 
-        {/* 🟢 ตารางแสดงรายการงาน (เหมือนเดิม) */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
              <h3 className="font-bold text-slate-700">ประวัติการเดินรถล่าสุด</h3>
@@ -248,41 +265,62 @@ export default function ManageTripsPage() {
         </div>
       </div>
 
-      {/* 🗺️ Popup แผนที่ Google Maps */}
+      {/* 🗺️ Popup แผนที่อัจฉริยะ (ค้นหา + ปักหมุด) */}
       {mapModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col">
             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h3 className="font-bold text-slate-800 flex items-center gap-2">
                 <MapPinned className={mapModal.target === 'origin' ? 'text-orange-500' : 'text-green-500'} /> 
-                {mapModal.target === 'origin' ? 'ปักหมุดจุดรับสินค้า (Origin)' : 'ปักหมุดจุดส่งสินค้า (Destination)'}
+                {mapModal.target === 'origin' ? 'ค้นหาและปักหมุดจุดรับสินค้า (Origin)' : 'ค้นหาและปักหมุดจุดส่งสินค้า (Destination)'}
               </h3>
               <button onClick={() => setMapModal({ isOpen: false, target: '' })} className="p-1 hover:bg-slate-200 rounded-full text-slate-400 transition-colors">
                 <X size={20} />
               </button>
             </div>
             
-            <div className="p-4 bg-slate-100">
-              <p className="text-xs text-slate-500 mb-2 font-medium">👉 คลิกบนแผนที่เพื่อเลือกตำแหน่งที่ต้องการ</p>
-              <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
-                <GoogleMap
-                  mapContainerStyle={mapContainerStyle}
-                  center={defaultCenter}
-                  zoom={12}
-                  onClick={handleMapClick}
-                >
-                  {markerPos && <Marker position={markerPos} />}
-                </GoogleMap>
+            <div className="p-4 bg-slate-100 flex flex-col gap-3">
+              {/* 🟢 โหลด Google Maps พร้อมระบบค้นหา Places */}
+              <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries}>
+                
+                {/* 🔍 กล่องค้นหาสถานที่ */}
+                <Autocomplete onLoad={(auto) => autocompleteRef.current = auto} onPlaceChanged={onPlaceChanged}>
+                  <div className="relative">
+                    <span className="absolute left-3 top-3.5 text-slate-400"><MapPin size={18} /></span>
+                    <input
+                      type="text"
+                      placeholder="พิมพ์ชื่อสถานที่ที่ต้องการค้นหา (เช่น Innofresh, นิคมอุตสาหกรรม...)"
+                      className="w-full pl-10 p-3 border border-slate-300 rounded-lg shadow-sm text-sm outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-700"
+                    />
+                  </div>
+                </Autocomplete>
+
+                {/* 🗺️ ตัวแผนที่ */}
+                <div className="mt-2 border border-slate-200 rounded-lg overflow-hidden shadow-inner">
+                  <GoogleMap
+                    mapContainerStyle={mapContainerStyle}
+                    center={mapCenter}
+                    zoom={markerPos ? 16 : 10} // ถ้าหาเจอจะซูมเข้าไปใกล้ๆ
+                    onClick={handleMapClick}
+                  >
+                    {markerPos && <Marker position={markerPos} />}
+                  </GoogleMap>
+                </div>
               </LoadScript>
             </div>
 
-            <div className="p-4 border-t border-slate-100 flex justify-end gap-3 bg-white">
-              <button onClick={() => setMapModal({ isOpen: false, target: '' })} className="px-5 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
-                ยกเลิก
-              </button>
-              <button onClick={confirmLocation} disabled={!markerPos} className={`px-8 py-2 text-sm font-bold text-white rounded-lg transition-colors shadow-sm ${markerPos ? (mapModal.target === 'origin' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-600 hover:bg-green-700') : 'bg-slate-300 cursor-not-allowed'}`}>
-                ยืนยันพิกัดนี้
-              </button>
+            <div className="p-4 border-t border-slate-100 flex justify-between items-center bg-white">
+              <div className="text-xs text-slate-500">
+                {markerPos ? <span className="text-green-600 font-bold">📍 เลือกพิกัดแล้ว</span> : "คุณสามารถค้นหา หรือคลิกบนแผนที่เพื่อปักหมุดด้วยตัวเอง"}
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setMapModal({ isOpen: false, target: '' })} className="px-5 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
+                  ยกเลิก
+                </button>
+                <button onClick={confirmLocation} disabled={!markerPos} className={`px-8 py-2 text-sm font-bold text-white rounded-lg transition-colors shadow-sm ${markerPos ? (mapModal.target === 'origin' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-600 hover:bg-green-700') : 'bg-slate-300 cursor-not-allowed'}`}>
+                  ยืนยันพิกัดนี้
+                </button>
+              </div>
             </div>
           </div>
         </div>
