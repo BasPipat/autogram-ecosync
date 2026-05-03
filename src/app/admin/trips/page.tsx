@@ -126,7 +126,7 @@ export default function ManageTripsPage() {
 
           let finalString = "";
           if (locationDetails.length > 0) {
-             finalString = `(${locationDetails.join(', ')})`;
+             finalString = `${locationDetails.join(', ')}`;
           } else {
              finalString = "จุดปักหมุดบนแผนที่";
           }
