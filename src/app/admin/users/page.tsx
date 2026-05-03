@@ -13,14 +13,13 @@ interface IUser {
 export default function ManageUsersPage() {
   const [allUsers, setAllUsers] = useState<IUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sessionEmail, setSessionEmail] = useState<string | null>(null); // 🟢 สร้างตัวแปรเก็บอีเมลบอส
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUsers();
-    fetchSession(); // 🟢 สั่งให้ดึงข้อมูลคนล็อกอินตอนเปิดหน้าเว็บ
+    fetchSession();
   }, []);
 
-  // ฟังก์ชันดึงข้อมูลว่าใครกำลังใช้งานหน้านี้อยู่
   const fetchSession = async () => {
     try {
       const res = await fetch('/api/auth/session');
@@ -47,19 +46,24 @@ export default function ManageUsersPage() {
     }
   };
 
-  // 🟢 ค้นหาว่าคนที่กำลังใช้งานหน้านี้คือใคร จะได้จำกัดสิทธิ์ได้ถูกต้อง
+  // หาข้อมูลของคนที่กำลังใช้งานระบบอยู่
   const currentUser = allUsers.find(u => u.email === sessionEmail);
 
-  // 🟢 คัดกรองรายชื่อที่จะแสดงบนตาราง
+  // 🟢 คัดกรองรายชื่อ (อัปเดตใหม่: รองรับยศเก่า admin และ superadmin ให้มองเห็นทุกคนด้วย!)
   const displayedUsers = allUsers.filter(user => {
-    if (!currentUser) return true; // ตอนโหลดข้อมูล
-    if (currentUser.role === 'system_owner' || currentUser.role === 'operator') {
-      return true; // ฝั่ง Autogram เห็นทุกคน
+    if (!currentUser) return true; 
+    
+    // ถ้ายศปัจจุบันคือกลุ่ม Autogram (รวมยศเก่าด้วย) ให้เห็นทุกคน
+    const isAutogramStaff = ['system_owner', 'operator', 'admin', 'superadmin'].includes(currentUser.role);
+    
+    if (isAutogramStaff) {
+      return true; 
     }
+    
     if (currentUser.role === 'corporate_admin') {
-      // ผู้จัดการลูกค้า เห็นเฉพาะคนที่ companyName ตรงกับตัวเองเท่านั้น
       return user.companyName === currentUser.companyName;
     }
+    
     return false;
   });
 
@@ -140,23 +144,22 @@ export default function ManageUsersPage() {
                         className="p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none bg-white cursor-pointer w-full max-w-[220px]"
                         value={user.role}
                         onChange={(e) => handleRoleChange(user._id, e.target.value)}
-                        disabled={user.email === sessionEmail} // ป้องกันการปลดยศตัวเอง
+                        disabled={user.email === sessionEmail}
                       >
-                        {/* 🟢 ถ้าเป็น System Owner ถึงจะเห็นหมวด Autogram */}
-                        {currentUser?.role === 'system_owner' && (
+                        {/* 🟢 อนุญาตให้ System Owner (และแอดมินเก่า) เห็นหมวด Autogram */}
+                        {['system_owner', 'admin', 'superadmin'].includes(currentUser?.role || '') && (
                           <optgroup label="--- ฝั่งเจ้าหน้าที่ Autogram ---">
                             <option value="system_owner">System Owner (ผู้ดูแลระบบสูงสุด)</option>
                             <option value="operator">Autogram Operator (เจ้าหน้าที่ส่วนกลาง)</option>
                           </optgroup>
                         )}
                         
-                        {/* 🟢 ลูกค้าเห็นแค่หมวดบริษัทตัวเอง */}
                         <optgroup label="--- ฝั่งองค์กรลูกค้า ---">
                           <option value="corporate_admin">Corporate Admin (ผู้จัดการฝั่งลูกค้า)</option>
                           <option value="coordinator">Logistics Coordinator (ผู้ประสานงาน)</option>
                         </optgroup>
 
-                        {currentUser?.role === 'system_owner' && (
+                        {['system_owner', 'admin', 'superadmin'].includes(currentUser?.role || '') && (
                           <optgroup label="--- ระบบอื่นๆ ---">
                             <option value="driver">Driver (คนขับรถผ่าน LINE OA)</option>
                           </optgroup>
@@ -166,7 +169,7 @@ export default function ManageUsersPage() {
                     <td className="p-4 text-center">
                       <button 
                         onClick={() => handleDeleteUser(user._id, user.name)}
-                        disabled={user.email === sessionEmail} // ห้ามลบตัวเอง
+                        disabled={user.email === sessionEmail}
                         className={`text-sm px-3 py-1 rounded ${user.email === sessionEmail ? 'text-gray-400 bg-gray-100 cursor-not-allowed' : 'text-red-600 bg-red-50 hover:bg-red-100 font-medium'}`}
                       >
                         ลบ
