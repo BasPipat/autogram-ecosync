@@ -8,7 +8,7 @@ interface IUser {
   email: string;
   role: string;
   companyName?: string;
-  phone?: string; // 🟢 เพิ่มเบอร์โทร
+  phone?: string; 
 }
 
 export default function ManageUsersPage() {
@@ -16,7 +16,6 @@ export default function ManageUsersPage() {
   const [loading, setLoading] = useState(true);
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
 
-  // 🟢 State สำหรับจัดการโหมดแก้ไข
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ name: '', companyName: '', phone: '' });
 
@@ -63,7 +62,6 @@ export default function ManageUsersPage() {
     return false;
   });
 
-  // ฟังก์ชันเปลี่ยนยศ (ทำงานทันทีที่เลือก)
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
       const res = await fetch('/api/admin/users', {
@@ -77,7 +75,6 @@ export default function ManageUsersPage() {
     }
   };
 
-  // 🟢 เริ่มเข้าสู่โหมดแก้ไข
   const handleEditClick = (user: IUser) => {
     setEditingUserId(user._id);
     setEditForm({
@@ -87,7 +84,6 @@ export default function ManageUsersPage() {
     });
   };
 
-  // 🟢 กดปุ่มบันทึกข้อมูลส่วนตัว (ชื่อ, บริษัท, เบอร์โทร)
   const handleSaveEdit = async (userId: string) => {
     try {
       const res = await fetch('/api/admin/users', {
@@ -101,8 +97,8 @@ export default function ManageUsersPage() {
         }),
       });
       if (res.ok) {
-        setEditingUserId(null); // ปิดโหมดแก้ไข
-        fetchUsers(); // โหลดข้อมูลใหม่
+        setEditingUserId(null); 
+        fetchUsers(); 
       } else {
         alert('บันทึกข้อมูลไม่สำเร็จ');
       }
@@ -115,9 +111,7 @@ export default function ManageUsersPage() {
     if (!confirm(`คุณแน่ใจหรือไม่ที่จะลบผู้ใช้งาน "${userName}" ออกจากระบบ?`)) return;
     try {
       const res = await fetch(`/api/admin/users?id=${userId}`, { method: 'DELETE' });
-      if (res.ok) {
-        fetchUsers();
-      }
+      if (res.ok) fetchUsers();
     } catch (error) {
       alert('ลบผู้ใช้งานไม่สำเร็จ');
     }
@@ -164,56 +158,38 @@ export default function ManageUsersPage() {
                 displayedUsers.map((user) => (
                   <tr key={user._id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                     
-                    {/* 🟢 ชื่อผู้ใช้ */}
                     <td className="p-4">
                       {editingUserId === user._id ? (
-                        <input 
-                          type="text" className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-orange-500 outline-none" 
-                          value={editForm.name} onChange={(e) => setEditForm({...editForm, name: e.target.value})}
-                        />
-                      ) : (
-                        <span className="text-slate-800 font-medium">{user.name}</span>
-                      )}
+                        <input type="text" className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-orange-500 outline-none" value={editForm.name} onChange={(e) => setEditForm({...editForm, name: e.target.value})} />
+                      ) : (<span className="text-slate-800 font-medium">{user.name}</span>)}
                     </td>
 
-                    {/* 🟢 ชื่อบริษัท */}
                     <td className="p-4">
                       {editingUserId === user._id ? (
-                        <input 
-                          type="text" className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-orange-500 outline-none" 
-                          placeholder="กรอกชื่อบริษัท..."
-                          value={editForm.companyName} onChange={(e) => setEditForm({...editForm, companyName: e.target.value})}
-                        />
-                      ) : (
-                        <span className="text-slate-600">{user.companyName || '-'}</span>
-                      )}
+                        <input type="text" className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-orange-500 outline-none" placeholder="ชื่อบริษัท..." value={editForm.companyName} onChange={(e) => setEditForm({...editForm, companyName: e.target.value})} />
+                      ) : (<span className="text-slate-600">{user.companyName || '-'}</span>)}
                     </td>
 
-                    {/* 🟢 เบอร์โทรศัพท์ */}
                     <td className="p-4">
                       {editingUserId === user._id ? (
-                        <input 
-                          type="text" className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-orange-500 outline-none" 
-                          placeholder="กรอกเบอร์โทร..."
-                          value={editForm.phone} onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
-                        />
-                      ) : (
-                        <span className="text-slate-600">{user.phone || '-'}</span>
-                      )}
+                        <input type="text" className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-orange-500 outline-none" placeholder="เบอร์โทร..." value={editForm.phone} onChange={(e) => setEditForm({...editForm, phone: e.target.value})} />
+                      ) : (<span className="text-slate-600">{user.phone || '-'}</span>)}
                     </td>
 
                     <td className="p-4 text-slate-500 text-sm">{user.email}</td>
                     <td className="p-4">{getRoleBadge(user.role)}</td>
                     
-                    {/* เปลี่ยนระดับสิทธิ์ */}
                     <td className="p-4">
                       <select 
                         className="p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none bg-white cursor-pointer w-full max-w-[180px]"
                         value={user.role}
                         onChange={(e) => handleRoleChange(user._id, e.target.value)}
-                        disabled={user.email === sessionEmail}
+                        // 🟢 ยอมให้บอสแก้ตัวเองได้ ถ้าเป็นยศ admin หรือซุปเปอร์แอดมินเก่า
+                        disabled={user.email === sessionEmail && user.role === 'system_owner'}
                       >
-                        {['system_owner', 'admin', 'superadmin'].includes(currentUser?.role || '') && (
+                        {user.role === 'admin' && <option value="admin" className="text-slate-400">⚠️ Admin (ยศเก่า)</option>}
+                        
+                        {['system_owner', 'admin', 'superadmin', 'operator'].includes(currentUser?.role || '') && (
                           <optgroup label="Autogram">
                             <option value="system_owner">System Owner</option>
                             <option value="operator">Operator</option>
@@ -223,7 +199,7 @@ export default function ManageUsersPage() {
                           <option value="corporate_admin">Corp. Admin</option>
                           <option value="coordinator">Coordinator</option>
                         </optgroup>
-                        {['system_owner', 'admin', 'superadmin'].includes(currentUser?.role || '') && (
+                        {['system_owner', 'admin', 'superadmin', 'operator'].includes(currentUser?.role || '') && (
                           <optgroup label="Others">
                             <option value="driver">Driver (LINE)</option>
                           </optgroup>
@@ -231,7 +207,6 @@ export default function ManageUsersPage() {
                       </select>
                     </td>
 
-                    {/* 🟢 ปุ่มจัดการ แก้ไข/ลบ */}
                     <td className="p-4 text-center">
                       {editingUserId === user._id ? (
                         <div className="flex flex-col gap-2">
