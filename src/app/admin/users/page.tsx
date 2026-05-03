@@ -20,17 +20,14 @@ export default function ManageUsersPage() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ username: '', name: '', companyName: '', phone: '', password: '' });
 
-  useEffect(() => {
-    fetchUsers();
-    fetchSession();
-  }, []);
-
   const fetchSession = async () => {
     try {
       const res = await fetch('/api/auth/session');
       const session = await res.json();
       if (session?.user?.email) setSessionEmail(session.user.email);
-    } catch (e) {}
+    } catch {
+      // ignore fetch errors
+    }
   };
 
   const fetchUsers = async () => {
@@ -41,8 +38,19 @@ export default function ManageUsersPage() {
         const data = await res.json();
         setAllUsers(data);
       }
-    } catch (e) {} finally { setLoading(false); }
+    } catch {
+      // ignore fetch errors
+    } finally { setLoading(false); }
   };
+
+  useEffect(() => {
+    const load = async () => {
+      await fetchUsers();
+      await fetchSession();
+    };
+
+    load();
+  }, []);
 
   const currentUser = allUsers.find(u => u.email === sessionEmail);
 
@@ -80,7 +88,7 @@ export default function ManageUsersPage() {
         const d = await res.json();
         alert(d.error || 'บันทึกไม่สำเร็จ');
       }
-    } catch (e) { alert('ระบบขัดข้อง'); }
+    } catch { alert('ระบบขัดข้อง'); }
   };
 
   const handleRoleChange = async (userId: string, newRole: string) => {
@@ -97,10 +105,8 @@ export default function ManageUsersPage() {
     if (!confirm(`คุณต้องการลบ "${userName}" ใช่หรือไม่?`)) return;
     
     try {
-      const res = await fetch(`/api/admin/users`, { 
+      const res = await fetch(`/api/admin/users?userId=${encodeURIComponent(userId)}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }) // ส่ง ID ผ่าน Body
       });
       
       if (res.ok) {
@@ -110,7 +116,7 @@ export default function ManageUsersPage() {
         const data = await res.json();
         alert(`ไม่สามารถลบได้: ${data.error}`);
       }
-    } catch (error) {
+    } catch {
       alert('เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์ครับ');
     }
   };
