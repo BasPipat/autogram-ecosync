@@ -71,7 +71,7 @@ export default function ManageTripsPage() {
     setSelectedPlaceName(''); 
   };
 
-  // 🟢 อัปเดต: ดึงชื่อสถานที่ + ที่อยู่เต็ม (ตำบล อำเภอ จังหวัด)
+  // 🟢 อัปเดตใหม่: ดึงแค่ "ชื่อสถานที่ (ตำบล, จังหวัด)"
   const onPlaceChanged = () => {
     if (autocompleteRef.current !== null) {
       const place = autocompleteRef.current.getPlace();
@@ -81,23 +81,37 @@ export default function ManageTripsPage() {
         setMarkerPos({ lat, lng });
         setMapCenter({ lat, lng });
 
-        let fullName = "";
-        
-        if (place.name && place.formatted_address) {
-          // ถ้าที่อยู่เต็มมีชื่อสถานที่อยู่แล้ว ก็ดึงมาแสดงเลย จะได้ไม่ซ้ำซ้อน
-          if (place.formatted_address.includes(place.name)) {
-            fullName = place.formatted_address;
-          } else {
-            // ถ้ายังไม่มี จับชื่อสถานที่มาประกบกับที่อยู่เต็ม
-            fullName = `${place.name} (${place.formatted_address})`;
+        let placeName = place.name || "";
+        let subdistrict = "";
+        let province = "";
+
+        // แงะข้อมูลที่อยู่เพื่อหาแค่ ตำบล กับ จังหวัด
+        if (place.address_components) {
+          for (const component of place.address_components) {
+            // จังหวัด
+            if (component.types.includes("administrative_area_level_1")) {
+              province = component.long_name;
+            }
+            // ตำบล
+            if (component.types.includes("sublocality_level_1") || component.types.includes("sublocality") || component.types.includes("administrative_area_level_3")) {
+              subdistrict = component.long_name;
+            }
           }
-        } else if (place.formatted_address) {
-          fullName = place.formatted_address;
-        } else if (place.name) {
-          fullName = place.name;
         }
 
-        setSelectedPlaceName(fullName);
+        let locationDetails = [];
+        if (subdistrict) locationDetails.push(subdistrict);
+        if (province) locationDetails.push(province);
+
+        let finalString = placeName;
+        // ประกอบร่างเป็น: ชื่อสถานที่ (ตำบล, จังหวัด)
+        if (locationDetails.length > 0 && !placeName.includes(province)) {
+           finalString = `${placeName} (${locationDetails.join(', ')})`;
+        } else if (place.formatted_address && !placeName) {
+           finalString = place.formatted_address; // เผื่อกรณีหาชื่อไม่เจอจริงๆ
+        }
+
+        setSelectedPlaceName(finalString);
       }
     }
   };
@@ -339,7 +353,7 @@ export default function ManageTripsPage() {
             <div className="p-4 border-t border-slate-100 flex justify-between items-center bg-white">
               <div className="text-xs text-slate-500 flex flex-col">
                 {selectedPlaceName ? (
-                  <span className="text-green-600 font-bold text-[11px] max-w-lg truncate">📍 ค้นพบ: {selectedPlaceName}</span>
+                  <span className="text-green-600 font-bold text-[12px] max-w-lg truncate">📍 ค้นพบ: {selectedPlaceName}</span>
                 ) : markerPos ? (
                   <span className="text-blue-500 font-bold">📍 เลือกพิกัดแล้ว (ไม่มีชื่อสถานที่)</span>
                 ) : (
