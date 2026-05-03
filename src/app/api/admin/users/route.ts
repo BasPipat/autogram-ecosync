@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { User } from '@/models/User';
 
-// 1. ดึงข้อมูล
 export async function GET() {
   try {
     await connectToDatabase();
@@ -13,19 +12,26 @@ export async function GET() {
   }
 }
 
-// 2. เปลี่ยนยศ
+// 🟢 อัปเดตฟังก์ชัน PUT ให้รับข้อมูล ชื่อ, บริษัท, เบอร์โทร
 export async function PUT(req: Request) {
   try {
-    const { userId, newRole } = await req.json();
+    const { userId, newRole, name, companyName, phone } = await req.json();
     await connectToDatabase();
-    const updatedUser = await User.findByIdAndUpdate(userId, { role: newRole }, { new: true }).select('-password');
-    return NextResponse.json({ message: 'เปลี่ยนสิทธิ์สำเร็จ!', user: updatedUser });
+
+    // เตรียมแพ็กเกจข้อมูลที่จะอัปเดต (ถ้ามีข้อมูลส่งมา ถึงจะอัปเดต)
+    const updateData: any = {};
+    if (newRole) updateData.role = newRole;
+    if (name !== undefined) updateData.name = name;
+    if (companyName !== undefined) updateData.companyName = companyName;
+    if (phone !== undefined) updateData.phone = phone;
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true }).select('-password');
+    return NextResponse.json({ message: 'อัปเดตข้อมูลสำเร็จ!', user: updatedUser });
   } catch (error) {
     return NextResponse.json({ error: 'อัปเดตข้อมูลไม่สำเร็จ' }, { status: 500 });
   }
 }
 
-// 3. ลบผู้ใช้งาน (เพิ่มใหม่!)
 export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);

@@ -8,12 +8,17 @@ interface IUser {
   email: string;
   role: string;
   companyName?: string;
+  phone?: string; // 🟢 เพิ่มเบอร์โทร
 }
 
 export default function ManageUsersPage() {
   const [allUsers, setAllUsers] = useState<IUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+
+  // 🟢 State สำหรับจัดการโหมดแก้ไข
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', companyName: '', phone: '' });
 
   useEffect(() => {
     fetchUsers();
@@ -46,27 +51,19 @@ export default function ManageUsersPage() {
     }
   };
 
-  // หาข้อมูลของคนที่กำลังใช้งานระบบอยู่
   const currentUser = allUsers.find(u => u.email === sessionEmail);
 
-  // 🟢 คัดกรองรายชื่อ (อัปเดตใหม่: รองรับยศเก่า admin และ superadmin ให้มองเห็นทุกคนด้วย!)
   const displayedUsers = allUsers.filter(user => {
     if (!currentUser) return true; 
-    
-    // ถ้ายศปัจจุบันคือกลุ่ม Autogram (รวมยศเก่าด้วย) ให้เห็นทุกคน
     const isAutogramStaff = ['system_owner', 'operator', 'admin', 'superadmin'].includes(currentUser.role);
-    
-    if (isAutogramStaff) {
-      return true; 
-    }
-    
+    if (isAutogramStaff) return true; 
     if (currentUser.role === 'corporate_admin') {
       return user.companyName === currentUser.companyName;
     }
-    
     return false;
   });
 
+  // ฟังก์ชันเปลี่ยนยศ (ทำงานทันทีที่เลือก)
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
       const res = await fetch('/api/admin/users', {
@@ -74,12 +71,43 @@ export default function ManageUsersPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, newRole }),
       });
-      if (res.ok) {
-        alert('ปรับเปลี่ยนระดับสิทธิ์สำเร็จ!');
-        fetchUsers(); 
-      }
+      if (res.ok) fetchUsers(); 
     } catch (error) {
       alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+    }
+  };
+
+  // 🟢 เริ่มเข้าสู่โหมดแก้ไข
+  const handleEditClick = (user: IUser) => {
+    setEditingUserId(user._id);
+    setEditForm({
+      name: user.name || '',
+      companyName: user.companyName || '',
+      phone: user.phone || ''
+    });
+  };
+
+  // 🟢 กดปุ่มบันทึกข้อมูลส่วนตัว (ชื่อ, บริษัท, เบอร์โทร)
+  const handleSaveEdit = async (userId: string) => {
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          name: editForm.name,
+          companyName: editForm.companyName,
+          phone: editForm.phone
+        }),
+      });
+      if (res.ok) {
+        setEditingUserId(null); // ปิดโหมดแก้ไข
+        fetchUsers(); // โหลดข้อมูลใหม่
+      } else {
+        alert('บันทึกข้อมูลไม่สำเร็จ');
+      }
+    } catch (error) {
+      alert('ระบบขัดข้อง');
     }
   };
 
@@ -88,7 +116,6 @@ export default function ManageUsersPage() {
     try {
       const res = await fetch(`/api/admin/users?id=${userId}`, { method: 'DELETE' });
       if (res.ok) {
-        alert('ลบผู้ใช้งานเรียบร้อยแล้ว');
         fetchUsers();
       }
     } catch (error) {
@@ -111,70 +138,120 @@ export default function ManageUsersPage() {
     <SidebarLayout>
       <div className="p-8">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-800">⚙️ จัดการสิทธิ์ผู้ใช้งานระบบ (Role Management)</h1>
-          <p className="text-sm text-slate-500">กำหนดสิทธิ์การเข้าถึงข้อมูลขององค์กรลูกค้า และเจ้าหน้าที่ส่วนกลาง</p>
+          <h1 className="text-2xl font-bold text-slate-800">⚙️ จัดการสิทธิ์และข้อมูลลูกค้า</h1>
+          <p className="text-sm text-slate-500">จัดการข้อมูลผู้ใช้งาน บริษัทที่สังกัด และเบอร์โทรศัพท์สำหรับวางบิล</p>
         </div>
         
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <table className="w-full text-left border-collapse">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[1000px]">
             <thead>
-              <tr className="bg-slate-50 text-slate-600 text-sm border-b border-slate-200">
-                <th className="p-4 font-semibold">ชื่อผู้ใช้</th>
-                <th className="p-4 font-semibold">บริษัท</th>
-                <th className="p-4 font-semibold">อีเมล</th>
-                <th className="p-4 font-semibold">สถานะปัจจุบัน</th>
-                <th className="p-4 font-semibold">ปรับระดับสิทธิ์</th>
-                <th className="p-4 font-semibold text-center">จัดการ</th>
+              <tr className="bg-slate-50 text-slate-600 text-sm border-b border-slate-200 whitespace-nowrap">
+                <th className="p-4 font-semibold w-2/12">ชื่อผู้ใช้</th>
+                <th className="p-4 font-semibold w-2/12">บริษัท (สำหรับวางบิล)</th>
+                <th className="p-4 font-semibold w-2/12">เบอร์โทรศัพท์</th>
+                <th className="p-4 font-semibold w-2/12">อีเมล</th>
+                <th className="p-4 font-semibold w-1/12">สถานะ</th>
+                <th className="p-4 font-semibold w-2/12">ระดับสิทธิ์</th>
+                <th className="p-4 font-semibold w-1/12 text-center">จัดการ</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="p-8 text-center text-slate-500">กำลังโหลดข้อมูล...</td></tr>
+                <tr><td colSpan={7} className="p-8 text-center text-slate-500">กำลังโหลดข้อมูล...</td></tr>
               ) : displayedUsers.length === 0 ? (
-                <tr><td colSpan={6} className="p-8 text-center text-slate-500">ไม่พบข้อมูลผู้ใช้งาน</td></tr>
+                <tr><td colSpan={7} className="p-8 text-center text-slate-500">ไม่พบข้อมูลผู้ใช้งาน</td></tr>
               ) : (
                 displayedUsers.map((user) => (
                   <tr key={user._id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                    <td className="p-4 text-slate-800 font-medium">{user.name}</td>
-                    <td className="p-4 text-slate-600">{user.companyName || '-'}</td>
-                    <td className="p-4 text-slate-500">{user.email}</td>
+                    
+                    {/* 🟢 ชื่อผู้ใช้ */}
+                    <td className="p-4">
+                      {editingUserId === user._id ? (
+                        <input 
+                          type="text" className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-orange-500 outline-none" 
+                          value={editForm.name} onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                        />
+                      ) : (
+                        <span className="text-slate-800 font-medium">{user.name}</span>
+                      )}
+                    </td>
+
+                    {/* 🟢 ชื่อบริษัท */}
+                    <td className="p-4">
+                      {editingUserId === user._id ? (
+                        <input 
+                          type="text" className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-orange-500 outline-none" 
+                          placeholder="กรอกชื่อบริษัท..."
+                          value={editForm.companyName} onChange={(e) => setEditForm({...editForm, companyName: e.target.value})}
+                        />
+                      ) : (
+                        <span className="text-slate-600">{user.companyName || '-'}</span>
+                      )}
+                    </td>
+
+                    {/* 🟢 เบอร์โทรศัพท์ */}
+                    <td className="p-4">
+                      {editingUserId === user._id ? (
+                        <input 
+                          type="text" className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-orange-500 outline-none" 
+                          placeholder="กรอกเบอร์โทร..."
+                          value={editForm.phone} onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
+                        />
+                      ) : (
+                        <span className="text-slate-600">{user.phone || '-'}</span>
+                      )}
+                    </td>
+
+                    <td className="p-4 text-slate-500 text-sm">{user.email}</td>
                     <td className="p-4">{getRoleBadge(user.role)}</td>
+                    
+                    {/* เปลี่ยนระดับสิทธิ์ */}
                     <td className="p-4">
                       <select 
-                        className="p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none bg-white cursor-pointer w-full max-w-[220px]"
+                        className="p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none bg-white cursor-pointer w-full max-w-[180px]"
                         value={user.role}
                         onChange={(e) => handleRoleChange(user._id, e.target.value)}
                         disabled={user.email === sessionEmail}
                       >
-                        {/* 🟢 อนุญาตให้ System Owner (และแอดมินเก่า) เห็นหมวด Autogram */}
                         {['system_owner', 'admin', 'superadmin'].includes(currentUser?.role || '') && (
-                          <optgroup label="--- ฝั่งเจ้าหน้าที่ Autogram ---">
-                            <option value="system_owner">System Owner (ผู้ดูแลระบบสูงสุด)</option>
-                            <option value="operator">Autogram Operator (เจ้าหน้าที่ส่วนกลาง)</option>
+                          <optgroup label="Autogram">
+                            <option value="system_owner">System Owner</option>
+                            <option value="operator">Operator</option>
                           </optgroup>
                         )}
-                        
-                        <optgroup label="--- ฝั่งองค์กรลูกค้า ---">
-                          <option value="corporate_admin">Corporate Admin (ผู้จัดการฝั่งลูกค้า)</option>
-                          <option value="coordinator">Logistics Coordinator (ผู้ประสานงาน)</option>
+                        <optgroup label="Customer">
+                          <option value="corporate_admin">Corp. Admin</option>
+                          <option value="coordinator">Coordinator</option>
                         </optgroup>
-
                         {['system_owner', 'admin', 'superadmin'].includes(currentUser?.role || '') && (
-                          <optgroup label="--- ระบบอื่นๆ ---">
-                            <option value="driver">Driver (คนขับรถผ่าน LINE OA)</option>
+                          <optgroup label="Others">
+                            <option value="driver">Driver (LINE)</option>
                           </optgroup>
                         )}
                       </select>
                     </td>
+
+                    {/* 🟢 ปุ่มจัดการ แก้ไข/ลบ */}
                     <td className="p-4 text-center">
-                      <button 
-                        onClick={() => handleDeleteUser(user._id, user.name)}
-                        disabled={user.email === sessionEmail}
-                        className={`text-sm px-3 py-1 rounded ${user.email === sessionEmail ? 'text-gray-400 bg-gray-100 cursor-not-allowed' : 'text-red-600 bg-red-50 hover:bg-red-100 font-medium'}`}
-                      >
-                        ลบ
-                      </button>
+                      {editingUserId === user._id ? (
+                        <div className="flex flex-col gap-2">
+                          <button onClick={() => handleSaveEdit(user._id)} className="text-xs px-3 py-1.5 rounded font-medium text-white bg-green-500 hover:bg-green-600">บันทึก</button>
+                          <button onClick={() => setEditingUserId(null)} className="text-xs px-3 py-1.5 rounded font-medium text-slate-600 bg-slate-200 hover:bg-slate-300">ยกเลิก</button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          <button onClick={() => handleEditClick(user)} className="text-xs px-3 py-1.5 rounded font-medium text-blue-600 bg-blue-50 hover:bg-blue-100">แก้ไข</button>
+                          <button 
+                            onClick={() => handleDeleteUser(user._id, user.name)}
+                            disabled={user.email === sessionEmail}
+                            className={`text-xs px-3 py-1.5 rounded font-medium ${user.email === sessionEmail ? 'text-gray-400 bg-gray-100 cursor-not-allowed' : 'text-red-600 bg-red-50 hover:bg-red-100'}`}
+                          >
+                            ลบ
+                          </button>
+                        </div>
+                      )}
                     </td>
+
                   </tr>
                 ))
               )}
