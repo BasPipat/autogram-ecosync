@@ -1,6 +1,7 @@
 'use client';
 import { signIn } from 'next-auth/react';
 import { useState } from 'react';
+import Link from 'next/link'; // เพิ่มการนำเข้า Link
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -8,7 +9,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await signIn('credentials', { email, password, callbackUrl: '/dashboard' });
+    await signIn('credentials', { email, password, callbackUrl: '/' });
   };
 
   return (
@@ -43,6 +44,14 @@ export default function LoginPage() {
             Sign In
           </button>
         </form>
+
+        {/* เพิ่มส่วนนี้เข้าไปครับบอส */}
+        <div className="mt-6 text-center text-sm text-slate-600 border-t pt-4">
+          ยังไม่มีบัญชีผู้ใช้งาน?{' '}
+          <Link href="/register" className="text-orange-500 font-semibold hover:underline">
+            สมัครสมาชิกที่นี่
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -1,16 +1,21 @@
 import { withAuth } from "next-auth/middleware";
 
-// ประกาศตัวแปรรับค่าฟังก์ชันให้ชัดเจน Turbopack จะได้ไม่งง
 const proxy = withAuth({
   callbacks: {
-    authorized: ({ token }) => token?.role === "customer" || token?.role === "admin",
+    authorized: ({ token }) => !!token, // ถ้ามี Token (ล็อกอินแล้ว) ให้ผ่านได้
   },
+  pages: {
+    signIn: '/login',
+  }
 });
 
-// ส่งออกฟังก์ชัน
 export default proxy;
 
-// กำหนดเส้นทางที่ต้องการล็อคประตู
 export const config = { 
-  matcher: ["/", "/dashboard/:path*"] 
+  // ล็อคเฉพาะหน้าแรก และหน้า Dashboard
+  // เว้นหน้า /login, /register และ /api/ อื่นๆ ไว้ให้คนใช้งานทั่วไปเข้าได้
+  matcher: [
+    "/", 
+    "/dashboard/:path*"
+  ] 
 };
