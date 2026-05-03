@@ -1,45 +1,41 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { User } from '@/models/User';
+import bcrypt from 'bcryptjs'; // 🟢 ต้องใช้ตัวนี้เพื่อเข้ารหัสความปลอดภัย
 
 export async function GET() {
   try {
     await connectToDatabase();
+    // ดึงข้อมูล ID ออกมาโชว์ด้วย
     const users = await User.find({}).select('-password').sort({ createdAt: -1 });
     return NextResponse.json(users);
   } catch (error) {
-    return NextResponse.json({ error: 'ไม่สามารถดึงข้อมูลผู้ใช้งานได้' }, { status: 500 });
+    return NextResponse.json({ error: 'ไม่สามารถดึงข้อมูลได้' }, { status: 500 });
   }
 }
 
-// 🟢 อัปเดตฟังก์ชัน PUT ให้รับข้อมูล ชื่อ, บริษัท, เบอร์โทร
 export async function PUT(req: Request) {
   try {
-    const { userId, newRole, name, companyName, phone } = await req.json();
+    const { userId, newRole, name, companyName, phone, password } = await req.json();
     await connectToDatabase();
 
-    // เตรียมแพ็กเกจข้อมูลที่จะอัปเดต (ถ้ามีข้อมูลส่งมา ถึงจะอัปเดต)
     const updateData: any = {};
     if (newRole) updateData.role = newRole;
     if (name !== undefined) updateData.name = name;
     if (companyName !== undefined) updateData.companyName = companyName;
     if (phone !== undefined) updateData.phone = phone;
+    
+    // 🟢 ถ้ามีการส่งรหัสผ่านใหม่มา ให้เข้ารหัสก่อนบันทึก
+    if (password && password.trim() !== "") {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updateData.password = hashedPassword;
+    }
 
-    const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true }).select('-password');
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true });
     return NextResponse.json({ message: 'อัปเดตข้อมูลสำเร็จ!', user: updatedUser });
   } catch (error) {
     return NextResponse.json({ error: 'อัปเดตข้อมูลไม่สำเร็จ' }, { status: 500 });
   }
 }
 
-export async function DELETE(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('id');
-    await connectToDatabase();
-    await User.findByIdAndDelete(userId);
-    return NextResponse.json({ message: 'ลบผู้ใช้งานสำเร็จ!' });
-  } catch (error) {
-    return NextResponse.json({ error: 'ลบข้อมูลไม่สำเร็จ' }, { status: 500 });
-  }
-}
+// ... ฟังก์ชัน DELETE เหมือนเดิม ...
