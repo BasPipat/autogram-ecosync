@@ -3,10 +3,25 @@ import { Client, WebhookEvent, TextMessage, FlexMessage } from '@line/bot-sdk';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Trip } from '@/models/EcoSync';
 
-const client = new Client({
-  channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
-  channelSecret: process.env.LINE_CHANNEL_SECRET || '',
-});
+// Lazy initialization of LINE client
+let client: Client | null = null;
+
+function getLineClient() {
+  if (!client) {
+    const channelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
+    const channelSecret = process.env.LINE_CHANNEL_SECRET;
+
+    if (!channelAccessToken || !channelSecret) {
+      throw new Error('LINE_CHANNEL_ACCESS_TOKEN and LINE_CHANNEL_SECRET must be configured');
+    }
+
+    client = new Client({
+      channelAccessToken,
+      channelSecret,
+    });
+  }
+  return client;
+}
 
 export async function POST(request: Request) {
   try {
@@ -32,7 +47,7 @@ export async function POST(request: Request) {
           });
 
           if (activeTrip) {
-            await client.replyMessage(event.replyToken, {
+            await getLineClient().replyMessage(event.replyToken, {
               type: 'text',
               text: `⚠️ พี่ติดงานรหัส ${activeTrip.tripId} อยู่นะครับ\n\nรบกวนพี่จบงานปัจจุบันให้เรียบร้อยก่อนครับ 🚛💨`
             });
@@ -40,7 +55,7 @@ export async function POST(request: Request) {
           }
 
           // ส่งกระดานงาน (Carousel)
-          await client.replyMessage(event.replyToken, jobBoardFlex);
+          await getLineClient().replyMessage(event.replyToken, jobBoardFlex);
         }
       }
 
@@ -54,7 +69,7 @@ export async function POST(request: Request) {
           const jobId = params.get('jobId') || 'JOB-UNKNOWN';
 
           // ส่งการ์ดสีส้ม "ต้องการข้อมูลเพิ่ม" เพื่อถามน้ำหนัก
-          await client.replyMessage(event.replyToken, weightSelectionFlex(jobId));
+          await getLineClient().replyMessage(event.replyToken, weightSelectionFlex(jobId));
         }
       }
     }
