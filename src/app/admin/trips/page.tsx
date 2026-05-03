@@ -3,14 +3,12 @@
 import { useEffect, useState, useRef } from 'react';
 import SidebarLayout from '@/components/SidebarLayout';
 import { Truck, MapPin, Leaf, PlusCircle, ExternalLink, Loader2, MapPinned, X } from 'lucide-react';
-// 🟢 เพิ่ม Autocomplete เข้ามาเพื่อทำระบบค้นหาสถานที่
 import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
 
 const GOOGLE_MAPS_API_KEY = "AIzaSyCJBdRCt3l2Lp8KdPPMb4TlLjIFdS2R-_E";
 const mapContainerStyle = { width: '100%', height: '400px', borderRadius: '0.5rem' };
-const defaultCenter = { lat: 13.7563, lng: 100.5018 }; // เริ่มต้นที่กรุงเทพฯ
+const defaultCenter = { lat: 13.7563, lng: 100.5018 }; 
 
-// 🟢 ต้องประกาศ libraries ไว้ข้างนอก ป้องกันระบบรีเฟรชรัวๆ
 const libraries: ("places")[] = ["places"]; 
 
 export default function ManageTripsPage() {
@@ -23,12 +21,13 @@ export default function ManageTripsPage() {
     tripId: '', origin: '', originMapUrl: '', destination: '', destinationMapUrl: '', carbon: '', companyName: ''
   });
 
-  // State สำหรับจัดการ Popup แผนที่ และจุดศูนย์กลางแผนที่
   const [mapModal, setMapModal] = useState({ isOpen: false, target: '' });
   const [markerPos, setMarkerPos] = useState<{lat: number, lng: number} | null>(null);
   const [mapCenter, setMapCenter] = useState(defaultCenter);
   
-  // Ref สำหรับเก็บกล่องค้นหา
+  // 🟢 State สำหรับเก็บ "ชื่อสถานที่" ชั่วคราวตอนค้นหาเจอ
+  const [selectedPlaceName, setSelectedPlaceName] = useState<string>('');
+  
   const autocompleteRef = useRef<any>(null);
 
   useEffect(() => { fetchSession(); }, []);
@@ -64,22 +63,30 @@ export default function ManageTripsPage() {
   const openMapPicker = (target: 'origin' | 'destination') => {
     setMapModal({ isOpen: true, target });
     setMarkerPos(null); 
-    setMapCenter(defaultCenter); // รีเซ็ตแผนที่กลับมากรุงเทพตอนเปิดใหม่
+    setMapCenter(defaultCenter); 
+    setSelectedPlaceName(''); // 🟢 ล้างชื่อสถานที่เก่าตอนเปิดแผนที่ใหม่
   };
 
   const handleMapClick = (e: any) => {
     setMarkerPos({ lat: e.latLng.lat(), lng: e.latLng.lng() });
+    setSelectedPlaceName(''); // ถ้าจิ้มเองบนแผนที่ จะไม่มีชื่อสถานที่อัตโนมัติ
   };
 
-  // 🟢 ฟังก์ชันเมื่อบอสพิมพ์ค้นหาแล้วกดเลือกสถานที่
   const onPlaceChanged = () => {
     if (autocompleteRef.current !== null) {
       const place = autocompleteRef.current.getPlace();
       if (place.geometry && place.geometry.location) {
         const lat = place.geometry.location.lat();
         const lng = place.geometry.location.lng();
-        setMarkerPos({ lat, lng }); // ปักหมุด
-        setMapCenter({ lat, lng }); // เลื่อนแผนที่ไปตรงนั้น
+        setMarkerPos({ lat, lng });
+        setMapCenter({ lat, lng });
+
+        // 🟢 ถ้าค้นหาเจอ ดึงชื่อสถานที่มาเก็บไว้ (เช่น "Innofresh")
+        if (place.name) {
+          setSelectedPlaceName(place.name);
+        } else if (place.formatted_address) {
+          setSelectedPlaceName(place.formatted_address);
+        }
       }
     }
   };
@@ -88,10 +95,19 @@ export default function ManageTripsPage() {
     if (!markerPos) return;
     const mapUrl = `http://googleusercontent.com/maps.google.com/?q=${markerPos.lat},${markerPos.lng}`;
     
+    // 🟢 ถ้ายืนยัน ให้เอาทั้ง URL และ ชื่อสถานที่ ไปใส่ในฟอร์ม
     if (mapModal.target === 'origin') {
-      setForm({ ...form, originMapUrl: mapUrl });
+      setForm({ 
+        ...form, 
+        originMapUrl: mapUrl,
+        origin: selectedPlaceName ? selectedPlaceName : form.origin // ถ้ามีชื่อที่ค้นหาเจอ ให้ใส่แทนที่เลย
+      });
     } else {
-      setForm({ ...form, destinationMapUrl: mapUrl });
+      setForm({ 
+        ...form, 
+        destinationMapUrl: mapUrl,
+        destination: selectedPlaceName ? selectedPlaceName : form.destination
+      });
     }
     setMapModal({ isOpen: false, target: '' });
   };
@@ -280,7 +296,6 @@ export default function ManageTripsPage() {
             </div>
             
             <div className="p-4 bg-slate-100 flex flex-col gap-3">
-              {/* 🟢 โหลด Google Maps พร้อมระบบค้นหา Places */}
               <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries}>
                 
                 {/* 🔍 กล่องค้นหาสถานที่ */}
@@ -300,7 +315,7 @@ export default function ManageTripsPage() {
                   <GoogleMap
                     mapContainerStyle={mapContainerStyle}
                     center={mapCenter}
-                    zoom={markerPos ? 16 : 10} // ถ้าหาเจอจะซูมเข้าไปใกล้ๆ
+                    zoom={markerPos ? 16 : 10} 
                     onClick={handleMapClick}
                   >
                     {markerPos && <Marker position={markerPos} />}
@@ -310,15 +325,21 @@ export default function ManageTripsPage() {
             </div>
 
             <div className="p-4 border-t border-slate-100 flex justify-between items-center bg-white">
-              <div className="text-xs text-slate-500">
-                {markerPos ? <span className="text-green-600 font-bold">📍 เลือกพิกัดแล้ว</span> : "คุณสามารถค้นหา หรือคลิกบนแผนที่เพื่อปักหมุดด้วยตัวเอง"}
+              <div className="text-xs text-slate-500 flex flex-col">
+                {selectedPlaceName ? (
+                  <span className="text-green-600 font-bold">📍 ค้นพบ: {selectedPlaceName}</span>
+                ) : markerPos ? (
+                  <span className="text-blue-500 font-bold">📍 เลือกพิกัดแล้ว (ไม่มีชื่อสถานที่)</span>
+                ) : (
+                  <span>คุณสามารถค้นหา หรือคลิกบนแผนที่เพื่อปักหมุดด้วยตัวเอง</span>
+                )}
               </div>
               <div className="flex gap-3">
                 <button onClick={() => setMapModal({ isOpen: false, target: '' })} className="px-5 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
                   ยกเลิก
                 </button>
                 <button onClick={confirmLocation} disabled={!markerPos} className={`px-8 py-2 text-sm font-bold text-white rounded-lg transition-colors shadow-sm ${markerPos ? (mapModal.target === 'origin' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-green-600 hover:bg-green-700') : 'bg-slate-300 cursor-not-allowed'}`}>
-                  ยืนยันพิกัดนี้
+                  ยืนยันพิกัดและสถานที่
                 </button>
               </div>
             </div>
