@@ -92,18 +92,21 @@ export default function ManageUsersPage() {
     fetchUsers();
   };
 
-  // 🟢 อัปเดตระบบลบให้มีการแจ้งเตือน (Alert) แบบชัวร์ๆ
+  // 🟢 อัปเดตใหม่: ส่งคำสั่งลบพร้อมแพ็กเกจข้อมูล (Body) 
   const handleDeleteUser = async (userId: string, userName: string) => {
     if (!confirm(`คุณต้องการลบ "${userName}" ใช่หรือไม่?`)) return;
     
     try {
-      const res = await fetch(`/api/admin/users?id=${userId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/users`, { 
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }) // ส่ง ID ผ่าน Body
+      });
       
       if (res.ok) {
         alert('ลบข้อมูลเรียบร้อยแล้วครับ!');
-        fetchUsers(); // โหลดตารางใหม่
+        fetchUsers();
       } else {
-        // ถ้าฝั่ง Vercel/MongoDB พ่น Error มา จะได้รู้สาเหตุครับ
         const data = await res.json();
         alert(`ไม่สามารถลบได้: ${data.error}`);
       }
