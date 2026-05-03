@@ -25,7 +25,6 @@ export default function ManageTripsPage() {
   const [markerPos, setMarkerPos] = useState<{lat: number, lng: number} | null>(null);
   const [mapCenter, setMapCenter] = useState(defaultCenter);
   
-  // 🟢 State สำหรับเก็บ "ชื่อสถานที่" ชั่วคราวตอนค้นหาเจอ
   const [selectedPlaceName, setSelectedPlaceName] = useState<string>('');
   
   const autocompleteRef = useRef<any>(null);
@@ -64,14 +63,15 @@ export default function ManageTripsPage() {
     setMapModal({ isOpen: true, target });
     setMarkerPos(null); 
     setMapCenter(defaultCenter); 
-    setSelectedPlaceName(''); // 🟢 ล้างชื่อสถานที่เก่าตอนเปิดแผนที่ใหม่
+    setSelectedPlaceName(''); 
   };
 
   const handleMapClick = (e: any) => {
     setMarkerPos({ lat: e.latLng.lat(), lng: e.latLng.lng() });
-    setSelectedPlaceName(''); // ถ้าจิ้มเองบนแผนที่ จะไม่มีชื่อสถานที่อัตโนมัติ
+    setSelectedPlaceName(''); 
   };
 
+  // 🟢 อัปเดต: ดึงชื่อสถานที่ + ที่อยู่เต็ม (ตำบล อำเภอ จังหวัด)
   const onPlaceChanged = () => {
     if (autocompleteRef.current !== null) {
       const place = autocompleteRef.current.getPlace();
@@ -81,12 +81,23 @@ export default function ManageTripsPage() {
         setMarkerPos({ lat, lng });
         setMapCenter({ lat, lng });
 
-        // 🟢 ถ้าค้นหาเจอ ดึงชื่อสถานที่มาเก็บไว้ (เช่น "Innofresh")
-        if (place.name) {
-          setSelectedPlaceName(place.name);
+        let fullName = "";
+        
+        if (place.name && place.formatted_address) {
+          // ถ้าที่อยู่เต็มมีชื่อสถานที่อยู่แล้ว ก็ดึงมาแสดงเลย จะได้ไม่ซ้ำซ้อน
+          if (place.formatted_address.includes(place.name)) {
+            fullName = place.formatted_address;
+          } else {
+            // ถ้ายังไม่มี จับชื่อสถานที่มาประกบกับที่อยู่เต็ม
+            fullName = `${place.name} (${place.formatted_address})`;
+          }
         } else if (place.formatted_address) {
-          setSelectedPlaceName(place.formatted_address);
+          fullName = place.formatted_address;
+        } else if (place.name) {
+          fullName = place.name;
         }
+
+        setSelectedPlaceName(fullName);
       }
     }
   };
@@ -95,12 +106,11 @@ export default function ManageTripsPage() {
     if (!markerPos) return;
     const mapUrl = `http://googleusercontent.com/maps.google.com/?q=${markerPos.lat},${markerPos.lng}`;
     
-    // 🟢 ถ้ายืนยัน ให้เอาทั้ง URL และ ชื่อสถานที่ ไปใส่ในฟอร์ม
     if (mapModal.target === 'origin') {
       setForm({ 
         ...form, 
         originMapUrl: mapUrl,
-        origin: selectedPlaceName ? selectedPlaceName : form.origin // ถ้ามีชื่อที่ค้นหาเจอ ให้ใส่แทนที่เลย
+        origin: selectedPlaceName ? selectedPlaceName : form.origin 
       });
     } else {
       setForm({ 
@@ -252,12 +262,14 @@ export default function ManageTripsPage() {
                       <td className="p-4">
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center gap-1.5 text-slate-700 font-medium text-xs">
-                            <span className="w-2 h-2 rounded-full bg-orange-400"></span> {trip.origin} 
-                            {trip.originMapUrl && <a href={trip.originMapUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100"><ExternalLink size={10} className="inline"/></a>}
+                            <span className="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0"></span> 
+                            <span className="truncate max-w-xs" title={trip.origin}>{trip.origin}</span>
+                            {trip.originMapUrl && <a href={trip.originMapUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100 flex-shrink-0"><ExternalLink size={10} className="inline"/></a>}
                           </div>
                           <div className="flex items-center gap-1.5 text-slate-700 font-medium text-xs">
-                            <span className="w-2 h-2 rounded-full bg-green-500"></span> {trip.destination}
-                            {trip.destinationMapUrl && <a href={trip.destinationMapUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100"><ExternalLink size={10} className="inline"/></a>}
+                            <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span> 
+                            <span className="truncate max-w-xs" title={trip.destination}>{trip.destination}</span>
+                            {trip.destinationMapUrl && <a href={trip.destinationMapUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded hover:bg-blue-100 flex-shrink-0"><ExternalLink size={10} className="inline"/></a>}
                           </div>
                         </div>
                       </td>
@@ -327,7 +339,7 @@ export default function ManageTripsPage() {
             <div className="p-4 border-t border-slate-100 flex justify-between items-center bg-white">
               <div className="text-xs text-slate-500 flex flex-col">
                 {selectedPlaceName ? (
-                  <span className="text-green-600 font-bold">📍 ค้นพบ: {selectedPlaceName}</span>
+                  <span className="text-green-600 font-bold text-[11px] max-w-lg truncate">📍 ค้นพบ: {selectedPlaceName}</span>
                 ) : markerPos ? (
                   <span className="text-blue-500 font-bold">📍 เลือกพิกัดแล้ว (ไม่มีชื่อสถานที่)</span>
                 ) : (
