@@ -123,9 +123,9 @@ export default function ManageUsersPage() {
           <table className="w-full text-left border-collapse min-w-[1300px]">
             <thead>
               <tr className="bg-slate-50 text-slate-500 text-xs border-b border-slate-200 uppercase tracking-wider">
-                <th className="p-4 font-semibold">User ID (Login)</th>
+                <th className="p-4 font-semibold">User ID</th>
                 <th className="p-4 font-semibold">ชื่อผู้ใช้</th>
-                <th className="p-4 font-semibold">บริษัท (วางบิล)</th>
+                <th className="p-4 font-semibold">บริษัท</th>
                 <th className="p-4 font-semibold">เบอร์โทรศัพท์</th>
                 <th className="p-4 font-semibold">อีเมล</th>
                 <th className="p-4 font-semibold">Password ใหม่</th>
