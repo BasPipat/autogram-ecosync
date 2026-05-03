@@ -9,7 +9,7 @@ export async function GET() {
     await connectToDatabase();
     const trips = await Trip.find({}).sort({ createdAt: -1 });
     return NextResponse.json(trips);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'ดึงข้อมูลไม่สำเร็จ' }, { status: 500 });
   }
 }
@@ -25,8 +25,9 @@ export async function POST(req: NextRequest) {
 
     const newTrip = await Trip.create(data);
     return NextResponse.json({ message: 'สร้างงานสำเร็จ!', trip: newTrip }, { status: 201 });
-  } catch (error: any) {
-    if (error.code === 11000) {
+  } catch (error: unknown) {
+    const err = error as { code?: number };
+    if (err.code === 11000) {
       return NextResponse.json({ error: 'รหัสงานนี้มีซ้ำในระบบแล้ว กรุณาเปลี่ยนรหัสใหม่' }, { status: 400 });
     }
     return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการสร้างงาน' }, { status: 500 });
