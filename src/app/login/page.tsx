@@ -1,69 +1,72 @@
 'use client';
-import { signIn } from 'next-auth/react';
-import { useState } from 'react';
-import Link from 'next/link';
+import SidebarLayout from '@/components/SidebarLayout';
 
-export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false); // 👈 เพิ่ม State ควบคุมการมองเห็น
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await signIn('credentials', { email, password, callbackUrl: '/' });
-  };
-
+export default function DashboardPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-900">
-      <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-xl">
-        <h2 className="text-3xl font-bold text-center text-slate-800 mb-2">AUTOGRAM</h2>
-        <p className="text-center text-slate-500 mb-8">Eco-Sync Customer Portal</p>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Email Address</label>
-            <input 
-              type="email" 
-              className="w-full mt-1 p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+    <SidebarLayout>
+      <div className="p-8">
+        {/* หัวข้อหน้าเว็บ */}
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-slate-800">Autogram Eco-Sync</h1>
+          <p className="text-sm text-slate-500">Sustainability Dashboard & Integrity Vault</p>
+        </div>
+
+        {/* สรุปตัวเลขสำคัญ (ตามแบบในรูปของบอสเป๊ะๆ) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center">
+            <div>
+              <p className="text-sm text-slate-500 mb-1">ยอดคาร์บอนสะสม (kgCO2e)</p>
+              <p className="text-3xl font-bold text-green-600">0.00</p>
+            </div>
+            <div className="p-3 bg-green-50 text-green-500 rounded-lg text-2xl">
+              🍃
+            </div>
           </div>
-
-          {/* 👇 แก้ไขช่อง Password ตรงนี้ครับ */}
-          <div className="relative">
-            <label className="block text-sm font-medium text-slate-700">Password</label>
-            <input 
-              type={showPassword ? "text" : "password"} // สลับ type ระหว่าง text กับ password
-              className="w-full mt-1 p-3 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-            {/* ปุ่มลูกตา */}
-            <button
-              type="button"
-              className="absolute right-3 top-9 text-slate-500 hover:text-orange-500"
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? "🙈" : "👁️"}
-            </button>
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center">
+            <div>
+              <p className="text-sm text-slate-500 mb-1">เที่ยววิ่งทั้งหมด (Trips)</p>
+              <p className="text-3xl font-bold text-slate-800">0</p>
+            </div>
+            <div className="p-3 bg-blue-50 text-blue-500 rounded-lg text-2xl">
+              🚚
+            </div>
           </div>
+          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center">
+            <div>
+              <p className="text-sm text-slate-500 mb-1">POD ที่ตรวจสอบแล้ว</p>
+              <p className="text-3xl font-bold text-slate-800">0</p>
+            </div>
+            <div className="p-3 bg-orange-50 text-orange-500 rounded-lg text-2xl">
+              📄
+            </div>
+          </div>
+        </div>
 
-          <button 
-            type="submit" 
-            className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-lg transition-colors"
-          >
-            Sign In
-          </button>
-        </form>
-
-        <div className="mt-6 text-center text-sm text-slate-600 border-t pt-4">
-          ยังไม่มีบัญชีผู้ใช้งาน?{' '}
-          <Link href="/register" className="text-orange-500 font-semibold hover:underline">
-            สมัครสมาชิกที่นี่
-          </Link>
+        {/* ตารางรายการเดินรถล่าสุด */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+          <div className="p-6 border-b border-slate-100">
+            <h2 className="font-bold text-slate-800">รายการเดินรถล่าสุด</h2>
+          </div>
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 text-slate-500 text-sm border-b border-slate-100">
+                <th className="p-4 font-medium">รหัสงาน (Trip ID)</th>
+                <th className="p-4 font-medium">เส้นทาง</th>
+                <th className="p-4 font-medium">คาร์บอน (kgCO2e)</th>
+                <th className="p-4 font-medium">สถานะหลักฐาน (POD)</th>
+                <th className="p-4 font-medium">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colSpan={5} className="p-12 text-center text-slate-400">
+                  ยังไม่มีข้อมูล
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
-    </div>
+    </SidebarLayout>
   );
 }
