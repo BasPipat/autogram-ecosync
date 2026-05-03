@@ -126,13 +126,13 @@ export default function ManageTripsPage() {
 
           let finalString = "";
           if (locationDetails.length > 0) {
-             finalString = `${locationDetails.join(', ')}`;
+             finalString = locationDetails.join(', ');
           } else {
-             finalString = "จุดปักหมุดบนแผนที่";
+             finalString = "พิกัดที่เลือกบนแผนที่";
           }
           setSelectedPlaceName(finalString);
         } else {
-          setSelectedPlaceName('จุดปักหมุด (ไม่พบชื่อสถานที่)');
+          setSelectedPlaceName('ไม่พบชื่อสถานที่');
         }
       });
     }
@@ -213,14 +213,14 @@ export default function ManageTripsPage() {
 
   return (
     <SidebarLayout>
-      <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries}>
+      {/* 🟢 เติมคำสั่ง language="th" และ region="TH" ตรงนี้ครับ */}
+      <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries} language="th" region="TH">
         <div className="p-8">
           <h1 className="text-2xl font-bold text-slate-800 mb-2 flex items-center gap-2">
             <Truck className="text-blue-600" /> จัดการงานขนส่ง (Job Management)
           </h1>
           <p className="text-sm text-slate-500 mb-8">บันทึกเส้นทาง คำนวณระยะทางอัตโนมัติ และประเมินการปล่อยคาร์บอน (kgCO2e)</p>
 
-          {/* 🟢 ใส่ || '' เพื่อแก้ TypeScript Error แล้วครับ */}
           {['system_owner', 'operator', 'admin', 'corporate_admin'].includes(currentUser?.role || '') && (
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8">
               <h2 className="text-md font-bold text-slate-700 flex items-center gap-2 mb-5">
@@ -292,7 +292,6 @@ export default function ManageTripsPage() {
                     </div>
                   </div>
                   
-                  {/* 🟢 ใส่ || '' เพื่อแก้ TypeScript Error แล้วครับ */}
                   {['system_owner', 'operator', 'admin'].includes(currentUser?.role || '') && (
                     <div className="mt-4">
                       <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">ชื่อบริษัทลูกค้า (สำหรับวางบิล)</label>
