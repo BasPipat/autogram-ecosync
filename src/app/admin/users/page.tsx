@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import SidebarLayout from '@/components/SidebarLayout';
-import { useSession } from 'next-auth/react';
 
 interface IUser {
   _id: string;
@@ -12,13 +11,27 @@ interface IUser {
 }
 
 export default function ManageUsersPage() {
-  const { data: session } = useSession(); // ดึงข้อมูลคนที่ล็อกอินอยู่
   const [allUsers, setAllUsers] = useState<IUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null); // 🟢 สร้างตัวแปรเก็บอีเมลบอส
 
   useEffect(() => {
     fetchUsers();
+    fetchSession(); // 🟢 สั่งให้ดึงข้อมูลคนล็อกอินตอนเปิดหน้าเว็บ
   }, []);
+
+  // ฟังก์ชันดึงข้อมูลว่าใครกำลังใช้งานหน้านี้อยู่
+  const fetchSession = async () => {
+    try {
+      const res = await fetch('/api/auth/session');
+      const session = await res.json();
+      if (session?.user?.email) {
+        setSessionEmail(session.user.email);
+      }
+    } catch (error) {
+      console.error("Failed to fetch session", error);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -35,7 +48,7 @@ export default function ManageUsersPage() {
   };
 
   // 🟢 ค้นหาว่าคนที่กำลังใช้งานหน้านี้คือใคร จะได้จำกัดสิทธิ์ได้ถูกต้อง
-  const currentUser = allUsers.find(u => u.email === session?.user?.email);
+  const currentUser = allUsers.find(u => u.email === sessionEmail);
 
   // 🟢 คัดกรองรายชื่อที่จะแสดงบนตาราง
   const displayedUsers = allUsers.filter(user => {
@@ -127,7 +140,7 @@ export default function ManageUsersPage() {
                         className="p-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none bg-white cursor-pointer w-full max-w-[220px]"
                         value={user.role}
                         onChange={(e) => handleRoleChange(user._id, e.target.value)}
-                        disabled={user.email === currentUser?.email} // ป้องกันการปลดยศตัวเอง
+                        disabled={user.email === sessionEmail} // ป้องกันการปลดยศตัวเอง
                       >
                         {/* 🟢 ถ้าเป็น System Owner ถึงจะเห็นหมวด Autogram */}
                         {currentUser?.role === 'system_owner' && (
@@ -153,8 +166,8 @@ export default function ManageUsersPage() {
                     <td className="p-4 text-center">
                       <button 
                         onClick={() => handleDeleteUser(user._id, user.name)}
-                        disabled={user.email === currentUser?.email} // ห้ามลบตัวเอง
-                        className={`text-sm px-3 py-1 rounded ${user.email === currentUser?.email ? 'text-gray-400 bg-gray-100 cursor-not-allowed' : 'text-red-600 bg-red-50 hover:bg-red-100 font-medium'}`}
+                        disabled={user.email === sessionEmail} // ห้ามลบตัวเอง
+                        className={`text-sm px-3 py-1 rounded ${user.email === sessionEmail ? 'text-gray-400 bg-gray-100 cursor-not-allowed' : 'text-red-600 bg-red-50 hover:bg-red-100 font-medium'}`}
                       >
                         ลบ
                       </button>
