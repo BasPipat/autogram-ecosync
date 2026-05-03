@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import SidebarLayout from '@/components/SidebarLayout';
-import { Truck, MapPin, Leaf, PlusCircle, ExternalLink, Loader2, MapPinned, X, Route, Weight } from 'lucide-react';
+import { Truck, MapPin, Leaf, PlusCircle, ExternalLink, Loader2, MapPinned, X, Route, Package } from 'lucide-react';
 import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
 
 const GOOGLE_MAPS_API_KEY = "AIzaSyCJBdRCt3l2Lp8KdPPMb4TlLjIFdS2R-_E";
@@ -18,7 +18,7 @@ export default function ManageTripsPage() {
 
   const [form, setForm] = useState({
     tripId: '', origin: '', originMapUrl: '', destination: '', destinationMapUrl: '', 
-    distance: '', weight: '', carbon: '', companyName: '' // 🟢 เพิ่ม distance, weight
+    distance: '', weight: '', carbon: '', companyName: '' 
   });
 
   const [mapModal, setMapModal] = useState({ isOpen: false, target: '' });
@@ -31,26 +31,27 @@ export default function ManageTripsPage() {
   useEffect(() => { fetchSession(); }, []);
   useEffect(() => { if (sessionEmail) fetchInitialData(); }, [sessionEmail]);
 
-  // 🟢 Effect: คำนวณระยะทางอัตโนมัติเมื่อปักหมุดครบ 2 ที่
+  // 🟢 Effect: คำนวณระยะทางอัตโนมัติ
   useEffect(() => {
-    if (form.originMapUrl && form.destinationMapUrl && window.google) {
+    if (form.originMapUrl && form.destinationMapUrl && (window as any).google) {
       calculateDistance();
     }
   }, [form.originMapUrl, form.destinationMapUrl]);
 
-  // 🟢 Effect: คำนวณคาร์บอนอัตโนมัติเมื่อ น้ำหนัก หรือ ระยะทาง เปลี่ยน
+  // 🟢 Effect: คำนวณคาร์บอนอัตโนมัติ
   useEffect(() => {
     if (form.distance && form.weight) {
-      // สูตร: ระยะทาง (km) * น้ำหนัก (ton) * 0.062 (Emission Factor)
       const carbonVal = (Number(form.distance) * Number(form.weight) * 0.062).toFixed(2);
       setForm(prev => ({ ...prev, carbon: carbonVal }));
     }
   }, [form.distance, form.weight]);
 
   const fetchSession = async () => {
-    const res = await fetch('/api/auth/session');
-    const session = await res.json();
-    if (session?.user?.email) setSessionEmail(session.user.email);
+    try {
+      const res = await fetch('/api/auth/session');
+      const session = await res.json();
+      if (session?.user?.email) setSessionEmail(session.user.email);
+    } catch(e) {}
   };
 
   const fetchInitialData = async () => {
@@ -72,23 +73,21 @@ export default function ManageTripsPage() {
     } catch (e) {} finally { setLoading(false); }
   };
 
-  // 🟢 ฟังก์ชันคำนวณระยะทางขับรถจริงด้วย Google Distance Matrix
   const calculateDistance = () => {
     const originMatch = form.originMapUrl.match(/q=([\d.-]+),([\d.-]+)/);
     const destMatch = form.destinationMapUrl.match(/q=([\d.-]+),([\d.-]+)/);
 
     if (originMatch && destMatch) {
-      const origin = new window.google.maps.LatLng(parseFloat(originMatch[1]), parseFloat(originMatch[2]));
-      const dest = new window.google.maps.LatLng(parseFloat(destMatch[1]), parseFloat(destMatch[2]));
+      const origin = new (window as any).google.maps.LatLng(parseFloat(originMatch[1]), parseFloat(originMatch[2]));
+      const dest = new (window as any).google.maps.LatLng(parseFloat(destMatch[1]), parseFloat(destMatch[2]));
 
-      const service = new window.google.maps.DistanceMatrixService();
+      const service = new (window as any).google.maps.DistanceMatrixService();
       service.getDistanceMatrix({
         origins: [origin],
         destinations: [dest],
-        travelMode: window.google.maps.TravelMode.DRIVING,
-      }, (response, status) => {
+        travelMode: (window as any).google.maps.TravelMode.DRIVING,
+      }, (response: any, status: string) => {
         if (status === 'OK' && response && response.rows[0].elements[0].status === 'OK') {
-          // แปลงเมตรเป็นกิโลเมตร
           const distKm = (response.rows[0].elements[0].distance.value / 1000).toFixed(2);
           setForm(prev => ({ ...prev, distance: distKm }));
         }
@@ -103,9 +102,40 @@ export default function ManageTripsPage() {
     setSelectedPlaceName(''); 
   };
 
+  // 🟢 Reverse Geocoding (สแกนหาชื่อสถานที่จากการจิ้มแผนที่)
   const handleMapClick = (e: any) => {
-    setMarkerPos({ lat: e.latLng.lat(), lng: e.latLng.lng() });
-    setSelectedPlaceName(''); 
+    const lat = e.latLng.lat();
+    const lng = e.latLng.lng();
+    setMarkerPos({ lat, lng });
+    setSelectedPlaceName('กำลังดึงชื่อสถานที่...'); 
+
+    if ((window as any).google) {
+      const geocoder = new (window as any).google.maps.Geocoder();
+      geocoder.geocode({ location: { lat, lng } }, (results: any, status: string) => {
+        if (status === 'OK' && results && results[0]) {
+          let subdistrict = "";
+          let province = "";
+          for (const component of results[0].address_components) {
+            if (component.types.includes("administrative_area_level_1")) province = component.long_name;
+            if (component.types.includes("sublocality_level_1") || component.types.includes("sublocality") || component.types.includes("administrative_area_level_3")) subdistrict = component.long_name;
+          }
+
+          let locationDetails = [];
+          if (subdistrict) locationDetails.push(subdistrict);
+          if (province) locationDetails.push(province);
+
+          let finalString = "";
+          if (locationDetails.length > 0) {
+             finalString = `จุดปักหมุด (${locationDetails.join(', ')})`;
+          } else {
+             finalString = "จุดปักหมุดบนแผนที่";
+          }
+          setSelectedPlaceName(finalString);
+        } else {
+          setSelectedPlaceName('จุดปักหมุด (ไม่พบชื่อสถานที่)');
+        }
+      });
+    }
   };
 
   const onPlaceChanged = () => {
@@ -183,7 +213,6 @@ export default function ManageTripsPage() {
 
   return (
     <SidebarLayout>
-      {/* 🟢 ครอบทั้งหน้าด้วย LoadScript เพื่อให้ Google API คำนวณระยะทางได้ตลอดเวลา */}
       <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries}>
         <div className="p-8">
           <h1 className="text-2xl font-bold text-slate-800 mb-2 flex items-center gap-2">
@@ -191,7 +220,8 @@ export default function ManageTripsPage() {
           </h1>
           <p className="text-sm text-slate-500 mb-8">บันทึกเส้นทาง คำนวณระยะทางอัตโนมัติ และประเมินการปล่อยคาร์บอน (kgCO2e)</p>
 
-          {['system_owner', 'operator', 'admin', 'corporate_admin'].includes(currentUser?.role) && (
+          {/* 🟢 ใส่ || '' เพื่อแก้ TypeScript Error แล้วครับ */}
+          {['system_owner', 'operator', 'admin', 'corporate_admin'].includes(currentUser?.role || '') && (
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8">
               <h2 className="text-md font-bold text-slate-700 flex items-center gap-2 mb-5">
                 <PlusCircle size={18} className="text-blue-500" /> รายละเอียดงานใหม่
@@ -199,7 +229,6 @@ export default function ManageTripsPage() {
               
               <form onSubmit={handleCreateTrip} className="space-y-6">
                 
-                {/* 📍 กล่องต้นทาง & ปลายทาง */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="p-5 bg-slate-50 border border-slate-100 rounded-xl space-y-4">
                     <h4 className="font-bold text-sm text-slate-700 flex items-center gap-2">
@@ -240,7 +269,6 @@ export default function ManageTripsPage() {
                   </div>
                 </div>
 
-                {/* 🟢 ส่วนคำนวณ: ระยะทาง, น้ำหนัก, คาร์บอน */}
                 <div className="p-5 bg-blue-50/50 border border-blue-100 rounded-xl">
                   <h4 className="font-bold text-sm text-blue-800 flex items-center gap-2 mb-4">
                     <Leaf size={16} /> ข้อมูลการวิ่ง & คำนวณคาร์บอน (Auto-Calculate)
@@ -255,7 +283,7 @@ export default function ManageTripsPage() {
                       <input type="number" step="0.01" required placeholder="คำนวณอัตโนมัติ" className="w-full p-2.5 bg-white border border-blue-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 font-bold text-blue-700" value={form.distance} onChange={e => setForm({...form, distance: e.target.value})} />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-orange-600 uppercase mb-1 flex items-center gap-1"><Weight size={12}/> น้ำหนักบรรทุก (ตัน)</label>
+                      <label className="block text-[11px] font-bold text-orange-600 uppercase mb-1 flex items-center gap-1"><Package size={12}/> น้ำหนักบรรทุก (ตัน)</label>
                       <input type="number" step="0.01" required placeholder="ระบุน้ำหนัก" className="w-full p-2.5 bg-white border border-orange-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500 font-bold text-orange-700" value={form.weight} onChange={e => setForm({...form, weight: e.target.value})} />
                     </div>
                     <div>
@@ -264,8 +292,8 @@ export default function ManageTripsPage() {
                     </div>
                   </div>
                   
-                  {/* กล่องชื่อบริษัทลูกค้า */}
-                  {['system_owner', 'operator', 'admin'].includes(currentUser?.role) && (
+                  {/* 🟢 ใส่ || '' เพื่อแก้ TypeScript Error แล้วครับ */}
+                  {['system_owner', 'operator', 'admin'].includes(currentUser?.role || '') && (
                     <div className="mt-4">
                       <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">ชื่อบริษัทลูกค้า (สำหรับวางบิล)</label>
                       <input type="text" required placeholder="ระบุบริษัท" className="w-full md:w-1/4 p-2.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.companyName} onChange={e => setForm({...form, companyName: e.target.value})} />
@@ -282,7 +310,6 @@ export default function ManageTripsPage() {
             </div>
           )}
 
-          {/* 🟢 ตารางแสดงรายการงาน */}
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                <h3 className="font-bold text-slate-700">ประวัติการเดินรถล่าสุด</h3>
@@ -328,8 +355,8 @@ export default function ManageTripsPage() {
 
                         <td className="p-4 text-center">
                           <div className="flex flex-col gap-1">
-                            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{trip.distance} km</span>
-                            <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded">{trip.weight} tons</span>
+                            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{trip.distance || 0} km</span>
+                            <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded">{trip.weight || 0} tons</span>
                           </div>
                         </td>
 
@@ -352,7 +379,6 @@ export default function ManageTripsPage() {
           </div>
         </div>
 
-        {/* 🗺️ Popup แผนที่อัจฉริยะ */}
         {mapModal.isOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col">
