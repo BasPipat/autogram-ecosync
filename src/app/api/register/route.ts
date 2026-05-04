@@ -17,8 +17,8 @@ export async function POST(req: Request) {
     // เข้ารหัสผ่าน
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // บันทึกผู้ใช้ใหม่ (ตั้งเป็น customer อัตโนมัติ)
-    await User.create({ name, email, password: hashedPassword, role: 'customer' });
+    // บันทึกผู้ใช้ใหม่ (ตั้งเป็น coordinator อัตโนมัติ ตาม role matrix ปัจจุบัน)
+    await User.create({ name, email, password: hashedPassword, role: 'coordinator' });
 
     return NextResponse.json({ message: 'สมัครสมาชิกสำเร็จ!' }, { status: 201 });
   } catch (error) {
