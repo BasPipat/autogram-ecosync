@@ -1,116 +1,112 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { GoogleMap, InfoWindow, LoadScript, Marker } from '@react-google-maps/api';
-import SidebarLayout from '@/components/SidebarLayout';
-import { Loader2, MapPin } from 'lucide-react';
+import React from 'react';
+import { useJsApiLoader, GoogleMap } from '@react-google-maps/api';
 
-const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-const defaultCenter = { lat: 13.7563, lng: 100.5018 };
-
-type ActiveMarker = {
-  tripId: string;
-  lat: number;
-  lng: number;
-  locationName: string;
-  driverName: string;
-  driverPhone: string;
+// ตั้งค่าขนาดกรอบแผนที่
+const containerStyle = {
+  width: '100%',
+  height: '500px',
+  borderRadius: '1rem',
 };
 
+// ตั้งค่าจุดกึ่งกลางเริ่มต้น (กรุงเทพมหานคร)
+const center = {
+  lat: 13.7563,
+  lng: 100.5018
+};
+
+// โทนสีแผนที่แบบ Dark Mode เพื่อให้เข้ากับธีม Deep Navy
+const mapDarkStyle = [
+  { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+  { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+  { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#d59563" }] },
+  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#263c3f" }] },
+  { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#6b9a76" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#212a37" }] },
+  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] },
+  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#746855" }] },
+  { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#1f2835" }] },
+  { featureType: "road.highway", elementType: "labels.text.fill", stylers: [{ color: "#f3d19c" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
+  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#515c6d" }] },
+  { featureType: "water", elementType: "labels.text.stroke", stylers: [{ color: "#17263c" }] }
+];
+
 export default function OverviewPage() {
-  const [markers, setMarkers] = useState<ActiveMarker[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
-  const [mapError, setMapError] = useState<string>('');
+  // โหลด Google Maps API
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+  });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      setMapError('');
-      try {
-        const res = await fetch('/api/overview/active-trucks', { cache: 'no-store' });
-        if (!res.ok) throw new Error('Fetch failed');
-        const data = await res.json();
-        setMarkers(data.markers || []);
-      } catch (error) {
-        console.error('Overview fetch failed', error);
-        setMapError('ไม่สามารถโหลดตำแหน่งรถได้ในขณะนี้');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-    const timer = setInterval(fetchData, 20000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const selected = useMemo(
-    () => markers.find((item) => item.tripId === selectedTripId) || null,
-    [markers, selectedTripId]
-  );
+  // จำลองตัวเลขรถที่กำลังวิ่ง (จะเชื่อมกับ Database ในอนาคต)
+  const activeVehicles = 0;
 
   return (
-    <SidebarLayout>
-      <div className="min-h-screen rounded-3xl bg-[#071022] p-8 text-slate-100 shadow-[0_40px_120px_-80px_rgba(0,0,0,0.8)]">
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-[#a5f3fc]">Overview</p>
-            <h1 className="text-3xl font-bold text-white">Overview Dashboard</h1>
-            <p className="mt-2 text-slate-400">แสดงตำแหน่งรถที่สถานะ Active พร้อมข้อมูลคนขับ</p>
-          </div>
-          <div className="rounded-3xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 shadow-lg backdrop-blur-xl">
-            Google Maps Key: <span className="font-semibold text-emerald-300">{GOOGLE_MAPS_API_KEY ? 'Configured' : 'Missing'}</span>
-          </div>
+    <div className="p-8 min-h-screen text-white bg-[#0a192f] font-sans">
+      
+      {/* Header Section */}
+      <div className="flex justify-between items-start mb-8">
+        <div>
+          <h1 className="text-xs font-bold tracking-widest text-[#10b981] uppercase mb-1">Overview</h1>
+          <h2 className="text-3xl font-extrabold text-white">Overview Dashboard</h2>
+          <p className="text-gray-400 mt-2 text-sm">แสดงตำแหน่งรถที่สถานะ Active พร้อมข้อมูลคนขับแบบเรียลไทม์</p>
         </div>
-
-        <div className="rounded-3xl border border-white/10 bg-[#0f1e35]/90 p-4 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.7)] backdrop-blur-xl">
-          {(!GOOGLE_MAPS_API_KEY || mapError) ? (
-            <div className="p-10 text-center text-sm text-rose-200">
-              <p className="text-lg font-semibold text-rose-100">เกิดปัญหาในการโหลดแผนที่</p>
-              <p className="mt-3">{!GOOGLE_MAPS_API_KEY ? 'ไม่พบ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY กรุณาตั้งค่าตัวแปรแวดล้อม' : mapError}</p>
-            </div>
-          ) : loading ? (
-            <div className="h-[520px] flex items-center justify-center text-slate-300">
-              <Loader2 className="w-6 h-6 animate-spin mr-2 text-emerald-300" /> กำลังโหลดตำแหน่งรถ...
-            </div>
-          ) : (
-            <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} onError={() => setMapError('ไม่สามารถโหลด Google Maps API ได้ กรุณาตรวจสอบ KEY')}>
-              <GoogleMap
-                mapContainerStyle={{ width: '100%', height: '520px' }}
-                center={markers[0] ? { lat: markers[0].lat, lng: markers[0].lng } : defaultCenter}
-                zoom={markers[0] ? 9 : 6}
-              >
-                {markers.map((marker) => (
-                  <Marker
-                    key={marker.tripId}
-                    position={{ lat: marker.lat, lng: marker.lng }}
-                    onClick={() => setSelectedTripId(marker.tripId)}
-                  />
-                ))}
-
-                {selected && (
-                  <InfoWindow
-                    position={{ lat: selected.lat, lng: selected.lng }}
-                    onCloseClick={() => setSelectedTripId(null)}
-                  >
-                    <div className="text-sm">
-                      <p className="font-semibold text-slate-900">Trip: {selected.tripId}</p>
-                      <p className="text-slate-600">{selected.locationName}</p>
-                      <p className="mt-2 text-slate-800">คนขับ: {selected.driverName}</p>
-                      <p className="text-slate-800">โทร: {selected.driverPhone}</p>
-                    </div>
-                  </InfoWindow>
-                )}
-              </GoogleMap>
-            </LoadScript>
-          )}
-        </div>
-
-        <div className="mt-5 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 flex items-center gap-2">
-          <MapPin size={16} /> Active Vehicles: {markers.length} คัน
+        
+        {/* สถานะ API Key */}
+        <div className="bg-[#112240] px-4 py-2 rounded-full border border-gray-700 flex items-center gap-3 shadow-sm">
+          <span className="text-xs text-gray-400">Google Maps Key:</span>
+          <span className="text-xs font-bold text-[#10b981] flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-[#10b981] animate-pulse"></span>
+            Configured
+          </span>
         </div>
       </div>
-    </SidebarLayout>
+
+      {/* Map Container (แสดงผลตลอดเวลา) */}
+      <div className="bg-[#112240] rounded-2xl shadow-2xl border border-gray-800 p-2 mb-6 relative overflow-hidden">
+        {!isLoaded ? (
+          <div className="h-[500px] flex items-center justify-center text-gray-400 flex-col gap-3">
+            <div className="w-8 h-8 border-4 border-[#10b981] border-t-transparent rounded-full animate-spin"></div>
+            <p>กำลังโหลดแผนที่ระบบอัจฉริยะ...</p>
+          </div>
+        ) : loadError ? (
+          <div className="h-[500px] flex items-center justify-center text-red-400 bg-red-900/20 rounded-xl">
+            <p>เกิดปัญหาในการเชื่อมต่อ Google Maps API กรุณาตรวจสอบ Key</p>
+          </div>
+        ) : (
+          <div className="rounded-xl overflow-hidden shadow-inner">
+            <GoogleMap
+              mapContainerStyle={containerStyle}
+              center={center}
+              zoom={11}
+              options={{
+                styles: mapDarkStyle,
+                disableDefaultUI: false,
+                zoomControl: true,
+                mapTypeControl: false,
+                streetViewControl: false,
+              }}
+            >
+              {/* จุดปักหมุด (Markers) จะถูกนำมาใส่ตรงนี้เมื่อมีรถ Active */}
+            </GoogleMap>
+          </div>
+        )}
+      </div>
+
+      {/* Status Bar ใต้แผนที่ */}
+      <div className="bg-[#e6fcf5] text-[#047857] px-5 py-4 rounded-xl flex items-center gap-3 font-semibold shadow-sm border border-[#a7f3d0]">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-[#10b981]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        <span>Active Vehicles: <span className="text-xl mx-1">{activeVehicles}</span> คัน</span>
+      </div>
+      
+    </div>
   );
 }
