@@ -8,7 +8,10 @@ export type ResetPasswordPayload = {
   type: 'password_reset';
 };
 
-export function signResetPasswordToken(payload: ResetPasswordPayload, expiresIn = '15m'): string {
+export function signResetPasswordToken(
+  payload: ResetPasswordPayload,
+  expiresIn: jwt.SignOptions['expiresIn'] = '15m'
+): string {
   return jwt.sign(payload, JWT_SECRET, { expiresIn });
 }
 
