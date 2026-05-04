@@ -1,0 +1,1 @@
+After every task, run: git diff HEAD | powershell -File $HOME\.agent-bridge\bridge-send.ps1 "[task name]". Then wait and watch $HOME\.agent-bridge\feedback.md to fix issues.
