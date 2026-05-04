@@ -1,24 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Trip } from '@/models/Trip';
+import { getSessionToken, isInternalRole } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
-async function requireAuth(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  return token;
-}
-
 export async function GET(req: NextRequest) {
   try {
-    const token = await requireAuth(req);
+    const token = await getSessionToken(req);
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     await connectToDatabase();
-    const trips = await Trip.find({}).sort({ createdAt: -1 });
+    const query = isInternalRole(token.role) ? {} : { companyName: token.companyName };
+    const trips = await Trip.find(query).sort({ createdAt: -1 });
     return NextResponse.json(trips);
   } catch {
     return NextResponse.json({ error: 'ดึงข้อมูลไม่สำเร็จ' }, { status: 500 });
@@ -27,7 +23,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const token = await requireAuth(req);
+    const token = await getSessionToken(req);
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -37,6 +33,9 @@ export async function POST(req: NextRequest) {
 
     if (!data.tripId) {
       data.tripId = `TRP-${Math.floor(100000 + Math.random() * 900000)}`;
+    }
+    if (!isInternalRole(token.role)) {
+      data.companyName = token.companyName;
     }
 
     const newTrip = await Trip.create(data);

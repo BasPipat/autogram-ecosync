@@ -32,6 +32,16 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             🌿 Carbon Activity
           </Link>
 
+          <Link href="/master-settings"
+            className={`block p-3 rounded-lg font-medium transition-colors ${pathname === '/master-settings' ? 'bg-emerald-500/20 text-emerald-300' : 'text-slate-300 hover:bg-slate-800'}`}>
+            🛠️ Master Settings
+          </Link>
+
+          <Link href="/report-center"
+            className={`block p-3 rounded-lg font-medium transition-colors ${pathname === '/report-center' ? 'bg-emerald-500/20 text-emerald-300' : 'text-slate-300 hover:bg-slate-800'}`}>
+            📁 Report Center
+          </Link>
+
           <Link href="/admin/trips" 
             className={`block p-3 rounded-lg font-medium transition-colors ${pathname === '/admin/trips' ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-300 hover:bg-slate-800'}`}>
             🚚 จัดการงานขนส่ง (Trips)

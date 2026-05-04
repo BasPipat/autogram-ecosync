@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Trip } from '@/models/Trip';
 import { MonthlyCarbonLedger } from '@/models/MonthlyCarbonLedger';
 import { generateMonthlyLedgers, getActiveMasterSetting, getRangeFromFilter } from '@/lib/carbon-ledger';
+import { getSessionToken, isInternalRole } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +14,7 @@ function asNumber(v: unknown, fallback: number) {
 
 export async function GET(req: NextRequest) {
   try {
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    const token = await getSessionToken(req);
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     await connectToDatabase();
@@ -35,7 +35,10 @@ export async function GET(req: NextRequest) {
     const { start, end } = getRangeFromFilter(filter, value);
     const setting = await getActiveMasterSetting();
 
-    const trips = await Trip.find({ createdAt: { $gte: start, $lt: end } }).sort({ createdAt: 1 }).lean();
+    const trips = await Trip.find({
+      ...(isInternalRole(token.role) ? {} : { companyName: token.companyName }),
+      createdAt: { $gte: start, $lt: end },
+    }).sort({ createdAt: 1 }).lean();
     const points = trips.map((trip) => {
       const distance = asNumber(trip.distance, 0);
       const fuelForecast = distance / asNumber(setting.fuelEfficiencyKmPerLiterDefault, 1);

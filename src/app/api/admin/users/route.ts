@@ -1,25 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getToken } from 'next-auth/jwt';
 import { connectToDatabase } from '@/lib/mongodb';
 import { User } from '@/models/User';
 import bcrypt from 'bcryptjs';
+import { getSessionToken, isInternalRole } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
-async function requireAuth(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-  return token;
-}
-
 export async function GET(req: NextRequest) {
   try {
-    const token = await requireAuth(req);
+    const token = await getSessionToken(req);
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     await connectToDatabase();
-    const users = await User.find({}).select('-password').sort({ createdAt: -1 });
+    const query = isInternalRole(token.role) ? {} : { companyName: token.companyName };
+    const users = await User.find(query).select('-password').sort({ createdAt: -1 });
     return NextResponse.json(users);
   } catch {
     return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
@@ -28,7 +24,7 @@ export async function GET(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const token = await requireAuth(req);
+    const token = await getSessionToken(req);
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -48,7 +44,13 @@ export async function PUT(req: NextRequest) {
       updateData.password = hashedPassword;
     }
 
-    const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true }).select('-password');
+    const scope = isInternalRole(token.role)
+      ? { _id: userId }
+      : { _id: userId, companyName: token.companyName };
+    const updatedUser = await User.findOneAndUpdate(scope, updateData, { new: true }).select('-password');
+    if (!updatedUser) {
+      return NextResponse.json({ error: 'ไม่มีสิทธิ์แก้ไขผู้ใช้ข้ามบริษัท' }, { status: 403 });
+    }
     return NextResponse.json({ message: 'Updated successfully', user: updatedUser });
   } catch (error: unknown) {
     const msg = (error as { code?: number }).code === 11000 ? 'User ID หรือ Email นี้มีผู้ใช้งานแล้ว' : 'Update failed';
@@ -59,7 +61,7 @@ export async function PUT(req: NextRequest) {
 // 🟢 อัปเดตใหม่: เปลี่ยนมารับค่าจาก Body แทน URL ป้องกัน Vercel อ่านค่าพลาด
 export async function DELETE(req: NextRequest) {
   try {
-    const token = await requireAuth(req);
+    const token = await getSessionToken(req);
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -74,9 +76,12 @@ export async function DELETE(req: NextRequest) {
     }
 
     await connectToDatabase();
-    const deleted = await User.findByIdAndDelete(userId);
+    const scope = isInternalRole(token.role)
+      ? { _id: userId }
+      : { _id: userId, companyName: token.companyName };
+    const deleted = await User.findOneAndDelete(scope);
     if (!deleted) {
-      return NextResponse.json({ error: 'ไม่พบผู้ใช้งานที่เลือก' }, { status: 404 });
+      return NextResponse.json({ error: 'ไม่พบผู้ใช้งานที่เลือกหรือไม่มีสิทธิ์ลบ' }, { status: 404 });
     }
 
     return NextResponse.json({ message: 'User deleted successfully' });
