@@ -98,54 +98,54 @@ export default function Dashboard() {
 
   return (
     <SidebarLayout>
-      <div className="min-h-screen bg-slate-50 p-8 font-sans">
-        <header className="mb-8 flex justify-between items-center">
+      <div className="min-h-screen bg-[#071022] p-8 font-sans text-slate-100">
+        <header className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-2">
               <Leaf className="text-emerald-500" size={32} /> Autogram Eco-Sync
             </h1>
             <p className="text-slate-500 mt-1">Sustainability Dashboard & Integrity Vault</p>
           </div>
-          <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-slate-200">
-            <span className="text-sm text-slate-500">สถานะระบบ: </span>
-            <span className="text-sm font-semibold text-emerald-600 inline-flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Online
+          <div className="rounded-3xl border border-white/10 bg-white/5 px-4 py-3 shadow-[0_30px_80px_-50px_rgba(16,185,129,0.25)] backdrop-blur-xl">
+            <span className="text-sm text-slate-300">สถานะระบบ: </span>
+            <span className="text-sm font-semibold text-emerald-300 inline-flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Online
             </span>
           </div>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex items-start justify-between">
+          <div className="bg-white/10 p-6 rounded-3xl border border-white/10 backdrop-blur-xl shadow-[0_30px_60px_-30px_rgba(16,185,129,0.25)] flex items-start justify-between">
             <div>
-              <p className="text-sm text-slate-500 font-medium mb-1">ยอดคาร์บอนสะสม (kgCO2e)</p>
-              <h2 className="text-3xl font-bold text-emerald-600">{stats.totalCarbon}</h2>
+              <p className="text-sm text-slate-300 font-medium mb-1">ยอดคาร์บอนสะสม (kgCO2e)</p>
+              <h2 className="text-3xl font-bold text-emerald-300">{stats.totalCarbon}</h2>
             </div>
-            <div className="p-3 bg-emerald-50 rounded-lg"><Leaf className="text-emerald-600" size={24} /></div>
+            <div className="p-3 bg-emerald-500/10 rounded-2xl"><Leaf className="text-emerald-300" size={24} /></div>
           </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex items-start justify-between">
+          <div className="bg-white/10 p-6 rounded-3xl border border-white/10 backdrop-blur-xl shadow-[0_30px_60px_-30px_rgba(16,185,129,0.22)] flex items-start justify-between">
             <div>
-              <p className="text-sm text-slate-500 font-medium mb-1">เที่ยววิ่งทั้งหมด (Trips)</p>
-              <h2 className="text-3xl font-bold text-slate-800">{stats.totalTrips}</h2>
+              <p className="text-sm text-slate-300 font-medium mb-1">เที่ยววิ่งทั้งหมด (Trips)</p>
+              <h2 className="text-3xl font-bold text-slate-100">{stats.totalTrips}</h2>
             </div>
-            <div className="p-3 bg-blue-50 rounded-lg"><Truck className="text-blue-600" size={24} /></div>
+            <div className="p-3 bg-cyan-500/10 rounded-2xl"><Truck className="text-cyan-300" size={24} /></div>
           </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex items-start justify-between">
+          <div className="bg-white/10 p-6 rounded-3xl border border-white/10 backdrop-blur-xl shadow-[0_30px_60px_-30px_rgba(16,185,129,0.18)] flex items-start justify-between">
             <div>
-              <p className="text-sm text-slate-500 font-medium mb-1">POD ที่ตรวจสอบแล้ว</p>
-              <h2 className="text-3xl font-bold text-slate-800">{stats.verifiedPODs}</h2>
+              <p className="text-sm text-slate-300 font-medium mb-1">POD ที่ตรวจสอบแล้ว</p>
+              <h2 className="text-3xl font-bold text-slate-100">{stats.verifiedPODs}</h2>
             </div>
-            <div className="p-3 bg-cyan-50 rounded-lg"><FileCheck className="text-cyan-600" size={24} /></div>
+            <div className="p-3 bg-cyan-500/10 rounded-2xl"><FileCheck className="text-cyan-300" size={24} /></div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-slate-800">รายการเดินรถล่าสุด</h3>
+        <div className="rounded-3xl border border-white/10 bg-white/5 shadow-[0_30px_80px_-50px_rgba(16,185,129,0.18)] overflow-hidden backdrop-blur-xl">
+          <div className="p-6 border-b border-white/10 flex justify-between items-center">
+            <h3 className="text-lg font-semibold text-white">รายการเดินรถล่าสุด</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 text-slate-500 text-sm">
+                <tr className="bg-white/5 text-slate-300 text-sm">
                   <th className="p-4">รหัสงาน (Trip ID)</th>
                   <th className="p-4">เส้นทาง</th>
                   <th className="p-4">คาร์บอน (kgCO2e)</th>
@@ -172,11 +172,11 @@ export default function Dashboard() {
                       </td>
                       <td className="p-4">
                         {trip.status === 'No POD' ? (
-                          <button onClick={() => handleOpenModal(trip.id)} className="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded">อัปโหลด</button>
+                          <button onClick={() => handleOpenModal(trip.id)} className="text-sm bg-emerald-500/15 text-emerald-200 px-3 py-1 rounded-full hover:bg-emerald-500/25 transition">อัปโหลด</button>
                         ) : trip.status === 'Pending' ? (
-                          <button onClick={() => handleOpenVerifyModal(trip.id)} className="text-sm bg-amber-50 text-amber-700 px-3 py-1 rounded font-medium">ตรวจสอบรูป</button>
+                          <button onClick={() => handleOpenVerifyModal(trip.id)} className="text-sm bg-amber-500/15 text-amber-200 px-3 py-1 rounded-full hover:bg-amber-500/25 transition">ตรวจสอบรูป</button>
                         ) : (
-                          <span className="text-sm text-emerald-600 flex items-center gap-1"><CheckCircle size={16} /> อนุมัติแล้ว</span>
+                          <span className="text-sm text-emerald-300 flex items-center gap-1"><CheckCircle size={16} /> อนุมัติแล้ว</span>
                         )}
                       </td>
                     </tr>
@@ -206,8 +206,8 @@ export default function Dashboard() {
                 )}
               </div>
               <div className="flex justify-end gap-2">
-                <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 bg-slate-100 rounded">ยกเลิก</button>
-                <button disabled={isUploading} onClick={handleUploadPOD} className="px-4 py-2 bg-blue-600 text-white rounded">บันทึกหลักฐาน</button>
+                <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-2xl border border-white/10 bg-slate-900/80 text-slate-200 hover:bg-slate-900">ยกเลิก</button>
+                <button disabled={isUploading} onClick={handleUploadPOD} className="px-4 py-2 rounded-2xl bg-emerald-500 text-slate-950 hover:bg-emerald-400 disabled:opacity-60">บันทึกหลักฐาน</button>
               </div>
             </div>
           </div>

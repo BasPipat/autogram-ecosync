@@ -21,14 +21,20 @@ export default function OverviewPage() {
   const [markers, setMarkers] = useState<ActiveMarker[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
+  const [mapError, setMapError] = useState<string>('');
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setMapError('');
       try {
         const res = await fetch('/api/overview/active-trucks', { cache: 'no-store' });
+        if (!res.ok) throw new Error('Fetch failed');
         const data = await res.json();
         setMarkers(data.markers || []);
+      } catch (error) {
+        console.error('Overview fetch failed', error);
+        setMapError('ไม่สามารถโหลดตำแหน่งรถได้ในขณะนี้');
       } finally {
         setLoading(false);
       }
@@ -46,25 +52,32 @@ export default function OverviewPage() {
 
   return (
     <SidebarLayout>
-      <div className="p-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">Overview Dashboard</h1>
-          <p className="text-sm text-slate-500">แสดงตำแหน่งรถที่สถานะ Active เท่านั้น พร้อมข้อมูลคนขับ</p>
+      <div className="min-h-screen rounded-3xl bg-[#071022] p-8 text-slate-100 shadow-[0_40px_120px_-80px_rgba(0,0,0,0.8)]">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-[#a5f3fc]">Overview</p>
+            <h1 className="text-3xl font-bold text-white">Overview Dashboard</h1>
+            <p className="mt-2 text-slate-400">แสดงตำแหน่งรถที่สถานะ Active พร้อมข้อมูลคนขับ</p>
+          </div>
+          <div className="rounded-3xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 shadow-lg backdrop-blur-xl">
+            Google Maps Key: <span className="font-semibold text-emerald-300">{GOOGLE_MAPS_API_KEY ? 'Configured' : 'Missing'}</span>
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          {!GOOGLE_MAPS_API_KEY ? (
-            <div className="p-8 text-sm text-red-600">
-              ไม่พบ `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` กรุณาตั้งค่า environment variable
+        <div className="rounded-3xl border border-white/10 bg-[#0f1e35]/90 p-4 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.7)] backdrop-blur-xl">
+          {(!GOOGLE_MAPS_API_KEY || mapError) ? (
+            <div className="p-10 text-center text-sm text-rose-200">
+              <p className="text-lg font-semibold text-rose-100">เกิดปัญหาในการโหลดแผนที่</p>
+              <p className="mt-3">{!GOOGLE_MAPS_API_KEY ? 'ไม่พบ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY กรุณาตั้งค่าตัวแปรแวดล้อม' : mapError}</p>
             </div>
           ) : loading ? (
-            <div className="h-[520px] flex items-center justify-center text-slate-500">
-              <Loader2 className="w-6 h-6 animate-spin mr-2" /> กำลังโหลดตำแหน่งรถ...
+            <div className="h-[520px] flex items-center justify-center text-slate-300">
+              <Loader2 className="w-6 h-6 animate-spin mr-2 text-emerald-300" /> กำลังโหลดตำแหน่งรถ...
             </div>
           ) : (
-            <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY}>
+            <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} onError={() => setMapError('ไม่สามารถโหลด Google Maps API ได้ กรุณาตรวจสอบ KEY')}>
               <GoogleMap
-                mapContainerStyle={{ width: '100%', height: '520px', borderRadius: '0.75rem' }}
+                mapContainerStyle={{ width: '100%', height: '520px' }}
                 center={markers[0] ? { lat: markers[0].lat, lng: markers[0].lng } : defaultCenter}
                 zoom={markers[0] ? 9 : 6}
               >
