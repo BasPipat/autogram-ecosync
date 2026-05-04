@@ -42,8 +42,8 @@ export default function OverviewPage() {
   const activeVehicles = 0;
 
   return (
-    // กำหนดสีพื้นหลังให้เป็น Deep Navy และดันให้เต็มจอ เพื่อให้กลืนกับระบบ
-    <div className="flex-1 w-full p-8 min-h-screen bg-[#0a192f] text-white font-sans">
+    // เปลี่ยนมาใช้ div ธรรมดาที่ไม่มีการบังคับความสูงหรือสีทึบ เพื่อให้ Layout หลักทำงานได้
+    <div className="w-full text-white font-sans">
       
       <div className="flex justify-between items-start mb-6">
         <div>
