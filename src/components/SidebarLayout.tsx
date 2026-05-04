@@ -27,6 +27,11 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             🛰️ Overview Map
           </Link>
 
+          <Link href="/carbon-activity"
+            className={`block p-3 rounded-lg font-medium transition-colors ${pathname === '/carbon-activity' ? 'bg-emerald-500/20 text-emerald-300' : 'text-slate-300 hover:bg-slate-800'}`}>
+            🌿 Carbon Activity
+          </Link>
+
           <Link href="/admin/trips" 
             className={`block p-3 rounded-lg font-medium transition-colors ${pathname === '/admin/trips' ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-300 hover:bg-slate-800'}`}>
             🚚 จัดการงานขนส่ง (Trips)
