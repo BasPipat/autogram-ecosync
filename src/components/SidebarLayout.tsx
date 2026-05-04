@@ -22,9 +22,19 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             📊 หน้าหลัก (Dashboard)
           </Link>
 
+          <Link href="/overview"
+            className={`block p-3 rounded-lg font-medium transition-colors ${pathname === '/overview' ? 'bg-emerald-500/20 text-emerald-300' : 'text-slate-300 hover:bg-slate-800'}`}>
+            🛰️ Overview Map
+          </Link>
+
           <Link href="/admin/trips" 
             className={`block p-3 rounded-lg font-medium transition-colors ${pathname === '/admin/trips' ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-300 hover:bg-slate-800'}`}>
             🚚 จัดการงานขนส่ง (Trips)
+          </Link>
+
+          <Link href="/operator/trips"
+            className={`block p-3 rounded-lg font-medium transition-colors ${pathname === '/operator/trips' ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-300 hover:bg-slate-800'}`}>
+            🧭 Operator Trips
           </Link>
 
           <Link href="/admin/users" 
