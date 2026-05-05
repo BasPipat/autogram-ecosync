@@ -14,7 +14,7 @@ const NAV_ITEMS = [
   { href: '/carbon-activity', label: 'Carbon Activity', icon: Leaf },
   { href: '/report-center', label: 'Report Center', icon: FileBarChart },
   { href: '/master-settings', label: 'Master Settings', icon: Settings },
-  { href: '/admin/users', label: 'User Access', icon: Users },
+  { href: '/users', label: 'User Access', icon: Users },
 ];
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
