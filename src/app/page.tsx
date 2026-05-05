@@ -146,8 +146,11 @@ export default function LandingPage() {
                 </button>
               </form>
 
-              <p className="mt-3 text-center text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
-                ยังไม่มีบัญชี? <Link href="/register" className="font-semibold" style={{ color: 'var(--accent)' }}>สมัครสมาชิก</Link>
+              <p className="mt-4 text-center text-[12px]" style={{ color: 'var(--text-tertiary)' }}>
+                นัดหมายเพื่อสาธิตระบบ{' '}
+                <a href="/register" className="font-semibold" style={{ color: 'var(--accent)' }}>
+                  (Request a Demo)
+                </a>
               </p>
             </div>
           </div>
