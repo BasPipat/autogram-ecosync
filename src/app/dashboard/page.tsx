@@ -270,7 +270,7 @@ export default function Dashboard() {
             <div
               className="relative w-full overflow-hidden"
               style={{
-                height: '360px',
+                height: '550px',
                 borderRadius: 'var(--radius-xl)',
                 border: '1px solid var(--border)',
                 boxShadow: 'var(--shadow-md)',
