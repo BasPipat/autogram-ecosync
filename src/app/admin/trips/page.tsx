@@ -31,14 +31,41 @@ export default function ManageTripsPage() {
   
   const autocompleteRef = useRef<any>(null);
 
+  const fetchInitialData = async (currentSession?: any) => {
+    setLoading(true);
+    try {
+      const activeSession = currentSession || session;
+      if (!activeSession?.user?.email) return;
+
+      const userRes = await fetch('/api/admin/users', { cache: 'no-store' });
+      const users = await userRes.json();
+      const me = users.find((u: any) => u.email === activeSession.user.email);
+      setCurrentUser(me);
+
+      const tripRes = await fetch('/api/admin/trips', { cache: 'no-store' });
+      const allTrips = await tripRes.json();
+      
+      const isOwner = (r?: string) => r === 'system_owner' || r === 'owner';
+      if (isOwner(me?.role)) {
+        setTrips(allTrips);
+      } else {
+        setTrips(allTrips.filter((t: any) => t.companyName === me?.companyName));
+      }
+    } catch (e) {
+      console.error('Error fetching trips:', e);
+    } finally { 
+      setLoading(false); 
+    }
+  };
+
   useEffect(() => {
     if (status === 'loading') return;
-    if (!session) {
-      router.push('/login');
+    if (status === 'unauthenticated' || !session) {
+      router.push('/');
       return;
     }
 
-    fetchInitialData();
+    fetchInitialData(session);
   }, [status, session, router]);
 
   // 🟢 Effect: คำนวณระยะทางอัตโนมัติ
@@ -55,28 +82,6 @@ export default function ManageTripsPage() {
       setForm(prev => ({ ...prev, carbon: carbonVal }));
     }
   }, [form.distance, form.weight]);
-
-  const fetchInitialData = async () => {
-    setLoading(true);
-    try {
-      const userRes = await fetch('/api/admin/users');
-      const users = await userRes.json();
-      const me = users.find((u: any) => u.email === session?.user?.email);
-      setCurrentUser(me);
-
-      const tripRes = await fetch('/api/admin/trips', { cache: 'no-store' });
-      const allTrips = await tripRes.json();
-      
-      // owner (System_Owner): เห็น trip ทุกบริษัท
-      // admin, operator: เห็นเฉพาะ trip บริษัทตัวเอง
-      const isOwner = (r?: string) => r === 'system_owner' || r === 'owner';
-      if (isOwner(me?.role)) {
-        setTrips(allTrips);
-      } else {
-        setTrips(allTrips.filter((t: any) => t.companyName === me?.companyName));
-      }
-    } catch (e) {} finally { setLoading(false); }
-  };
 
   const calculateDistance = () => {
     const originMatch = form.originMapUrl.match(/q=([\d.-]+),([\d.-]+)/);
