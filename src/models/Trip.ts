@@ -22,11 +22,22 @@ export interface ITrip extends Document {
   truckMasterId?: mongoose.Types.ObjectId;
   driverId?: mongoose.Types.ObjectId;
   origin: string;
-  originMapUrl?: string; 
+  originMapUrl?: string;
+  scheduledOriginDate?: Date;
+  scheduledOriginTime?: string;
+  originContactName?: string;
+  originContactPhone?: string;
+  
   destination: string;
-  destinationMapUrl?: string; 
+  destinationMapUrl?: string;
+  scheduledDestinationDate?: Date;
+  scheduledDestinationTime?: string;
+  destinationContactName?: string;
+  destinationContactPhone?: string;
+  
   originPin?: IMapPin;
   destinationPin?: IMapPin;
+  vehicleCount?: number; // Default 1
   distance?: number; // km
   weight?: number;   // ton
   carbon: number;    // (legacy) backward compatible
@@ -73,12 +84,23 @@ const TripSchema = new Schema({
   companyId: { type: Schema.Types.ObjectId, ref: 'Company', index: true },
   truckMasterId: { type: Schema.Types.ObjectId, ref: 'TruckMaster' },
   driverId: { type: Schema.Types.ObjectId, ref: 'Driver' },
-  origin: { type: String, required: true }, 
-  originMapUrl: { type: String }, 
-  destination: { type: String, required: true }, 
-  destinationMapUrl: { type: String }, 
+  origin: { type: String, required: true },
+  originMapUrl: { type: String },
+  scheduledOriginDate: { type: Date },
+  scheduledOriginTime: { type: String },
+  originContactName: { type: String },
+  originContactPhone: { type: String },
+
+  destination: { type: String, required: true },
+  destinationMapUrl: { type: String },
+  scheduledDestinationDate: { type: Date },
+  scheduledDestinationTime: { type: String },
+  destinationContactName: { type: String },
+  destinationContactPhone: { type: String },
+
   originPin: { type: MapPinSchema },
   destinationPin: { type: MapPinSchema },
+  vehicleCount: { type: Number, default: 1 },
   distance: { type: Number, default: 0 },
   weight: { type: Number, default: 0 },
   carbon: { type: Number, default: 0 }, // legacy

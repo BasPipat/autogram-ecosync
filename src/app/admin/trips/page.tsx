@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import SidebarLayout from '@/components/SidebarLayout';
-import { Truck, MapPin, Leaf, PlusCircle, ExternalLink, Loader2, MapPinned, X, Route, Package } from 'lucide-react';
+import { Truck, MapPin, Leaf, PlusCircle, ExternalLink, MapPinned, X, Route, Package } from 'lucide-react';
 import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
@@ -18,11 +18,25 @@ export default function ManageTripsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [historicalLocations, setHistoricalLocations] = useState<string[]>([]);
 
-  const [form, setForm] = useState({
-    tripId: '', origin: '', originMapUrl: '', destination: '', destinationMapUrl: '', 
-    distance: '', weight: '', carbon: '', companyName: '' 
-  });
+  const getTomorrowString = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  };
+
+  const initialFormState = {
+    tripId: '', 
+    origin: '', originMapUrl: '', 
+    scheduledOriginDate: getTomorrowString(), scheduledOriginTime: '', originContactName: '', originContactPhone: '',
+    destination: '', destinationMapUrl: '', 
+    scheduledDestinationDate: getTomorrowString(), scheduledDestinationTime: '', destinationContactName: '', destinationContactPhone: '',
+    distance: '', weight: '', carbon: '', companyName: '',
+    vehicleCount: 1,
+  };
+
+  const [form, setForm] = useState(initialFormState);
 
   const [mapModal, setMapModal] = useState({ isOpen: false, target: '' });
   const [markerPos, setMarkerPos] = useState<{lat: number, lng: number} | null>(null);
@@ -46,11 +60,20 @@ export default function ManageTripsPage() {
       const allTrips = await tripRes.json();
       
       const isOwner = (r?: string) => r === 'system_owner' || r === 'owner';
-      if (isOwner(me?.role)) {
-        setTrips(allTrips);
-      } else {
-        setTrips(allTrips.filter((t: any) => t.companyName === me?.companyName));
+      let filteredTrips = allTrips;
+      
+      if (!isOwner(me?.role)) {
+        filteredTrips = allTrips.filter((t: any) => t.companyName === me?.companyName);
       }
+      setTrips(filteredTrips);
+
+      // Extract unique locations for Auto-fill
+      const uniqueLocations = Array.from(new Set([
+        ...filteredTrips.map((t:any) => t.origin), 
+        ...filteredTrips.map((t:any) => t.destination)
+      ])).filter(Boolean) as string[];
+      setHistoricalLocations(uniqueLocations);
+
     } catch (e) {
       console.error('Error fetching trips:', e);
     } finally { 
@@ -75,13 +98,42 @@ export default function ManageTripsPage() {
     }
   }, [form.originMapUrl, form.destinationMapUrl]);
 
-  // 🟢 Effect: คำนวณคาร์บอนอัตโนมัติ
+  // 🟢 Effect: คำนวณคาร์บอนอัตโนมัติ (รวมจำนวนรถ)
   useEffect(() => {
     if (form.distance && form.weight) {
-      const carbonVal = (Number(form.distance) * Number(form.weight) * 0.062).toFixed(2);
+      const carbonVal = (Number(form.distance) * Number(form.weight) * 0.062 * Number(form.vehicleCount)).toFixed(2);
       setForm(prev => ({ ...prev, carbon: carbonVal }));
     }
-  }, [form.distance, form.weight]);
+  }, [form.distance, form.weight, form.vehicleCount]);
+
+  const handleLocationChange = (type: 'origin' | 'destination', value: string) => {
+    setForm(prev => ({ ...prev, [type]: value }));
+    
+    // Auto-fill logic
+    const match = trips.find(t => 
+      type === 'origin' ? t.origin === value : t.destination === value
+    );
+
+    if (match) {
+      if (type === 'origin') {
+        setForm(prev => ({
+          ...prev,
+          originMapUrl: match.originMapUrl || prev.originMapUrl,
+          originContactName: match.originContactName || prev.originContactName,
+          originContactPhone: match.originContactPhone || prev.originContactPhone,
+          scheduledOriginTime: match.scheduledOriginTime || prev.scheduledOriginTime,
+        }));
+      } else {
+        setForm(prev => ({
+          ...prev,
+          destinationMapUrl: match.destinationMapUrl || prev.destinationMapUrl,
+          destinationContactName: match.destinationContactName || prev.destinationContactName,
+          destinationContactPhone: match.destinationContactPhone || prev.destinationContactPhone,
+          scheduledDestinationTime: match.scheduledDestinationTime || prev.scheduledDestinationTime,
+        }));
+      }
+    }
+  };
 
   const calculateDistance = () => {
     const originMatch = form.originMapUrl.match(/q=([\d.-]+),([\d.-]+)/);
@@ -112,7 +164,6 @@ export default function ManageTripsPage() {
     setSelectedPlaceName(''); 
   };
 
-  // 🟢 Reverse Geocoding (สแกนหาชื่อสถานที่จากการจิ้มแผนที่)
   const handleMapClick = (e: any) => {
     const lat = e.latLng.lat();
     const lng = e.latLng.lng();
@@ -134,12 +185,7 @@ export default function ManageTripsPage() {
           if (subdistrict) locationDetails.push(subdistrict);
           if (province) locationDetails.push(province);
 
-          let finalString = "";
-          if (locationDetails.length > 0) {
-             finalString = locationDetails.join(', ');
-          } else {
-             finalString = "พิกัดที่เลือกบนแผนที่";
-          }
+          let finalString = locationDetails.length > 0 ? locationDetails.join(', ') : "พิกัดที่เลือกบนแผนที่";
           setSelectedPlaceName(finalString);
         } else {
           setSelectedPlaceName('ไม่พบชื่อสถานที่');
@@ -203,8 +249,20 @@ export default function ManageTripsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tripId: form.tripId, origin: form.origin, originMapUrl: form.originMapUrl,
+          tripId: form.tripId, 
+          origin: form.origin, originMapUrl: form.originMapUrl,
+          scheduledOriginDate: form.scheduledOriginDate,
+          scheduledOriginTime: form.scheduledOriginTime,
+          originContactName: form.originContactName,
+          originContactPhone: form.originContactPhone,
+          
           destination: form.destination, destinationMapUrl: form.destinationMapUrl,
+          scheduledDestinationDate: form.scheduledDestinationDate,
+          scheduledDestinationTime: form.scheduledDestinationTime,
+          destinationContactName: form.destinationContactName,
+          destinationContactPhone: form.destinationContactPhone,
+
+          vehicleCount: form.vehicleCount,
           distance: Number(form.distance), weight: Number(form.weight), carbon: Number(form.carbon),
           companyName: currentUser?.role === 'owner' ? form.companyName : currentUser?.companyName
         }),
@@ -212,7 +270,7 @@ export default function ManageTripsPage() {
 
       if (res.ok) {
         alert('เพิ่มงานขนส่งเรียบร้อยแล้ว!');
-        setForm({ tripId: '', origin: '', originMapUrl: '', destination: '', destinationMapUrl: '', distance: '', weight: '', carbon: '', companyName: '' }); 
+        setForm(initialFormState); 
         fetchInitialData(); 
       } else {
         const data = await res.json();
@@ -223,7 +281,10 @@ export default function ManageTripsPage() {
 
   return (
     <SidebarLayout>
-      {/* 🟢 เติมคำสั่ง language="th" และ region="TH" ตรงนี้ครับ */}
+      <datalist id="historical-locations">
+        {historicalLocations.map(loc => <option key={loc} value={loc} />)}
+      </datalist>
+
       <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries} language="th" region="TH">
         <div className="p-6" style={{ background: 'var(--bg-base)' }}>
           <div className="flex items-center gap-3 mb-6 animate-fade-in">
@@ -232,7 +293,7 @@ export default function ManageTripsPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>จัดการงานขนส่ง (Job Management)</h1>
-              <p className="text-[13px]" style={{ color: 'var(--text-tertiary)' }}>บันทึกเส้นทาง คำนวณระยะทางอัตโนมัติ และประเมินการปล่อยคาร์บอน (kgCO2e)</p>
+              <p className="text-[13px]" style={{ color: 'var(--text-tertiary)' }}>บันทึกเส้นทาง จัดการนัดหมาย และประเมินการปล่อยคาร์บอน (kgCO2e)</p>
             </div>
           </div>
 
@@ -245,13 +306,34 @@ export default function ManageTripsPage() {
               <form onSubmit={handleCreateTrip} className="space-y-6">
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Origin */}
                   <div className="p-5 bg-slate-50 border border-slate-100 rounded-xl space-y-4">
                     <h4 className="font-bold text-sm text-slate-700 flex items-center gap-2">
                       <MapPin size={16} className="text-orange-500"/> ข้อมูลต้นทาง (Origin)
                     </h4>
                     <div>
                       <label className="block text-[11px] font-bold text-slate-400 uppercase mb-1">ชื่อสถานที่จุดรับสินค้า</label>
-                      <input type="text" required placeholder="เช่น ท่าเรือแหลมฉบัง" className="w-full p-2.5 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.origin} onChange={e => setForm({...form, origin: e.target.value})} />
+                      <input list="historical-locations" type="text" required placeholder="เช่น ท่าเรือแหลมฉบัง" className="w-full p-2.5 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.origin} onChange={e => handleLocationChange('origin', e.target.value)} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">วันที่เข้ารับ</label>
+                        <input type="date" required className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500" value={form.scheduledOriginDate} onChange={e => setForm({...form, scheduledOriginDate: e.target.value})} />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">เวลา</label>
+                        <input type="time" className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500" value={form.scheduledOriginTime} onChange={e => setForm({...form, scheduledOriginTime: e.target.value})} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">ชื่อผู้ติดต่อ</label>
+                        <input type="text" placeholder="ชื่อผู้รับ" className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500" value={form.originContactName} onChange={e => setForm({...form, originContactName: e.target.value})} />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">เบอร์โทรศัพท์</label>
+                        <input type="tel" placeholder="08x-xxx-xxxx" className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500" value={form.originContactPhone} onChange={e => setForm({...form, originContactPhone: e.target.value})} />
+                      </div>
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-blue-500 uppercase mb-1">พิกัดแผนที่</label>
@@ -264,13 +346,34 @@ export default function ManageTripsPage() {
                     </div>
                   </div>
 
+                  {/* Destination */}
                   <div className="p-5 bg-slate-50 border border-slate-100 rounded-xl space-y-4">
                     <h4 className="font-bold text-sm text-slate-700 flex items-center gap-2">
                       <MapPin size={16} className="text-green-500"/> ข้อมูลปลายทาง (Destination)
                     </h4>
                     <div>
                       <label className="block text-[11px] font-bold text-slate-400 uppercase mb-1">ชื่อสถานที่จุดส่งสินค้า</label>
-                      <input type="text" required placeholder="เช่น คลังสินค้าวังน้อย" className="w-full p-2.5 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-green-500" value={form.destination} onChange={e => setForm({...form, destination: e.target.value})} />
+                      <input list="historical-locations" type="text" required placeholder="เช่น คลังสินค้าวังน้อย" className="w-full p-2.5 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-green-500" value={form.destination} onChange={e => handleLocationChange('destination', e.target.value)} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">วันที่ส่งมอบ</label>
+                        <input type="date" required className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-green-500" value={form.scheduledDestinationDate} onChange={e => setForm({...form, scheduledDestinationDate: e.target.value})} />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">เวลา</label>
+                        <input type="time" className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-green-500" value={form.scheduledDestinationTime} onChange={e => setForm({...form, scheduledDestinationTime: e.target.value})} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">ชื่อผู้ติดต่อ</label>
+                        <input type="text" placeholder="ชื่อผู้ส่ง" className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-green-500" value={form.destinationContactName} onChange={e => setForm({...form, destinationContactName: e.target.value})} />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">เบอร์โทรศัพท์</label>
+                        <input type="tel" placeholder="08x-xxx-xxxx" className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-green-500" value={form.destinationContactPhone} onChange={e => setForm({...form, destinationContactPhone: e.target.value})} />
+                      </div>
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-green-600 uppercase mb-1">พิกัดแผนที่</label>
@@ -288,17 +391,21 @@ export default function ManageTripsPage() {
                   <h4 className="font-bold text-sm text-blue-800 flex items-center gap-2 mb-4">
                     <Leaf size={16} /> ข้อมูลการวิ่ง & คำนวณคาร์บอน (Auto-Calculate)
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                     <div>
                       <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">รหัสงาน (Trip ID)</label>
                       <input type="text" required placeholder="TRP-..." className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.tripId} onChange={e => setForm({...form, tripId: e.target.value})} />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-blue-600 uppercase mb-1 flex items-center gap-1"><Route size={12}/> ระยะทาง (กิโลเมตร)</label>
+                      <label className="block text-[11px] font-bold text-purple-600 uppercase mb-1 flex items-center gap-1"><Truck size={12}/> จำนวนรถ (คัน)</label>
+                      <input type="number" min="1" required className="w-full p-2.5 bg-white border border-purple-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500 font-bold text-purple-700" value={form.vehicleCount} onChange={e => setForm({...form, vehicleCount: Number(e.target.value)})} />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-blue-600 uppercase mb-1 flex items-center gap-1"><Route size={12}/> ระยะทาง (km)</label>
                       <input type="number" step="0.01" required placeholder="คำนวณอัตโนมัติ" className="w-full p-2.5 bg-white border border-blue-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 font-bold text-blue-700" value={form.distance} onChange={e => setForm({...form, distance: e.target.value})} />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-orange-600 uppercase mb-1 flex items-center gap-1"><Package size={12}/> น้ำหนักบรรทุก (ตัน)</label>
+                      <label className="block text-[11px] font-bold text-orange-600 uppercase mb-1 flex items-center gap-1"><Package size={12}/> น้ำหนัก (ton)</label>
                       <input type="number" step="0.01" required placeholder="ระบุน้ำหนัก" className="w-full p-2.5 bg-white border border-orange-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500 font-bold text-orange-700" value={form.weight} onChange={e => setForm({...form, weight: e.target.value})} />
                     </div>
                     <div>
@@ -336,16 +443,25 @@ export default function ManageTripsPage() {
                     <th className="p-4 font-bold">รหัสงาน</th>
                     <th className="p-4 font-bold">บริษัท</th>
                     <th className="p-4 font-bold w-1/3">เส้นทาง</th>
-                    <th className="p-4 font-bold text-center">ระยะทาง / น้ำหนัก</th>
+                    <th className="p-4 font-bold text-center">รถ / ระยะ / น้ำหนัก</th>
                     <th className="p-4 font-bold">คาร์บอน</th>
                     <th className="p-4 font-bold">สถานะ</th>
                   </tr>
                 </thead>
                 <tbody className="text-sm">
                   {loading ? (
-                    <tr><td colSpan={6} className="p-12 text-center text-slate-300 italic"><Loader2 className="animate-spin inline mr-2" /> กำลังซิงค์ข้อมูล...</td></tr>
+                    [...Array(3)].map((_, i) => (
+                      <tr key={i} className="border-b border-slate-50">
+                        <td className="p-4"><div className="h-4 bg-slate-200 animate-pulse rounded w-16"></div></td>
+                        <td className="p-4"><div className="h-4 bg-slate-200 animate-pulse rounded w-24"></div></td>
+                        <td className="p-4"><div className="h-8 bg-slate-200 animate-pulse rounded w-full"></div></td>
+                        <td className="p-4"><div className="h-8 bg-slate-200 animate-pulse rounded w-20 mx-auto"></div></td>
+                        <td className="p-4"><div className="h-4 bg-slate-200 animate-pulse rounded w-16"></div></td>
+                        <td className="p-4"><div className="h-6 bg-slate-200 animate-pulse rounded-full w-16"></div></td>
+                      </tr>
+                    ))
                   ) : trips.length === 0 ? (
-                    <tr><td colSpan={6} className="p-12 text-center text-slate-300 italic font-light">ยังไม่พบข้อมูลงานในระบบ</td></tr>
+                    <tr><td colSpan={6} className="p-12 text-center text-slate-400 italic font-medium">ยังไม่พบข้อมูลงานในระบบ</td></tr>
                   ) : (
                     trips.map(trip => (
                       <tr key={trip._id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
@@ -369,8 +485,9 @@ export default function ManageTripsPage() {
 
                         <td className="p-4 text-center">
                           <div className="flex flex-col gap-1">
-                            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{trip.distance || 0} km</span>
-                            <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded">{trip.weight || 0} tons</span>
+                            <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded">{trip.vehicleCount || 1} คัน</span>
+                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{trip.distance || 0} km</span>
+                            <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded">{trip.weight || 0} tons</span>
                           </div>
                         </td>
 
