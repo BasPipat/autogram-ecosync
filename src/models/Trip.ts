@@ -27,9 +27,25 @@ export interface ITrip extends Document {
   destinationMapUrl?: string; 
   originPin?: IMapPin;
   destinationPin?: IMapPin;
-  distance?: number; // 🟢 เพิ่มระยะทาง (km)
-  weight?: number;   // 🟢 เพิ่มน้ำหนัก (ตัน)
-  carbon: number;
+  distance?: number; // km
+  weight?: number;   // ton
+  carbon: number;    // (legacy) backward compatible
+
+  // ── TGO Compliance: Identity ──
+  vehicleType?: string;     // e.g. 'Trailer 22-Wheel', '10-Wheel'
+  licensePlate?: string;    // for audit verification
+  driverName?: string;      // snapshot at trip close
+
+  // ── TGO Compliance: Calculated (Pre-computed Snapshot) ──
+  tonKm?: number;           // weight × distance
+  emissionFactor?: number;  // EF used at time of calculation (kgCO2e / ton-km)
+  emissionKgCo2e?: number;  // tonKm × emissionFactor
+
+  // ── TGO Compliance: Audit Trail ──
+  tgoVersion?: string;           // e.g. 'TGO-2024'
+  calculatedAt?: Date;           // when emission was computed
+  settingSnapshotId?: mongoose.Types.ObjectId; // ref to Setting version used
+
   status: string;
   gpsSession?: IGpsSession;
   companyName?: string;
@@ -63,9 +79,25 @@ const TripSchema = new Schema({
   destinationMapUrl: { type: String }, 
   originPin: { type: MapPinSchema },
   destinationPin: { type: MapPinSchema },
-  distance: { type: Number, default: 0 }, // 🟢
-  weight: { type: Number, default: 0 },   // 🟢
-  carbon: { type: Number, default: 0 }, 
+  distance: { type: Number, default: 0 },
+  weight: { type: Number, default: 0 },
+  carbon: { type: Number, default: 0 }, // legacy
+
+  // ── TGO Compliance: Identity ──
+  vehicleType: { type: String },
+  licensePlate: { type: String },
+  driverName: { type: String },
+
+  // ── TGO Compliance: Calculated ──
+  tonKm: { type: Number },
+  emissionFactor: { type: Number },
+  emissionKgCo2e: { type: Number },
+
+  // ── TGO Compliance: Audit Trail ──
+  tgoVersion: { type: String },
+  calculatedAt: { type: Date },
+  settingSnapshotId: { type: Schema.Types.ObjectId, ref: 'Setting' },
+
   status: { type: String, enum: ['No POD', 'Pending', 'Verified'], default: 'No POD' },
   gpsSession: { type: GpsSessionSchema, default: () => ({ source: 'line_oa', status: 'inactive', isTracking: false }) },
   companyName: { type: String }, 

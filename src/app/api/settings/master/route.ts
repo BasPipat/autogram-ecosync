@@ -15,7 +15,15 @@ export async function GET(req: NextRequest) {
       ? { isActive: true, scope: 'global' }
       : { isActive: true, scope: 'company', companyId: token.companyId };
     const setting = await Setting.findOne(query).sort({ effectiveFrom: -1 }).lean();
-    return NextResponse.json({ setting });
+
+    // Also fetch version history (latest 10)
+    const history = await Setting.find({ key: 'master-default', scope: 'global' })
+      .sort({ effectiveFrom: -1 })
+      .limit(10)
+      .select('version publishedBy effectiveFrom isActive')
+      .lean();
+
+    return NextResponse.json({ setting, history });
   } catch (error) {
     console.error('settings GET error', error);
     return NextResponse.json({ error: 'ดึงค่า Master Settings ไม่สำเร็จ' }, { status: 500 });
@@ -33,18 +41,24 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     await connectToDatabase();
 
+    // Deactivate previous versions
     await Setting.updateMany({ key: 'master-default', scope: 'global' }, { $set: { isActive: false } });
+
+    // Create new version (version control: previous records preserved)
     const saved = await Setting.create({
       key: 'master-default',
       scope: 'global',
-      fuelEfficiencyKmPerLiterDefault: Number(body.fuelEfficiencyKmPerLiterDefault),
-      emissionFactorKgCo2PerLiter: Number(body.emissionFactorKgCo2PerLiter),
+      fuelEfficiencyByVehicleType: body.fuelEfficiencyByVehicleType || [],
+      emissionFactorKgCo2PerLiter: Number(body.emissionFactorKgCo2PerLiter || 2.68),
+      emissionFactorsByVehicleType: body.emissionFactorsByVehicleType || [],
       standardReference: body.standardReference || 'TGO',
+      version: body.version || 'TGO-2024',
+      publishedBy: token.email,
       effectiveFrom: new Date(),
       isActive: true,
     });
 
-    return NextResponse.json({ message: 'อัปเดต Master Settings สำเร็จ', setting: saved });
+    return NextResponse.json({ message: 'อัปเดต Master Settings สำเร็จ (New Version Created)', setting: saved });
   } catch (error) {
     console.error('settings PUT error', error);
     return NextResponse.json({ error: 'บันทึกค่าไม่สำเร็จ' }, { status: 500 });
