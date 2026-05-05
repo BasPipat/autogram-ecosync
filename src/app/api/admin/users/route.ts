@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { User } from '@/models/User';
 import bcrypt from 'bcryptjs';
+import { ObjectId } from 'mongodb';
 import { getSessionToken, isInternalRole } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
@@ -14,7 +15,7 @@ export async function GET(req: NextRequest) {
     }
 
     await connectToDatabase();
-    const query = isInternalRole(token.role) ? {} : { companyName: token.companyName };
+    const query = isInternalRole(token.role) ? {} : { companyId: new ObjectId(token.companyId) };
     const users = await User.find(query).select('-password').sort({ createdAt: -1 });
     return NextResponse.json(users);
   } catch {
@@ -46,7 +47,7 @@ export async function PUT(req: NextRequest) {
 
     const scope = isInternalRole(token.role)
       ? { _id: userId }
-      : { _id: userId, companyName: token.companyName };
+      : { _id: userId, companyId: new ObjectId(token.companyId) };
     const updatedUser = await User.findOneAndUpdate(scope, updateData, { new: true }).select('-password');
     if (!updatedUser) {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์แก้ไขผู้ใช้ข้ามบริษัท' }, { status: 403 });
@@ -78,7 +79,7 @@ export async function DELETE(req: NextRequest) {
     await connectToDatabase();
     const scope = isInternalRole(token.role)
       ? { _id: userId }
-      : { _id: userId, companyName: token.companyName };
+      : { _id: userId, companyId: new ObjectId(token.companyId) };
     const deleted = await User.findOneAndDelete(scope);
     if (!deleted) {
       return NextResponse.json({ error: 'ไม่พบผู้ใช้งานที่เลือกหรือไม่มีสิทธิ์ลบ' }, { status: 404 });

@@ -1,11 +1,12 @@
 ﻿'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { signOut } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { data: session } = useSession();
 
   const handleLogout = async () => {
     await signOut({ redirect: false });
@@ -26,36 +27,35 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="flex min-h-screen bg-[#071022] text-slate-100">
-      <aside className="w-72 bg-[#0a192f] border-r border-[#112138] flex flex-col shadow-[8px_0_30px_-24px_rgba(0,0,0,0.5)] fixed h-full">
-        <div className="p-6 border-b border-[#112138]">
-          <h2 className="text-3xl font-extrabold tracking-tight text-[#a7f3d0] flex items-center gap-3">
-            <span>🍃</span> Eco-Sync
+      <aside className="w-64 bg-[#0a192f] border-r border-[#112238] flex flex-col fixed h-full shadow-lg">
+        <div className="p-6 border-b border-[#112238]">
+          <h2 className="text-2xl font-bold tracking-wide text-[#a7f3d0]">
+            🍃 Autogram
           </h2>
-          <p className="text-xs text-slate-500 mt-2">Autogram Premium Logistics</p>
+          <p className="text-xs text-slate-500 mt-2 font-medium">Fleet Intelligence</p>
         </div>
 
-        <nav className="flex-1 p-5 space-y-3">
-          {navButton('/dashboard', '📊 หน้าหลัก (Dashboard)', pathname === '/dashboard')}
-          {navButton('/overview', '🛰️ Overview Map', pathname === '/overview')}
-          {navButton('/carbon-activity', '🌿 Carbon Activity', pathname === '/carbon-activity')}
-          {navButton('/master-settings', '🛠️ Master Settings', pathname === '/master-settings')}
-          {navButton('/report-center', '📁 Report Center', pathname === '/report-center')}
-          {navButton('/admin/trips', '🚚 จัดการงานขนส่ง (Trips)', pathname === '/admin/trips')}
-          {navButton('/operator/trips', '🧭 Operator Trips', pathname === '/operator/trips')}
-          {navButton('/admin/users', '⚙️ จัดการสิทิ (Set Role)', pathname === '/admin/users')}
+        <nav className="flex-1 p-4 space-y-2">
+          {navButton('/dashboard', 'Dashboard', pathname === '/dashboard')}
+          {navButton('/admin/trips', 'Trip Management', pathname === '/admin/trips')}
+          {navButton('/carbon-activity', 'Carbon Activity', pathname === '/carbon-activity')}
+          {navButton('/report-center', 'Report Center', pathname === '/report-center')}
+          {navButton('/master-settings', 'Master Settings', pathname === '/master-settings')}
+          {navButton('/admin/users', 'User Access', pathname === '/admin/users')}
         </nav>
 
-        <div className="p-5 border-t border-[#112138]">
+        <div className="p-4 border-t border-[#112238]">
+          <div className="text-xs text-slate-400 mb-3 px-2">{session?.user?.email || 'User'}</div>
           <button
             onClick={handleLogout}
-            className="w-full text-left p-3 rounded-2xl font-semibold text-[#bef264] bg-[#0c1d35] hover:bg-[#112138] transition-colors"
+            className="w-full text-center p-2 rounded-lg text-sm font-medium text-slate-300 bg-[#10b981]/20 hover:bg-[#10b981]/30 transition-colors"
           >
-            🚪 ออกจากระบบ
+            Sign Out
           </button>
         </div>
       </aside>
 
-      <main className="flex-1 ml-72 p-8">{children}</main>
+      <main className="flex-1 ml-64">{children}</main>
     </div>
   );
 }

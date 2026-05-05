@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { MonthlyCarbonLedger } from '@/models/MonthlyCarbonLedger';
 import { Trip } from '@/models/Trip';
+import { ObjectId } from 'mongodb';
 import { getSessionToken, isInternalRole } from '@/lib/access';
 import { getActiveMasterSetting } from '@/lib/carbon-ledger';
 
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest) {
     } else {
       const setting = await getActiveMasterSetting();
       const grouped = await Trip.aggregate([
-        { $match: { companyName: token.companyName } },
+        { $match: { companyId: new ObjectId(token.companyId) } },
         {
           $group: {
             _id: { y: { $year: '$createdAt' }, m: { $month: '$createdAt' } },

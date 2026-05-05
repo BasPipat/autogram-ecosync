@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Trip } from '@/models/Trip';
 import { MonthlyCarbonLedger } from '@/models/MonthlyCarbonLedger';
+import { ObjectId } from 'mongodb';
 import { generateMonthlyLedgers, getActiveMasterSetting, getRangeFromFilter } from '@/lib/carbon-ledger';
 import { getSessionToken, isInternalRole } from '@/lib/access';
 
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest) {
     const setting = await getActiveMasterSetting();
 
     const trips = await Trip.find({
-      ...(isInternalRole(token.role) ? {} : { companyName: token.companyName }),
+      ...(isInternalRole(token.role) ? {} : { companyId: new ObjectId(token.companyId) }),
       createdAt: { $gte: start, $lt: end },
     }).sort({ createdAt: 1 }).lean();
     const points = trips.map((trip) => {

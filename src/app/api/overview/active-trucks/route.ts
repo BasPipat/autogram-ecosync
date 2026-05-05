@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Trip } from '@/models/Trip';
 import { Driver } from '@/models/Driver';
+import { ObjectId } from 'mongodb';
 import { getSessionToken, isInternalRole } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
 
     await connectToDatabase();
     const activeTrips = await Trip.find({
-      ...(isInternalRole(role) ? {} : { companyName: token.companyName }),
+      ...(isInternalRole(role) ? {} : { companyId: new ObjectId(token.companyId) }),
       'gpsSession.status': 'active',
       'gpsSession.isTracking': true,
     })

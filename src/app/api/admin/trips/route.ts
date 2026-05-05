@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Trip } from '@/models/Trip';
+import { ObjectId } from 'mongodb';
 import { getSessionToken, isInternalRole } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
     }
 
     await connectToDatabase();
-    const query = isInternalRole(token.role) ? {} : { companyName: token.companyName };
+    const query = isInternalRole(token.role) ? {} : { companyId: new ObjectId(token.companyId) };
     const trips = await Trip.find(query).sort({ createdAt: -1 });
     return NextResponse.json(trips);
   } catch {
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
       data.tripId = `TRP-${Math.floor(100000 + Math.random() * 900000)}`;
     }
     if (!isInternalRole(token.role)) {
-      data.companyName = token.companyName;
+      data.companyId = new ObjectId(token.companyId);
     }
 
     const newTrip = await Trip.create(data);
