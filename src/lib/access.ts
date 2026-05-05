@@ -9,7 +9,9 @@ export type SessionTokenInfo = {
   companyName?: string;
 };
 
-const INTERNAL_ROLES = new Set(['owner', 'admin', 'operator']);
+// system_owner and owner both get God Mode (multi-tenant) access.
+// Admin and Operator are scoped to their own company only.
+const INTERNAL_ROLES = new Set(['system_owner', 'owner']);
 
 export async function getSessionToken(req: NextRequest): Promise<SessionTokenInfo | null> {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });

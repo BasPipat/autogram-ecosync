@@ -67,7 +67,10 @@ export default function ManageTripsPage() {
       const tripRes = await fetch('/api/admin/trips', { cache: 'no-store' });
       const allTrips = await tripRes.json();
       
-      if (me?.role === 'owner' || me?.role === 'operator' || me?.role === 'admin') {
+      // owner (System_Owner): เห็น trip ทุกบริษัท
+      // admin, operator: เห็นเฉพาะ trip บริษัทตัวเอง
+      const isOwner = (r?: string) => r === 'system_owner' || r === 'owner';
+      if (isOwner(me?.role)) {
         setTrips(allTrips);
       } else {
         setTrips(allTrips.filter((t: any) => t.companyName === me?.companyName));
@@ -198,7 +201,7 @@ export default function ManageTripsPage() {
           tripId: form.tripId, origin: form.origin, originMapUrl: form.originMapUrl,
           destination: form.destination, destinationMapUrl: form.destinationMapUrl,
           distance: Number(form.distance), weight: Number(form.weight), carbon: Number(form.carbon),
-          companyName: currentUser?.role?.includes('admin') || currentUser?.role === 'owner' ? form.companyName : currentUser?.companyName
+          companyName: currentUser?.role === 'owner' ? form.companyName : currentUser?.companyName
         }),
       });
 
@@ -228,7 +231,7 @@ export default function ManageTripsPage() {
             </div>
           </div>
 
-          {['owner', 'operator', 'admin', 'corp_admin'].includes(currentUser?.role || '') && (
+          {['system_owner', 'owner', 'admin', 'operator', 'corp_admin'].includes(currentUser?.role || '') && (
             <div className="card p-6 mb-6">
               <h2 className="text-md font-bold text-slate-700 flex items-center gap-2 mb-5">
                 <PlusCircle size={18} className="text-blue-500" /> รายละเอียดงานใหม่
@@ -299,7 +302,7 @@ export default function ManageTripsPage() {
                     </div>
                   </div>
                   
-                  {['owner', 'operator', 'admin'].includes(currentUser?.role || '') && (
+                  {(currentUser?.role === 'system_owner' || currentUser?.role === 'owner') && (
                     <div className="mt-4">
                       <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">ชื่อบริษัทลูกค้า (สำหรับวางบิล)</label>
                       <input type="text" required placeholder="ระบุบริษัท" className="w-full md:w-1/4 p-2.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.companyName} onChange={e => setForm({...form, companyName: e.target.value})} />

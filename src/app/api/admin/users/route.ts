@@ -15,11 +15,60 @@ export async function GET(req: NextRequest) {
     }
 
     await connectToDatabase();
-    const query = isInternalRole(token.role) ? {} : { companyId: new ObjectId(token.companyId) };
+
+    let query: Record<string, unknown> = {};
+    if (isInternalRole(token.role)) {
+      // owner: ดูได้ทุกคน
+      query = {};
+    } else if (token.companyId) {
+      // มี companyId: กรองตาม company
+      query = { companyId: new ObjectId(token.companyId) };
+    } else if (token.companyName) {
+      // ไม่มี companyId แต่มี companyName: fallback กรองตามชื่อบริษัท
+      query = { companyName: token.companyName };
+    } else {
+      // ไม่มีข้อมูล company เลย: return แค่ตัวเอง
+      query = { email: token.email };
+    }
+
     const users = await User.find(query).select('-password').sort({ createdAt: -1 });
     return NextResponse.json(users);
   } catch {
     return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
+  }
+}
+
+// Create a new user (owner or admin only)
+export async function POST(req: NextRequest) {
+  try {
+    const token = await getSessionToken(req);
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const canCreate = token.role === 'system_owner' || token.role === 'owner' || token.role === 'admin';
+    if (!canCreate) return NextResponse.json({ error: 'ไม่มีสิทธิ์เพิ่มสมาชิก' }, { status: 403 });
+
+    const { name, email, password, role, companyName } = await req.json();
+    if (!name || !email || !password) {
+      return NextResponse.json({ error: 'กรุณากรอกชื่อ, อีเมล และรหัสผ่าน' }, { status: 400 });
+    }
+
+    await connectToDatabase();
+    const existing = await User.findOne({ email });
+    if (existing) return NextResponse.json({ error: 'อีเมลนี้ถูกใช้งานแล้ว' }, { status: 400 });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = await User.create({
+      name,
+      email,
+      password: hashedPassword,
+      role: role || 'coordinator',
+      companyName: companyName || (token.role !== 'owner' ? token.companyName : undefined),
+    });
+
+    return NextResponse.json({ message: 'เพิ่มสมาชิกสำเร็จ', user: { _id: newUser._id, name, email, role: newUser.role } }, { status: 201 });
+  } catch (error: unknown) {
+    const msg = (error as { code?: number }).code === 11000 ? 'อีเมลนี้มีในระบบแล้ว' : 'เกิดข้อผิดพลาด';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 

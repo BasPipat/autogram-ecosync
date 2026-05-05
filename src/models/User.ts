@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export type UserRole = 'owner' | 'admin' | 'operator' | 'corp_admin' | 'coordinator';
+export type UserRole = 'system_owner' | 'owner' | 'admin' | 'operator' | 'corp_admin' | 'coordinator';
 
 export interface IUser extends Document {
   username?: string;
@@ -22,7 +22,7 @@ const UserSchema = new Schema({
   password: { type: String },
   role: {
     type: String,
-    enum: ['owner', 'admin', 'operator', 'corp_admin', 'coordinator'],
+    enum: ['system_owner', 'owner', 'admin', 'operator', 'corp_admin', 'coordinator'],
     default: 'coordinator'
   },
   // Company-level isolation boundary (multi-tenant)
