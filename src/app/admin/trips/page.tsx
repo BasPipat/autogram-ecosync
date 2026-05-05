@@ -7,8 +7,8 @@ import SidebarLayout from '@/components/SidebarLayout';
 import { Truck, MapPin, Leaf, PlusCircle, ExternalLink, Loader2, MapPinned, X, Route, Package } from 'lucide-react';
 import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
 
-const GOOGLE_MAPS_API_KEY = "AIzaSyCJBdRCt3l2Lp8KdPPMb4TlLjIFdS2R-_E";
-const mapContainerStyle = { width: '100%', height: '400px', borderRadius: '0.5rem' };
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+const mapContainerStyle = { width: '100%', height: '400px', borderRadius: 'var(--radius-lg)' };
 const defaultCenter = { lat: 13.7563, lng: 100.5018 }; 
 const libraries: ("places")[] = ["places"]; 
 
@@ -217,14 +217,19 @@ export default function ManageTripsPage() {
     <SidebarLayout>
       {/* 🟢 เติมคำสั่ง language="th" และ region="TH" ตรงนี้ครับ */}
       <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries} language="th" region="TH">
-        <div className="p-8">
-          <h1 className="text-2xl font-bold text-slate-800 mb-2 flex items-center gap-2">
-            <Truck className="text-blue-600" /> จัดการงานขนส่ง (Job Management)
-          </h1>
-          <p className="text-sm text-slate-500 mb-8">บันทึกเส้นทาง คำนวณระยะทางอัตโนมัติ และประเมินการปล่อยคาร์บอน (kgCO2e)</p>
+        <div className="p-6" style={{ background: 'var(--bg-base)' }}>
+          <div className="flex items-center gap-3 mb-6 animate-fade-in">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #EFF6FF, #DBEAFE)' }}>
+              <Truck size={20} style={{ color: '#3B82F6' }} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>จัดการงานขนส่ง (Job Management)</h1>
+              <p className="text-[13px]" style={{ color: 'var(--text-tertiary)' }}>บันทึกเส้นทาง คำนวณระยะทางอัตโนมัติ และประเมินการปล่อยคาร์บอน (kgCO2e)</p>
+            </div>
+          </div>
 
           {['system_owner', 'operator', 'admin', 'corporate_admin'].includes(currentUser?.role || '') && (
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-8">
+            <div className="card p-6 mb-6">
               <h2 className="text-md font-bold text-slate-700 flex items-center gap-2 mb-5">
                 <PlusCircle size={18} className="text-blue-500" /> รายละเอียดงานใหม่
               </h2>
@@ -303,7 +308,7 @@ export default function ManageTripsPage() {
                 </div>
 
                 <div className="flex justify-end pt-2">
-                  <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-10 rounded-xl text-sm transition-all shadow-md shadow-blue-100">
+                  <button type="submit" className="font-bold py-3 px-10 rounded-xl text-sm transition-all" style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 4px 12px rgba(16,185,129,0.2)' }}>
                     + สร้างงานขนส่ง
                   </button>
                 </div>
@@ -311,10 +316,10 @@ export default function ManageTripsPage() {
             </div>
           )}
 
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-               <h3 className="font-bold text-slate-700">ประวัติการเดินรถล่าสุด</h3>
-               <div className="text-xs text-slate-400">พบทั้งหมด {trips.length} รายการ</div>
+          <div className="card overflow-hidden">
+            <div className="px-6 py-4 flex justify-between items-center" style={{ borderBottom: '1px solid var(--border-light)' }}>
+               <h3 className="font-bold text-[14px]" style={{ color: 'var(--text-primary)' }}>ประวัติการเดินรถล่าสุด</h3>
+               <span className="text-[11px] font-medium px-2.5 py-1 rounded-full" style={{ background: 'var(--border-light)', color: 'var(--text-tertiary)' }}>พบทั้งหมด {trips.length} รายการ</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">

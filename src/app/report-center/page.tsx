@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import SidebarLayout from '@/components/SidebarLayout';
-import { Download, FileText, Loader2, Table } from 'lucide-react';
-import { jsPDF } from 'jspdf';
+import { Download, FileText, Loader2, Table, FileBarChart } from 'lucide-react';
 
 type Row = {
   monthKey: string;
@@ -26,7 +25,8 @@ function downloadCsv(rows: Row[]) {
   URL.revokeObjectURL(url);
 }
 
-function downloadPdf(rows: Row[]) {
+async function downloadPdf(rows: Row[]) {
+  const { jsPDF } = await import('jspdf');
   const doc = new jsPDF();
   doc.setFontSize(16);
   doc.text('Carbon Activity Monthly Report', 14, 18);
@@ -67,54 +67,92 @@ export default function ReportCenterPage() {
 
   return (
     <SidebarLayout>
-      <div className="p-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Report Center</h1>
-            <p className="text-sm text-slate-500">ดาวน์โหลดรายงาน Carbon Activity ได้ทั้ง Excel และ PDF</p>
+      <div className="min-h-screen p-6" style={{ background: 'var(--bg-base)' }}>
+        {/* Header */}
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-6 animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #EFF6FF, #DBEAFE)' }}
+            >
+              <FileBarChart size={20} style={{ color: '#3B82F6' }} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Report Center</h1>
+              <p className="text-[13px]" style={{ color: 'var(--text-tertiary)' }}>
+                ดาวน์โหลดรายงาน Carbon Activity ได้ทั้ง Excel และ PDF
+              </p>
+            </div>
           </div>
           <div className="flex gap-2">
             <button
               onClick={() => downloadCsv(rows)}
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-50"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-medium transition-all"
+              style={{
+                background: 'var(--bg-card)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border)',
+              }}
             >
-              <Table size={15} /> Download Excel
+              <Table size={14} /> Download Excel
             </button>
             <button
               onClick={() => downloadPdf(rows)}
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-400"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all"
+              style={{
+                background: 'var(--accent)',
+                color: '#fff',
+              }}
             >
-              <FileText size={15} /> Download PDF
+              <FileText size={14} /> Download PDF
             </button>
           </div>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-slate-200 bg-white overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 font-semibold text-slate-900">Monthly Ledger</div>
+        {/* Table */}
+        <div className="card overflow-hidden animate-fade-in">
+          <div className="px-6 py-4 font-bold text-[14px]" style={{ color: 'var(--text-primary)', borderBottom: '1px solid var(--border-light)' }}>
+            Monthly Ledger
+          </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-500">
-                <tr>
-                  <th className="p-3 text-left">Month</th>
-                  <th className="p-3 text-left">Trips</th>
-                  <th className="p-3 text-left">Distance</th>
-                  <th className="p-3 text-left">Fuel</th>
-                  <th className="p-3 text-left">Emission</th>
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr style={{ background: 'var(--bg-base)' }}>
+                  <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>Month</th>
+                  <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>Trips</th>
+                  <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>Distance</th>
+                  <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>Fuel</th>
+                  <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>Emission</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={5} className="p-6 text-center text-slate-400"><Loader2 className="inline w-4 h-4 animate-spin mr-2" /> Loading...</td></tr>
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center">
+                      <Loader2 className="inline w-4 h-4 animate-spin mr-2" style={{ color: 'var(--accent)' }} />
+                      <span style={{ color: 'var(--text-tertiary)' }}>Loading...</span>
+                    </td>
+                  </tr>
                 ) : rows.length === 0 ? (
-                  <tr><td colSpan={5} className="p-6 text-center text-slate-400">No monthly data</td></tr>
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center" style={{ color: 'var(--text-tertiary)' }}>
+                      No monthly data
+                    </td>
+                  </tr>
                 ) : (
                   rows.map((r) => (
-                    <tr key={r.monthKey} className="border-t border-slate-100">
-                      <td className="p-3 font-medium">{r.monthKey}</td>
-                      <td className="p-3">{r.totalTrips}</td>
-                      <td className="p-3">{r.totalDistanceKm}</td>
-                      <td className="p-3">{r.totalFuelLitersForecast}</td>
-                      <td className="p-3 text-emerald-700">{r.totalEmissionKgCo2e}</td>
+                    <tr
+                      key={r.monthKey}
+                      className="transition-colors"
+                      style={{ borderTop: '1px solid var(--border-light)' }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--border-light)'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                    >
+                      <td className="p-3 font-semibold" style={{ color: 'var(--text-primary)' }}>{r.monthKey}</td>
+                      <td className="p-3" style={{ color: 'var(--text-secondary)' }}>{r.totalTrips}</td>
+                      <td className="p-3" style={{ color: 'var(--text-secondary)' }}>{r.totalDistanceKm}</td>
+                      <td className="p-3" style={{ color: 'var(--text-secondary)' }}>{r.totalFuelLitersForecast}</td>
+                      <td className="p-3 font-semibold" style={{ color: 'var(--accent)' }}>{r.totalEmissionKgCo2e}</td>
                     </tr>
                   ))
                 )}
@@ -123,8 +161,8 @@ export default function ReportCenterPage() {
           </div>
         </div>
 
-        <p className="mt-3 text-xs text-slate-500 inline-flex items-center gap-1">
-          <Download size={12} /> Export ใช้ข้อมูลล่าสุดจาก Monthly Carbon Ledger ในฐานข้อมูล
+        <p className="mt-3 text-[11px] inline-flex items-center gap-1" style={{ color: 'var(--text-tertiary)' }}>
+          <Download size={11} /> Export ใช้ข้อมูลล่าสุดจาก Monthly Carbon Ledger ในฐานข้อมูล
         </p>
       </div>
     </SidebarLayout>

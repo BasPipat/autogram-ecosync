@@ -1,9 +1,10 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Leaf, ArrowRight, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -36,33 +37,92 @@ export default function LoginPage() {
     }
   };
 
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
-      <div className="w-full max-w-md p-8 bg-white rounded-3xl shadow-2xl border border-slate-200">
-        <h2 className="text-3xl font-bold text-center text-slate-900 mb-3">เข้าสู่ระบบ</h2>
-        <p className="text-center text-slate-500 mb-6">JWT Authentication ด้วย Email หรือ User ID</p>
+  const inputStyle = {
+    border: '1px solid var(--border)',
+    background: 'var(--bg-base)',
+    color: 'var(--text-primary)',
+    borderRadius: 'var(--radius-md)',
+  };
 
-        {error && <div className="mb-4 rounded-lg bg-red-100 px-4 py-3 text-sm text-red-700">{error}</div>}
+  return (
+    <div
+      className="flex min-h-screen items-center justify-center px-4"
+      style={{
+        background: 'linear-gradient(135deg, #F7F8FA 0%, #EEF2F7 50%, #F0FDF4 100%)',
+      }}
+    >
+      {/* Subtle background decoration */}
+      <div
+        className="fixed top-0 right-0 w-[600px] h-[600px] rounded-full opacity-30 pointer-events-none"
+        style={{
+          background: 'radial-gradient(circle, rgba(16,185,129,0.08), transparent 70%)',
+          filter: 'blur(60px)',
+        }}
+      />
+
+      <div
+        className="w-full max-w-[420px] p-8 animate-fade-in"
+        style={{
+          background: 'var(--bg-card)',
+          borderRadius: 'var(--radius-xl)',
+          boxShadow: 'var(--shadow-lg)',
+          border: '1px solid var(--border)',
+        }}
+      >
+        {/* Logo */}
+        <div className="flex justify-center mb-6">
+          <div
+            className="w-12 h-12 rounded-2xl flex items-center justify-center"
+            style={{
+              background: 'linear-gradient(135deg, #10B981, #059669)',
+              boxShadow: '0 4px 16px rgba(16,185,129,0.3)',
+            }}
+          >
+            <Leaf className="text-white" size={22} />
+          </div>
+        </div>
+
+        <h2 className="text-2xl font-bold text-center mb-1" style={{ color: 'var(--text-primary)' }}>
+          เข้าสู่ระบบ
+        </h2>
+        <p className="text-center text-[13px] mb-6" style={{ color: 'var(--text-tertiary)' }}>
+          Autogram Eco-Sync Platform
+        </p>
+
+        {error && (
+          <div
+            className="mb-4 px-4 py-3 rounded-xl text-[13px]"
+            style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA' }}
+          >
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700">Email หรือ User ID</label>
+            <label className="block text-[12px] font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>
+              Email หรือ User ID
+            </label>
             <input
               type="text"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
-              className="w-full mt-2 rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
+              className="w-full px-4 py-3 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20"
+              style={inputStyle}
               placeholder="กรอก Email หรือ User ID"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700">รหัสผ่าน</label>
+            <label className="block text-[12px] font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>
+              รหัสผ่าน
+            </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full mt-2 rounded-2xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-200"
+              className="w-full px-4 py-3 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20"
+              style={inputStyle}
               placeholder="กรอกรหัสผ่าน"
               required
             />
@@ -70,20 +130,36 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-70"
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-[13px] font-semibold transition-all disabled:opacity-60"
+            style={{
+              background: 'var(--accent)',
+              color: '#fff',
+              boxShadow: '0 4px 12px rgba(16,185,129,0.2)',
+            }}
           >
-            {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}
+            {loading ? (
+              <><Loader2 className="animate-spin" size={16} /> กำลังเข้าสู่ระบบ...</>
+            ) : (
+              <>เข้าสู่ระบบ <ArrowRight size={16} /></>
+            )}
           </button>
         </form>
 
-        <div className="mt-4 text-center text-sm">
-          <Link href="/forgot-password" className="font-medium text-cyan-600 hover:underline">
+        <div className="mt-5 text-center">
+          <Link
+            href="/forgot-password"
+            className="text-[12px] font-medium transition-colors"
+            style={{ color: 'var(--text-tertiary)' }}
+          >
             ลืมรหัสผ่าน?
           </Link>
         </div>
 
-        <p className="mt-6 text-center text-sm text-slate-500">
-          ยังไม่มีบัญชี? <a href="/register" className="font-semibold text-emerald-600 hover:underline">สมัครสมาชิก</a>
+        <p className="mt-4 text-center text-[12px]" style={{ color: 'var(--text-tertiary)' }}>
+          ยังไม่มีบัญชี?{' '}
+          <a href="/register" className="font-semibold" style={{ color: 'var(--accent)' }}>
+            สมัครสมาชิก
+          </a>
         </p>
       </div>
     </div>

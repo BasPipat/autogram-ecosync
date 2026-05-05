@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import SidebarLayout from '@/components/SidebarLayout';
+import { Users, Loader2, Shield } from 'lucide-react';
 
 interface IUser {
   _id: string;
@@ -49,7 +50,8 @@ export default function ManageUsersPage() {
   if (status === 'loading') {
     return (
       <SidebarLayout>
-        <div className="min-h-screen flex items-center justify-center text-slate-500">
+        <div className="min-h-screen flex items-center justify-center" style={{ color: 'var(--text-tertiary)' }}>
+          <Loader2 className="animate-spin mr-2" size={18} />
           กำลังตรวจสอบสิทธิ์ผู้ใช้งาน...
         </div>
       </SidebarLayout>
@@ -126,105 +128,172 @@ export default function ManageUsersPage() {
   };
 
   const getRoleBadge = (role: string) => {
-    switch(role) {
-      case 'system_owner': return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700 uppercase">System Owner</span>;
-      case 'operator': return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700 uppercase">Operator</span>;
-      case 'corporate_admin': return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700 uppercase">Corp Admin</span>;
-      case 'coordinator': return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 uppercase">Coordinator</span>;
-      default: return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 uppercase">{role}</span>;
-    }
+    const styles: Record<string, { bg: string; color: string; label: string }> = {
+      system_owner: { bg: '#F3E8FF', color: '#7C3AED', label: 'System Owner' },
+      operator: { bg: '#EEF2FF', color: '#4F46E5', label: 'Operator' },
+      corporate_admin: { bg: '#FFF7ED', color: '#C2410C', label: 'Corp Admin' },
+      coordinator: { bg: '#ECFDF5', color: '#059669', label: 'Coordinator' },
+    };
+    const s = styles[role] || { bg: 'var(--border-light)', color: 'var(--text-tertiary)', label: role };
+    return (
+      <span
+        className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
+        style={{ background: s.bg, color: s.color }}
+      >
+        {s.label}
+      </span>
+    );
+  };
+
+  const inputStyle = {
+    border: '1px solid var(--border)',
+    background: 'var(--bg-base)',
+    color: 'var(--text-primary)',
+    borderRadius: 'var(--radius-sm)',
   };
 
   return (
     <SidebarLayout>
-      <div className="p-8">
-        <h1 className="text-2xl font-bold text-slate-800 mb-2">⚙️ การจัดการผู้ใช้งานและสิทธิ์</h1>
-        <p className="text-sm text-slate-500 mb-6">ตั้งค่า User ID สำหรับ Login และข้อมูลติดต่อสำหรับวางบิลลูกค้า</p>
-        
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[1300px]">
-            <thead>
-              <tr className="bg-slate-50 text-slate-500 text-[11px] border-b border-slate-200 uppercase tracking-widest">
-                <th className="p-4 font-bold">User ID (Login)</th>
-                <th className="p-4 font-bold">ชื่อผู้ใช้</th>
-                <th className="p-4 font-bold">บริษัท (วางบิล)</th>
-                <th className="p-4 font-bold">เบอร์โทรศัพท์</th>
-                <th className="p-4 font-bold">อีเมล</th>
-                <th className="p-4 font-bold text-orange-600">Password ใหม่</th>
-                <th className="p-4 font-bold">ระดับสิทธิ์</th>
-                <th className="p-4 font-bold text-center">จัดการ</th>
-              </tr>
-            </thead>
-            <tbody className="text-sm">
-              {loading ? (
-                <tr><td colSpan={8} className="p-12 text-center text-slate-400">กำลังดึงข้อมูลล่าสุด...</td></tr>
-              ) : displayedUsers.map((user) => (
-                <tr key={user._id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                  <td className="p-4">
-                    {editingUserId === user._id ? (
-                      <input type="text" className="w-full p-2 border border-blue-300 rounded bg-blue-50 outline-none" value={editForm.username} onChange={(e) => setEditForm({...editForm, username: e.target.value})} />
-                    ) : (<span className="font-mono font-bold text-blue-600">{user.username || '-'}</span>)}
-                  </td>
-                  <td className="p-4">
-                    {editingUserId === user._id ? (
-                      <input type="text" className="w-full p-2 border rounded outline-none" value={editForm.name} onChange={(e) => setEditForm({...editForm, name: e.target.value})} />
-                    ) : (<span className="font-medium text-slate-800">{user.name}</span>)}
-                  </td>
-                  <td className="p-4">
-                    {editingUserId === user._id ? (
-                      <input type="text" className="w-full p-2 border rounded outline-none" value={editForm.companyName} onChange={(e) => setEditForm({...editForm, companyName: e.target.value})} />
-                    ) : (user.companyName || '-')}
-                  </td>
-                  <td className="p-4">
-                    {editingUserId === user._id ? (
-                      <input type="text" className="w-full p-2 border rounded outline-none" value={editForm.phone} onChange={(e) => setEditForm({...editForm, phone: e.target.value})} />
-                    ) : (user.phone || '-')}
-                  </td>
-                  <td className="p-4 text-slate-400 text-xs">{user.email}</td>
-                  <td className="p-4">
-                    {editingUserId === user._id ? (
-                      <input type="text" className="w-full p-2 border border-orange-200 rounded bg-orange-50 outline-none" placeholder="รหัสผ่านใหม่..." value={editForm.password} onChange={(e) => setEditForm({...editForm, password: e.target.value})} />
-                    ) : (<span className="text-slate-200">********</span>)}
-                  </td>
-                  <td className="p-4">
-                    <div className="flex flex-col gap-1">
-                      {getRoleBadge(user.role)}
-                      <select 
-                        className="mt-1 p-1.5 border rounded text-[11px] outline-none bg-white cursor-pointer"
-                        value={user.role}
-                        onChange={(e) => handleRoleChange(user._id, e.target.value)}
-                        disabled={user.email === session?.user?.email && (user.role === 'system_owner' || user.role === 'admin')}
-                      >
-                        {['system_owner', 'admin', 'operator'].includes(currentUser?.role || '') && (
-                          <optgroup label="ฝั่ง Autogram">
-                            <option value="system_owner">System Owner</option>
-                            <option value="operator">Operator</option>
-                          </optgroup>
-                        )}
-                        <optgroup label="ฝั่งลูกค้า">
-                          <option value="corporate_admin">Corporate Admin</option>
-                          <option value="coordinator">Coordinator</option>
-                        </optgroup>
-                      </select>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    {editingUserId === user._id ? (
-                      <div className="flex flex-col gap-1">
-                        <button onClick={() => handleSaveEdit(user._id)} className="bg-green-600 text-white py-1.5 rounded text-xs font-bold">บันทึก</button>
-                        <button onClick={() => setEditingUserId(null)} className="bg-slate-200 text-slate-600 py-1.5 rounded text-xs">ยกเลิก</button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-1">
-                        <button onClick={() => handleEditClick(user)} className="text-blue-600 bg-blue-50 border border-blue-100 py-1.5 rounded text-xs font-bold hover:bg-blue-100">แก้ไข</button>
-                        <button onClick={() => handleDeleteUser(user._id, user.name)} disabled={user.email === session?.user?.email} className="text-red-600 bg-red-50 border border-red-100 py-1.5 rounded text-xs font-bold disabled:opacity-20 hover:bg-red-100">ลบ</button>
-                      </div>
-                    )}
-                  </td>
+      <div className="min-h-screen p-6" style={{ background: 'var(--bg-base)' }}>
+        {/* Header */}
+        <div className="mb-6 animate-fade-in">
+          <div className="flex items-center gap-3 mb-1">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #F3E8FF, #E9D5FF)' }}
+            >
+              <Shield size={20} style={{ color: '#7C3AED' }} />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>การจัดการผู้ใช้งานและสิทธิ์</h1>
+              <p className="text-[13px]" style={{ color: 'var(--text-tertiary)' }}>
+                ตั้งค่า User ID สำหรับ Login และข้อมูลติดต่อสำหรับวางบิลลูกค้า
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="card overflow-hidden animate-fade-in">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left min-w-[1200px]">
+              <thead>
+                <tr style={{ background: 'var(--bg-base)' }}>
+                  {['User ID (Login)', 'ชื่อผู้ใช้', 'บริษัท (วางบิล)', 'เบอร์โทรศัพท์', 'อีเมล', 'Password ใหม่', 'ระดับสิทธิ์', 'จัดการ'].map((h) => (
+                    <th key={h} className="p-4 text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border)' }}>
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="text-[13px]">
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="p-12 text-center" style={{ color: 'var(--text-tertiary)' }}>
+                      <Loader2 className="inline animate-spin mr-2" size={16} />
+                      กำลังดึงข้อมูลล่าสุด...
+                    </td>
+                  </tr>
+                ) : displayedUsers.map((user) => (
+                  <tr
+                    key={user._id}
+                    className="transition-colors"
+                    style={{ borderBottom: '1px solid var(--border-light)' }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--border-light)'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                  >
+                    <td className="p-4">
+                      {editingUserId === user._id ? (
+                        <input className="w-full p-2 text-[12px] outline-none" style={inputStyle} value={editForm.username} onChange={(e) => setEditForm({...editForm, username: e.target.value})} />
+                      ) : (<span className="font-mono font-bold" style={{ color: '#3B82F6' }}>{user.username || '-'}</span>)}
+                    </td>
+                    <td className="p-4">
+                      {editingUserId === user._id ? (
+                        <input className="w-full p-2 text-[12px] outline-none" style={inputStyle} value={editForm.name} onChange={(e) => setEditForm({...editForm, name: e.target.value})} />
+                      ) : (<span className="font-medium" style={{ color: 'var(--text-primary)' }}>{user.name}</span>)}
+                    </td>
+                    <td className="p-4">
+                      {editingUserId === user._id ? (
+                        <input className="w-full p-2 text-[12px] outline-none" style={inputStyle} value={editForm.companyName} onChange={(e) => setEditForm({...editForm, companyName: e.target.value})} />
+                      ) : (<span style={{ color: 'var(--text-secondary)' }}>{user.companyName || '-'}</span>)}
+                    </td>
+                    <td className="p-4">
+                      {editingUserId === user._id ? (
+                        <input className="w-full p-2 text-[12px] outline-none" style={inputStyle} value={editForm.phone} onChange={(e) => setEditForm({...editForm, phone: e.target.value})} />
+                      ) : (<span style={{ color: 'var(--text-secondary)' }}>{user.phone || '-'}</span>)}
+                    </td>
+                    <td className="p-4 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>{user.email}</td>
+                    <td className="p-4">
+                      {editingUserId === user._id ? (
+                        <input className="w-full p-2 text-[12px] outline-none" style={{ ...inputStyle, borderColor: '#FECACA', background: '#FEF2F2' }} placeholder="รหัสผ่านใหม่..." value={editForm.password} onChange={(e) => setEditForm({...editForm, password: e.target.value})} />
+                      ) : (<span style={{ color: 'var(--border)' }}>********</span>)}
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-col gap-1.5">
+                        {getRoleBadge(user.role)}
+                        <select
+                          className="p-1.5 text-[11px] outline-none cursor-pointer rounded-lg"
+                          style={{ ...inputStyle, fontSize: '11px' }}
+                          value={user.role}
+                          onChange={(e) => handleRoleChange(user._id, e.target.value)}
+                          disabled={user.email === session?.user?.email && (user.role === 'system_owner' || user.role === 'admin')}
+                        >
+                          {['system_owner', 'admin', 'operator'].includes(currentUser?.role || '') && (
+                            <optgroup label="ฝั่ง Autogram">
+                              <option value="system_owner">System Owner</option>
+                              <option value="operator">Operator</option>
+                            </optgroup>
+                          )}
+                          <optgroup label="ฝั่งลูกค้า">
+                            <option value="corporate_admin">Corporate Admin</option>
+                            <option value="coordinator">Coordinator</option>
+                          </optgroup>
+                        </select>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      {editingUserId === user._id ? (
+                        <div className="flex flex-col gap-1.5">
+                          <button
+                            onClick={() => handleSaveEdit(user._id)}
+                            className="py-1.5 rounded-lg text-[11px] font-bold transition-colors"
+                            style={{ background: '#ECFDF5', color: '#059669' }}
+                          >
+                            บันทึก
+                          </button>
+                          <button
+                            onClick={() => setEditingUserId(null)}
+                            className="py-1.5 rounded-lg text-[11px] transition-colors"
+                            style={{ background: 'var(--border-light)', color: 'var(--text-secondary)' }}
+                          >
+                            ยกเลิก
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-1.5">
+                          <button
+                            onClick={() => handleEditClick(user)}
+                            className="py-1.5 rounded-lg text-[11px] font-bold transition-colors"
+                            style={{ background: '#EFF6FF', color: '#3B82F6' }}
+                          >
+                            แก้ไข
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(user._id, user.name)}
+                            disabled={user.email === session?.user?.email}
+                            className="py-1.5 rounded-lg text-[11px] font-bold transition-colors disabled:opacity-20"
+                            style={{ background: '#FEF2F2', color: '#DC2626' }}
+                          >
+                            ลบ
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </SidebarLayout>

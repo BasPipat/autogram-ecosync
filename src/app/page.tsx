@@ -3,49 +3,137 @@ import { ArrowRight, Leaf, ShieldCheck, Gauge, LineChart } from 'lucide-react';
 
 export default function PublicLandingPage() {
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
+    <main
+      className="min-h-screen"
+      style={{
+        background: 'linear-gradient(180deg, #F7F8FA 0%, #FFFFFF 40%, #F0FDF4 100%)',
+        color: 'var(--text-primary)',
+      }}
+    >
+      {/* Hero Section */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.22),_transparent_52%)]" />
-        <div className="mx-auto max-w-6xl px-6 py-24 md:py-32 relative">
-          <p className="inline-flex items-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
-            <Leaf size={14} /> Green Logistics Vision
+        {/* Subtle gradient orb */}
+        <div
+          className="absolute top-[-200px] right-[-100px] w-[700px] h-[700px] rounded-full pointer-events-none"
+          style={{
+            background: 'radial-gradient(circle, rgba(16,185,129,0.06), transparent 70%)',
+            filter: 'blur(80px)',
+          }}
+        />
+
+        <div className="mx-auto max-w-5xl px-6 py-24 md:py-32 relative">
+          {/* Badge */}
+          <p
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[12px] font-semibold"
+            style={{
+              background: 'var(--accent-glow)',
+              color: 'var(--accent)',
+              border: '1px solid rgba(16,185,129,0.15)',
+            }}
+          >
+            <Leaf size={13} /> Green Logistics Vision
           </p>
-          <h1 className="mt-6 text-4xl md:text-6xl font-bold leading-tight">
+
+          <h1
+            className="mt-6 text-4xl md:text-6xl font-bold leading-tight tracking-tight"
+            style={{ color: 'var(--text-primary)' }}
+          >
             Premium Carbon Intelligence
-            <span className="block text-emerald-400">for Asset-Light Transport</span>
+            <span className="block" style={{ color: 'var(--accent)' }}>
+              for Asset-Light Transport
+            </span>
           </h1>
-          <p className="mt-6 max-w-2xl text-slate-300 text-lg">
+
+          <p
+            className="mt-6 max-w-2xl text-[16px] leading-relaxed"
+            style={{ color: 'var(--text-secondary)' }}
+          >
             Autogram Eco-Sync ช่วยจัดการงานขนส่ง, Carbon Ledger และความถูกต้องเอกสารในระบบเดียว
             ด้วยประสบการณ์ใช้งานสไตล์พรีเมียมที่เน้นความน่าเชื่อถือระดับองค์กร
           </p>
+
           <div className="mt-10 flex flex-wrap items-center gap-3">
-            <Link href="/login" className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-3 font-semibold text-slate-950 hover:bg-emerald-400">
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[14px] font-semibold transition-all"
+              style={{
+                background: 'var(--accent)',
+                color: '#fff',
+                boxShadow: '0 4px 16px rgba(16,185,129,0.25)',
+              }}
+            >
               เข้าสู่ระบบ <ArrowRight size={16} />
             </Link>
-            <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-5 py-3 font-semibold text-slate-100 hover:border-slate-500">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[14px] font-semibold transition-all"
+              style={{
+                background: 'var(--bg-card)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border)',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
               ดูตัวอย่าง Dashboard
             </Link>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 pb-20 grid gap-5 md:grid-cols-3">
-        <article className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
-          <ShieldCheck className="text-emerald-400" />
-          <h2 className="mt-4 text-xl font-semibold">Data Integrity First</h2>
-          <p className="mt-2 text-sm text-slate-400">ตรวจสอบ POD และหลักฐานทุกเที่ยวเพื่อยกระดับความน่าเชื่อถือของข้อมูล ESG</p>
-        </article>
-        <article className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
-          <Gauge className="text-cyan-400" />
-          <h2 className="mt-4 text-xl font-semibold">Lean Operations</h2>
-          <p className="mt-2 text-sm text-slate-400">ออกแบบสำหรับ Asset-Light model ใช้รถร่วม 100% แต่ยังคุมต้นทุนคาร์บอนได้แม่นยำ</p>
-        </article>
-        <article className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
-          <LineChart className="text-emerald-400" />
-          <h2 className="mt-4 text-xl font-semibold">Executive Reporting</h2>
-          <p className="mt-2 text-sm text-slate-400">พร้อมต่อยอดสู่รายงานรายเดือนและ workflow สำหรับ Green Loan และ ESG package</p>
-        </article>
+      {/* Features */}
+      <section className="mx-auto max-w-5xl px-6 pb-24 grid gap-5 md:grid-cols-3">
+        {[
+          {
+            icon: ShieldCheck,
+            title: 'Data Integrity First',
+            desc: 'ตรวจสอบ POD และหลักฐานทุกเที่ยวเพื่อยกระดับความน่าเชื่อถือของข้อมูล ESG',
+            gradient: 'linear-gradient(135deg, #ECFDF5, #D1FAE5)',
+            iconColor: '#10B981',
+          },
+          {
+            icon: Gauge,
+            title: 'Lean Operations',
+            desc: 'ออกแบบสำหรับ Asset-Light model ใช้รถร่วม 100% แต่ยังคุมต้นทุนคาร์บอนได้แม่นยำ',
+            gradient: 'linear-gradient(135deg, #EFF6FF, #DBEAFE)',
+            iconColor: '#3B82F6',
+          },
+          {
+            icon: LineChart,
+            title: 'Executive Reporting',
+            desc: 'พร้อมต่อยอดสู่รายงานรายเดือนและ workflow สำหรับ Green Loan และ ESG package',
+            gradient: 'linear-gradient(135deg, #F0FDF4, #DCFCE7)',
+            iconColor: '#22C55E',
+          },
+        ].map((feature) => {
+          const Icon = feature.icon;
+          return (
+            <article
+              key={feature.title}
+              className="glass-card p-6"
+            >
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
+                style={{ background: feature.gradient }}
+              >
+                <Icon size={20} style={{ color: feature.iconColor }} />
+              </div>
+              <h2 className="text-[16px] font-bold mb-2" style={{ color: 'var(--text-primary)' }}>
+                {feature.title}
+              </h2>
+              <p className="text-[13px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                {feature.desc}
+              </p>
+            </article>
+          );
+        })}
       </section>
+
+      {/* Footer */}
+      <footer className="py-8 text-center" style={{ borderTop: '1px solid var(--border-light)' }}>
+        <p className="text-[12px]" style={{ color: 'var(--text-tertiary)' }}>
+          © 2026 Autogram Eco-Sync — Carbon Intelligence Platform
+        </p>
+      </footer>
     </main>
   );
 }

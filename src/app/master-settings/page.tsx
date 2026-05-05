@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import SidebarLayout from '@/components/SidebarLayout';
-import { Loader2, Save, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Save, Plus, Trash2, Settings, Fuel, FlaskConical } from 'lucide-react';
 
 type VehicleTypeSetting = {
   typeName: string;
@@ -93,111 +93,196 @@ export default function MasterSettingsPage() {
     }
   };
 
+  const inputStyle = {
+    border: '1px solid var(--border)',
+    background: 'var(--bg-base)',
+    color: 'var(--text-primary)',
+    borderRadius: 'var(--radius-md)',
+  };
+
   return (
     <SidebarLayout>
-      <div className="p-8 max-w-5xl">
-        <div className="mb-6 rounded-3xl border border-white/10 bg-[#081724]/90 p-6 shadow-[0_30px_80px_-40px_rgba(16,185,129,0.3)] backdrop-blur-xl">
-          <h1 className="text-3xl font-bold text-white">Master Settings</h1>
-          <p className="mt-2 text-slate-300">จัดการค่ากลางน้ำมันและ Emission Factor สำหรับการคำนวณ Fuel Forecast</p>
-        </div>
+      <div className="min-h-screen p-6" style={{ background: 'var(--bg-base)' }}>
+        <div className="max-w-4xl animate-fade-in">
+          {/* Header */}
+          <div className="mb-6">
+            <div className="flex items-center gap-3 mb-2">
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ background: 'linear-gradient(135deg, #ECFDF5, #D1FAE5)' }}
+              >
+                <Settings size={20} style={{ color: 'var(--accent)' }} />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Master Settings</h1>
+                <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
+                  จัดการค่ากลางน้ำมันและ Emission Factor สำหรับการคำนวณ Fuel Forecast
+                </p>
+              </div>
+            </div>
+          </div>
 
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_20px_80px_-30px_rgba(16,185,129,0.25)] backdrop-blur-xl">
           {loading ? (
-            <div className="h-24 flex items-center justify-center text-slate-300">
-              <Loader2 className="w-5 h-5 animate-spin mr-2 text-emerald-300" /> กำลังโหลดข้อมูล...
+            <div
+              className="card flex items-center justify-center py-16"
+            >
+              <Loader2 className="w-5 h-5 animate-spin mr-2" style={{ color: 'var(--accent)' }} />
+              <span style={{ color: 'var(--text-tertiary)' }}>กำลังโหลดข้อมูล...</span>
             </div>
           ) : (
-            <>
-              <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-white">Fuel Efficiency by Vehicle Type</h2>
-                  <p className="mt-1 text-sm text-slate-400">ตั้งค่าช่วงอัตราสิ้นเปลืองน้ำมันแยกตามประเภทตัวถัง</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleAddVehicleType}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-slate-950 hover:bg-emerald-400"
-                >
-                  <Plus size={16} /> เพิ่มประเภทรถ
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {vehicleTypes.map((item, index) => (
-                  <div
-                    key={index}
-                    className="grid gap-4 rounded-3xl border border-white/10 bg-[#0b1f34]/90 p-4 text-slate-100 md:grid-cols-[1.7fr_1fr_1fr_auto]"
-                  >
-                    <div>
-                      <label className="block text-xs uppercase tracking-[0.2em] text-slate-500">ประเภทรถ</label>
-                      <input
-                        value={item.typeName}
-                        onChange={(e) => handleUpdateVehicleType(index, 'typeName', e.target.value)}
-                        className="mt-2 w-full rounded-2xl border border-white/10 bg-[#0a192f] px-4 py-3 text-sm text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-[0.2em] text-slate-500">Min km/L</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={item.minKmPerLiter}
-                        onChange={(e) => handleUpdateVehicleType(index, 'minKmPerLiter', e.target.value)}
-                        className="mt-2 w-full rounded-2xl border border-white/10 bg-[#0a192f] px-4 py-3 text-sm text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs uppercase tracking-[0.2em] text-slate-500">Max km/L</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={item.maxKmPerLiter}
-                        onChange={(e) => handleUpdateVehicleType(index, 'maxKmPerLiter', e.target.value)}
-                        className="mt-2 w-full rounded-2xl border border-white/10 bg-[#0a192f] px-4 py-3 text-sm text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveVehicleType(index)}
-                      className="mt-8 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/15 text-rose-200 hover:bg-rose-500/25"
+            <div className="space-y-6">
+              {/* Vehicle Types Section */}
+              <div className="card p-6">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center"
+                      style={{ background: '#EFF6FF' }}
                     >
-                      <Trash2 size={18} />
-                    </button>
+                      <Fuel size={16} style={{ color: '#3B82F6' }} />
+                    </div>
+                    <div>
+                      <h2 className="text-[15px] font-bold" style={{ color: 'var(--text-primary)' }}>
+                        Fuel Efficiency by Vehicle Type
+                      </h2>
+                      <p className="text-[12px]" style={{ color: 'var(--text-tertiary)' }}>
+                        ตั้งค่าช่วงอัตราสิ้นเปลืองน้ำมันแยกตามประเภทตัวถัง
+                      </p>
+                    </div>
                   </div>
-                ))}
+                  <button
+                    type="button"
+                    onClick={handleAddVehicleType}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all"
+                    style={{
+                      background: 'var(--accent)',
+                      color: '#fff',
+                    }}
+                  >
+                    <Plus size={15} /> เพิ่มประเภทรถ
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {vehicleTypes.map((item, index) => (
+                    <div
+                      key={index}
+                      className="grid gap-3 p-4 rounded-xl md:grid-cols-[1.7fr_1fr_1fr_auto]"
+                      style={{
+                        background: 'var(--bg-base)',
+                        border: '1px solid var(--border-light)',
+                      }}
+                    >
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                          ประเภทรถ
+                        </label>
+                        <input
+                          value={item.typeName}
+                          onChange={(e) => handleUpdateVehicleType(index, 'typeName', e.target.value)}
+                          className="w-full px-3 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20"
+                          style={inputStyle}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                          Min km/L
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={item.minKmPerLiter}
+                          onChange={(e) => handleUpdateVehicleType(index, 'minKmPerLiter', e.target.value)}
+                          className="w-full px-3 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20"
+                          style={inputStyle}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                          Max km/L
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={item.maxKmPerLiter}
+                          onChange={(e) => handleUpdateVehicleType(index, 'maxKmPerLiter', e.target.value)}
+                          className="w-full px-3 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20"
+                          style={inputStyle}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveVehicleType(index)}
+                        className="mt-6 w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
+                        style={{ background: '#FEF2F2', color: '#EF4444' }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#FEE2E2'; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = '#FEF2F2'; }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div className="mt-8 grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="block text-sm text-slate-300 mb-2">Emission Factor (kgCO2/L)</label>
-                  <input
-                    type="number"
-                    step="0.0001"
-                    value={form.emissionFactorKgCo2PerLiter}
-                    onChange={(e) => setForm((v) => ({ ...v, emissionFactorKgCo2PerLiter: e.target.value }))}
-                    className="w-full rounded-2xl border border-white/10 bg-[#0a192f] px-4 py-3 text-sm text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20"
-                  />
+              {/* Emission Factor Section */}
+              <div className="card p-6">
+                <div className="flex items-center gap-3 mb-5">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ background: '#F0FDF4' }}
+                  >
+                    <FlaskConical size={16} style={{ color: 'var(--accent)' }} />
+                  </div>
+                  <h2 className="text-[15px] font-bold" style={{ color: 'var(--text-primary)' }}>
+                    Emission Factor
+                  </h2>
                 </div>
-                <div>
-                  <label className="block text-sm text-slate-300 mb-2">Standard Reference</label>
-                  <input
-                    value={form.standardReference}
-                    onChange={(e) => setForm((v) => ({ ...v, standardReference: e.target.value }))}
-                    className="w-full rounded-2xl border border-white/10 bg-[#0a192f] px-4 py-3 text-sm text-white outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20"
-                  />
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="block text-[12px] font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>
+                      Emission Factor (kgCO2/L)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.0001"
+                      value={form.emissionFactorKgCo2PerLiter}
+                      onChange={(e) => setForm((v) => ({ ...v, emissionFactorKgCo2PerLiter: e.target.value }))}
+                      className="w-full px-3 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>
+                      Standard Reference
+                    </label>
+                    <input
+                      value={form.standardReference}
+                      onChange={(e) => setForm((v) => ({ ...v, standardReference: e.target.value }))}
+                      className="w-full px-3 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20"
+                      style={inputStyle}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-6 flex justify-end">
+              {/* Save Button */}
+              <div className="flex justify-end">
                 <button
                   onClick={onSave}
                   disabled={saving}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-950 hover:bg-emerald-400 disabled:opacity-60"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[13px] font-semibold transition-all disabled:opacity-60"
+                  style={{
+                    background: 'var(--accent)',
+                    color: '#fff',
+                    boxShadow: '0 4px 12px rgba(16,185,129,0.2)',
+                  }}
                 >
-                  <Save size={16} /> {saving ? 'กำลังบันทึก...' : 'บันทึกค่า'}
+                  <Save size={15} /> {saving ? 'กำลังบันทึก...' : 'บันทึกค่า'}
                 </button>
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>

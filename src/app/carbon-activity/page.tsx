@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import SidebarLayout from '@/components/SidebarLayout';
-import { Leaf, Loader2, AlertCircle } from 'lucide-react';
+import { Leaf, Loader2, AlertCircle, BarChart3, Truck, Route, Fuel, Flame } from 'lucide-react';
 
 type FilterType = 'day' | 'month' | 'year';
 
@@ -91,19 +91,38 @@ export default function CarbonActivityPage() {
     fetchData(filter, value);
   };
 
+  const inputStyle = {
+    border: '1px solid var(--border)',
+    background: 'var(--bg-base)',
+    color: 'var(--text-primary)',
+    borderRadius: 'var(--radius-md)',
+  };
+
+  const summaryCards = data ? [
+    { label: 'Total Trips', value: data.summary.totalTrips, icon: Truck, gradient: 'linear-gradient(135deg, #EFF6FF, #DBEAFE)', iconColor: '#3B82F6' },
+    { label: 'Distance (km)', value: data.summary.totalDistanceKm, icon: Route, gradient: 'linear-gradient(135deg, #F5F3FF, #EDE9FE)', iconColor: '#8B5CF6' },
+    { label: 'Fuel Forecast (L)', value: data.summary.totalFuelForecastLiters, icon: Fuel, gradient: 'linear-gradient(135deg, #FFF7ED, #FFEDD5)', iconColor: '#F97316' },
+    { label: 'Emission (kgCO₂e)', value: data.summary.totalEmissionKgCo2e, icon: Leaf, gradient: 'linear-gradient(135deg, #ECFDF5, #D1FAE5)', iconColor: '#10B981' },
+  ] : [];
+
   return (
     <SidebarLayout>
-      <div className="min-h-screen bg-[#F5F5F7] p-6 space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">Carbon Activity</h1>
-          <p className="text-slate-500">Track emissions by filtering daily, monthly, or yearly data</p>
+      <div className="min-h-screen p-6 space-y-6" style={{ background: 'var(--bg-base)' }}>
+        {/* Header */}
+        <div className="animate-fade-in">
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Carbon Activity</h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-tertiary)' }}>
+            Track emissions by filtering daily, monthly, or yearly data
+          </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-100 bg-white p-4 grid md:grid-cols-4 gap-3 shadow-sm">
+        {/* Filter Bar */}
+        <div className="card p-4 grid md:grid-cols-4 gap-3 animate-fade-in">
           <select
             value={filter}
             onChange={(e) => onFilterChange(e.target.value as FilterType)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#10b981]/20"
+            className="px-3 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20"
+            style={inputStyle}
           >
             <option value="day">Daily</option>
             <option value="month">Monthly</option>
@@ -111,10 +130,12 @@ export default function CarbonActivityPage() {
           </select>
 
           {filter === 'day' && (
-            <input type="date" value={value} onChange={(e) => setValue(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#10b981]/20" />
+            <input type="date" value={value} onChange={(e) => setValue(e.target.value)}
+              className="px-3 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20" style={inputStyle} />
           )}
           {filter === 'month' && (
-            <input type="month" value={value} onChange={(e) => setValue(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#10b981]/20" />
+            <input type="month" value={value} onChange={(e) => setValue(e.target.value)}
+              className="px-3 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20" style={inputStyle} />
           )}
           {filter === 'year' && (
             <input
@@ -123,100 +144,128 @@ export default function CarbonActivityPage() {
               max={new Date().getUTCFullYear()}
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#10b981]/20"
+              className="px-3 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20"
+              style={inputStyle}
             />
           )}
-          <button onClick={onApply} className="rounded-lg bg-[#10b981] px-4 py-2 text-sm font-semibold text-white hover:bg-[#059669] transition-colors">
+          <button
+            onClick={onApply}
+            className="px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all"
+            style={{ background: 'var(--accent)', color: '#fff' }}
+          >
             Apply
           </button>
         </div>
 
+        {/* Error */}
         {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-4 flex items-start gap-3">
-            <AlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={20} />
+          <div
+            className="card p-4 flex items-start gap-3"
+            style={{ background: '#FEF2F2', borderColor: '#FECACA' }}
+          >
+            <AlertCircle size={18} style={{ color: '#DC2626', flexShrink: 0, marginTop: 2 }} />
             <div>
-              <p className="font-semibold text-red-900">Error loading data</p>
-              <p className="text-sm text-red-700">{error}</p>
+              <p className="font-semibold text-[13px]" style={{ color: '#991B1B' }}>Error loading data</p>
+              <p className="text-[12px]" style={{ color: '#DC2626' }}>{error}</p>
             </div>
           </div>
         )}
 
         {loading ? (
-          <div className="h-40 rounded-2xl border border-slate-100 bg-white flex items-center justify-center text-slate-500 shadow-sm">
-            <Loader2 className="w-5 h-5 animate-spin mr-2" /> Loading...
+          <div className="card flex items-center justify-center py-16">
+            <Loader2 className="w-5 h-5 animate-spin mr-2" style={{ color: 'var(--accent)' }} />
+            <span className="text-[13px]" style={{ color: 'var(--text-tertiary)' }}>Loading...</span>
           </div>
         ) : data ? (
           <>
-            <div className="grid md:grid-cols-4 gap-4">
-              <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
-                <p className="text-xs text-slate-500 font-medium">Total Trips</p>
-                <p className="text-2xl font-bold text-slate-900 mt-2">{data.summary.totalTrips}</p>
-              </div>
-              <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
-                <p className="text-xs text-slate-500 font-medium">Distance (km)</p>
-                <p className="text-2xl font-bold text-slate-900 mt-2">{data.summary.totalDistanceKm}</p>
-              </div>
-              <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
-                <p className="text-xs text-slate-500 font-medium">Fuel Forecast (L)</p>
-                <p className="text-2xl font-bold text-cyan-700 mt-2">{data.summary.totalFuelForecastLiters}</p>
-              </div>
-              <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
-                <p className="text-xs text-slate-500 font-medium">Emission (kgCO₂e)</p>
-                <p className="text-2xl font-bold text-[#10b981] mt-2">{data.summary.totalEmissionKgCo2e}</p>
-              </div>
+            {/* Summary Cards */}
+            <div className="grid md:grid-cols-4 gap-4 stagger">
+              {summaryCards.map((card) => {
+                const Icon = card.icon;
+                return (
+                  <div key={card.label} className="glass-card p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-[11px] font-semibold" style={{ color: 'var(--text-tertiary)' }}>{card.label}</p>
+                        <p className="text-2xl font-bold mt-1 tracking-tight" style={{ color: 'var(--text-primary)' }}>{card.value}</p>
+                      </div>
+                      <div
+                        className="w-9 h-9 rounded-lg flex items-center justify-center"
+                        style={{ background: card.gradient }}
+                      >
+                        <Icon size={16} style={{ color: card.iconColor }} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
-            <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-              <div className="flex items-center gap-2 text-slate-900 font-semibold mb-2">
-                <Leaf className="w-5 h-5 text-[#10b981]" /> Carbon Activity Graph
+            {/* Chart */}
+            <div className="card p-6 animate-fade-in">
+              <div className="flex items-center gap-2 mb-2">
+                <BarChart3 size={18} style={{ color: 'var(--accent)' }} />
+                <span className="text-[14px] font-bold" style={{ color: 'var(--text-primary)' }}>Carbon Activity Graph</span>
               </div>
-              <p className="text-xs text-slate-500 mb-4">
+              <p className="text-[11px] mb-5" style={{ color: 'var(--text-tertiary)' }}>
                 Fuel formula: Distance / {data.setting.fuelEfficiencyKmPerLiterDefault} km/L, Emission factor: {data.setting.emissionFactorKgCo2PerLiter} ({data.setting.standardReference})
               </p>
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {data.chart.length === 0 ? (
-                  <p className="text-sm text-slate-500">No data for selected period</p>
+                  <p className="text-[13px] py-4" style={{ color: 'var(--text-tertiary)' }}>No data for selected period</p>
                 ) : (
                   data.chart.map((item) => (
                     <div key={`${item.tripId}-${item.label}`} className="grid grid-cols-[140px_1fr_90px] items-center gap-3">
-                      <span className="text-xs text-slate-600 truncate">{item.label}</span>
-                      <div className="h-3 rounded-full bg-slate-100 overflow-hidden">
+                      <span className="text-[12px] truncate" style={{ color: 'var(--text-secondary)' }}>{item.label}</span>
+                      <div className="h-2.5 rounded-full overflow-hidden" style={{ background: 'var(--border-light)' }}>
                         <div
-                          className="h-full bg-[#10b981]"
-                          style={{ width: `${Math.max(5, (item.emissionKgCo2e / maxEmission) * 100)}%` }}
+                          className="h-full rounded-full transition-all duration-700"
+                          style={{
+                            width: `${Math.max(5, (item.emissionKgCo2e / maxEmission) * 100)}%`,
+                            background: 'linear-gradient(90deg, #10B981, #34D399)',
+                          }}
                         />
                       </div>
-                      <span className="text-xs font-medium text-slate-700 text-right">{item.emissionKgCo2e}</span>
+                      <span className="text-[12px] font-semibold text-right" style={{ color: 'var(--text-primary)' }}>{item.emissionKgCo2e}</span>
                     </div>
                   ))
                 )}
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-100 bg-white overflow-hidden shadow-sm">
-              <div className="px-6 py-4 border-b border-slate-100 font-semibold text-slate-900 flex justify-between items-center">
-                <span>Monthly Carbon Activity Ledger</span>
-                <span className="text-xs font-normal text-slate-500">Last {displayedLedgerCount} months</span>
+            {/* Ledger Table */}
+            <div className="card overflow-hidden animate-fade-in">
+              <div className="px-6 py-4 flex justify-between items-center" style={{ borderBottom: '1px solid var(--border-light)' }}>
+                <span className="text-[14px] font-bold" style={{ color: 'var(--text-primary)' }}>Monthly Carbon Activity Ledger</span>
+                <span className="text-[11px] font-medium px-2.5 py-1 rounded-full" style={{ background: 'var(--border-light)', color: 'var(--text-tertiary)' }}>
+                  Last {displayedLedgerCount} months
+                </span>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-50 text-slate-600">
-                    <tr>
-                      <th className="p-3 text-left font-medium">Month</th>
-                      <th className="p-3 text-left font-medium">Trips</th>
-                      <th className="p-3 text-left font-medium">Distance (km)</th>
-                      <th className="p-3 text-left font-medium">Fuel (L)</th>
-                      <th className="p-3 text-left font-medium">Emission (kgCO₂e)</th>
+                <table className="w-full text-[13px]">
+                  <thead>
+                    <tr style={{ background: 'var(--bg-base)' }}>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>Month</th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>Trips</th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>Distance (km)</th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>Fuel (L)</th>
+                      <th className="p-3 text-left text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-tertiary)' }}>Emission (kgCO₂e)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {data.monthlyLedger.slice(-displayedLedgerCount).reverse().map((row) => (
-                      <tr key={row.monthKey} className="border-t border-slate-100 hover:bg-slate-50 transition-colors">
-                        <td className="p-3 font-medium text-slate-900">{row.monthKey}</td>
-                        <td className="p-3 text-slate-700">{row.totalTrips}</td>
-                        <td className="p-3 text-slate-700">{row.totalDistanceKm}</td>
-                        <td className="p-3 text-slate-700">{row.totalFuelLitersForecast}</td>
-                        <td className="p-3 text-[#10b981] font-medium">{row.totalEmissionKgCo2e}</td>
+                      <tr
+                        key={row.monthKey}
+                        className="transition-colors"
+                        style={{ borderTop: '1px solid var(--border-light)' }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--border-light)'; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                      >
+                        <td className="p-3 font-semibold" style={{ color: 'var(--text-primary)' }}>{row.monthKey}</td>
+                        <td className="p-3" style={{ color: 'var(--text-secondary)' }}>{row.totalTrips}</td>
+                        <td className="p-3" style={{ color: 'var(--text-secondary)' }}>{row.totalDistanceKm}</td>
+                        <td className="p-3" style={{ color: 'var(--text-secondary)' }}>{row.totalFuelLitersForecast}</td>
+                        <td className="p-3 font-semibold" style={{ color: 'var(--accent)' }}>{row.totalEmissionKgCo2e}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -224,10 +273,11 @@ export default function CarbonActivityPage() {
               </div>
 
               {data.monthlyLedger.length > displayedLedgerCount && (
-                <div className="px-6 py-4 border-t border-slate-100 text-center">
+                <div className="px-6 py-4 text-center" style={{ borderTop: '1px solid var(--border-light)' }}>
                   <button
                     onClick={() => setDisplayedLedgerCount(prev => Math.min(prev + 12, data.monthlyLedger.length))}
-                    className="text-sm font-medium text-[#10b981] hover:text-[#059669] transition-colors"
+                    className="text-[13px] font-semibold transition-colors"
+                    style={{ color: 'var(--accent)' }}
                   >
                     Load More ({data.monthlyLedger.length - displayedLedgerCount} remaining)
                   </button>
