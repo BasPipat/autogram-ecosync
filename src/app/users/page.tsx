@@ -463,6 +463,21 @@ export default function ManageUsersPage() {
     }
   };
 
+  const handleDeleteDocument = async (docId: string, label: string) => {
+    if (!confirm(`คุณต้องการลบเอกสาร "${label}" ออกจากระบบถาวรใช่หรือไม่?`)) return;
+    try {
+      const res = await fetch(`/api/admin/line-driver-documents?id=${docId}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchLineDrivers();
+      } else {
+        const d = await res.json();
+        alert(d.error || 'ลบไม่สำเร็จ');
+      }
+    } catch {
+      alert('ระบบขัดข้อง');
+    }
+  };
+
   const handleLineDriverStatus = async (lineUserId: string, nextStatus: 'approved' | 'rejected') => {
     const sharedTruckId = lineDriverTruckLinks[lineUserId] || '';
     if (nextStatus === 'approved' && !sharedTruckId) {
@@ -807,19 +822,31 @@ export default function ManageUsersPage() {
 
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1.5 max-w-[360px]">
-                      {driver.documents.slice(0, 12).map(document => (
-                        <a
-                          key={document._id}
-                          href={document.mediaType === 'text' ? undefined : `/api/admin/line-driver-documents/${document._id}/content`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold"
-                          style={{ background: 'var(--border-light)', color: 'var(--text-secondary)' }}
-                        >
-                          {DRIVER_DOCUMENT_LABELS[document.documentType] || document.documentType}
-                          {document.mediaType !== 'text' && <ExternalLink size={11} />}
-                        </a>
-                      ))}
+                      {driver.documents.slice(0, 12).map(document => {
+                        const label = DRIVER_DOCUMENT_LABELS[document.documentType] || document.documentType;
+                        return (
+                          <div key={document._id} className="flex items-center">
+                            <a
+                              href={document.mediaType === 'text' ? undefined : `/api/admin/line-driver-documents/${document._id}/content`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-l-lg text-[11px] font-semibold border-r border-slate-200"
+                              style={{ background: 'var(--border-light)', color: 'var(--text-secondary)' }}
+                            >
+                              {label}
+                              {document.mediaType !== 'text' && <ExternalLink size={11} />}
+                            </a>
+                            <button
+                              onClick={() => handleDeleteDocument(document._id, label)}
+                              className="px-1.5 py-1 rounded-r-lg hover:bg-rose-100 hover:text-rose-600 transition-colors"
+                              style={{ background: 'var(--border-light)', color: 'var(--text-tertiary)' }}
+                              title="ลบเอกสาร"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   </td>
                   <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>
