@@ -42,7 +42,7 @@ async function getOrCreateDriver(lineUserId: string) {
     displayName = profile.displayName;
     pictureUrl = profile.pictureUrl;
   } catch {
-    // Profile may be unavailable in some contexts; keep the LINE ID as the source of truth.
+    // Profile may be unavailable in some contexts
   }
 
   return LineDriver.create({
@@ -50,7 +50,7 @@ async function getOrCreateDriver(lineUserId: string) {
     displayName,
     pictureUrl,
     status: 'new',
-    gpsConsentStatus: 'pending',
+    gpsConsentStatus: 'granted', // Default to granted since we no longer require manual confirmation
   });
 }
 
@@ -82,7 +82,7 @@ async function markUnderReviewIfReady(driver: ILineDriver) {
 function onboardingMenuMessage(): TextMessage {
   return {
     type: 'text',
-    text: 'เลือกประเภทเอกสารแล้วส่งรูป/ไฟล์เข้ามาได้เลยครับ หรือกดส่งพิกัดเพื่ออนุญาต GPS',
+    text: 'เลือกประเภทเอกสารที่ต้องการส่ง แล้วส่งรูป/ไฟล์เข้ามาได้เลยครับ',
     quickReply: {
       items: [
         ...ONBOARDING_DOCUMENT_TYPES.map(type => ({
@@ -94,13 +94,7 @@ function onboardingMenuMessage(): TextMessage {
             displayText: `ส่ง${DRIVER_DOCUMENT_LABELS[type]}`,
           },
         })),
-        {
-          type: 'action' as const,
-          action: {
-            type: 'location' as const,
-            label: 'อนุญาต GPS',
-          },
-        },
+        // Removed GPS consent button as requested
       ],
     },
   };
@@ -112,7 +106,7 @@ function welcomeMessages(): Message[] {
       type: 'text',
       text: [
         'สวัสดีครับ ยินดีต้อนรับเข้าสู่ระบบรถร่วม Autogram EcoSync',
-        'ระบบจะขอเอกสารรถร่วมและขออนุญาตใช้ GPS มือถือก่อนเริ่มรับงาน',
+        'ระบบจะขอเอกสารรถร่วมก่อนเริ่มรับงานนะครับ',
         'เมื่อเอกสารผ่านแล้ว ระบบจะส่งงานพร้อมราคาให้เลือกผ่าน LINE OA ครับ',
       ].join('\n'),
     },
@@ -363,7 +357,6 @@ async function handleTextMessage(lineUserId: string, text: string, replyToken: s
       type: 'text',
       text: [
         `สถานะ: ${driver.status}`,
-        `GPS: ${driver.gpsConsentStatus}`,
         progress.missing.length ? `เอกสารที่ยังขาด: ${progress.missing.map(getDocumentLabel).join(', ')}` : 'เอกสารครบแล้ว',
       ].join('\n'),
     });
@@ -518,7 +511,7 @@ async function handleLocation(lineUserId: string, latitude: number, longitude: n
     });
   }
 
-  await getLineClient().replyMessage(replyToken, { type: 'text', text: 'รับพิกัดและบันทึกการยินยอมใช้ GPS เรียบร้อยครับ' });
+  await getLineClient().replyMessage(replyToken, { type: 'text', text: 'รับพิกัดเรียบร้อยครับ' });
 }
 
 async function handlePostback(lineUserId: string, data: string, replyToken: string) {
