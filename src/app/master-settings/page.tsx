@@ -104,6 +104,19 @@ export default function MasterSettingsPage() {
     borderRadius: 'var(--radius-md)',
   };
 
+  if (loading) {
+    return (
+      <SidebarLayout>
+        <div className="min-h-screen p-6" style={{ background: 'var(--bg-base)' }}>
+          <div className="max-w-5xl mx-auto py-24 text-center rounded-3xl border border-slate-200 bg-white shadow-sm">
+            <Loader2 className="mx-auto mb-4 h-6 w-6 animate-spin text-slate-500" />
+            <p className="text-slate-600">กำลังโหลดข้อมูล...</p>
+          </div>
+        </div>
+      </SidebarLayout>
+    );
+  }
+
   return (
     <SidebarLayout>
       <div className="min-h-screen p-6" style={{ background: 'var(--bg-base)' }}>
@@ -127,13 +140,7 @@ export default function MasterSettingsPage() {
               </Link>
             </div>
 
-            {loading ? (
-              <div className="card flex items-center justify-center py-16">
-                <Loader2 className="w-5 h-5 animate-spin mr-2" style={{ color: 'var(--accent)' }} />
-                <span style={{ color: 'var(--text-tertiary)' }}>กำลังโหลดข้อมูล...</span>
-              </div>
-            ) : (
-              <div className="space-y-6">
+            <div className="space-y-6">
 
               {/* ════════════════════════════════════════════ */}
               {/* Section 1: EF per Ton-KM (TGO Standard) — PRIMARY */}
@@ -316,7 +323,6 @@ export default function MasterSettingsPage() {
                 </button>
               </div>
             </div>
-          )}
         </div>
       </div>
     </SidebarLayout>
