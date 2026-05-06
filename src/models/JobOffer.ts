@@ -5,7 +5,9 @@ export interface IJobOffer extends Document {
   tripId: mongoose.Types.ObjectId;
   tripCode: string;
   origin: string;
+  originMapUrl?: string;
   destination: string;
+  destinationMapUrl?: string;
   basePrice: number;
   driverPrice: number;
   discountPercent: number;
@@ -27,7 +29,9 @@ const JobOfferSchema = new Schema<IJobOffer>({
   tripId: { type: Schema.Types.ObjectId, ref: 'Trip', required: true, index: true },
   tripCode: { type: String, required: true, trim: true, index: true },
   origin: { type: String, required: true, trim: true },
+  originMapUrl: { type: String, trim: true },
   destination: { type: String, required: true, trim: true },
+  destinationMapUrl: { type: String, trim: true },
   basePrice: { type: Number, required: true, min: 0 },
   driverPrice: { type: Number, required: true, min: 0 },
   discountPercent: { type: Number, default: 1, min: 0 },

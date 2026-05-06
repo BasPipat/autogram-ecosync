@@ -199,11 +199,15 @@ function jobDetailMessage(offer: IJobOffer, truck: ISharedTruck): Message[] {
         `เส้นทาง: ${offer.origin} → ${offer.destination}`,
         `ราคา: ${currency(offer.driverPrice)}`,
         `ทะเบียนหัว: ${truck.headPlateNumber}`,
-        `ทะเบียนหาง: ${truck.tailPlateNumber}`,
+        `ทะเบียนหาง: ${truck.tailPlateNumber || '-'}`,
+        '',
+        offer.originMapUrl ? `📌 พิกัดต้นทาง: ${offer.originMapUrl}` : '',
+        offer.destinationMapUrl ? `📌 พิกัดปลายทาง: ${offer.destinationMapUrl}` : '',
         '',
         'เมื่อเริ่มเดินทาง พิมพ์ "เริ่มงาน"',
-        'เมื่อส่งของเสร็จ พิมพ์ "ส่งของเสร็จ" แล้วถ่ายรูปส่งงานครับ',
-      ].join('\n'),
+        'เมื่อส่งของเสร็จ พิมพ์ "ส่งของเสร็จ"',
+        'แล้วถ่ายรูปส่งงานครับ',
+      ].filter(Boolean).join('\n'),
     },
   ];
 }
