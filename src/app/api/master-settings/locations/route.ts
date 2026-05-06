@@ -13,6 +13,7 @@ function normalizeLocationRow(row: any) {
     contactPerson: String(row.contactPerson || row['contactPerson'] || row['ผู้ติดต่อ'] || row['Contact Person'] || '').trim(),
     phoneNumber: String(row.phoneNumber || row['phoneNumber'] || row['เบอร์โทรศัพท์'] || row['Phone Number'] || row['Phone'] || '').trim(),
     companyId: row.companyId ? String(row.companyId).trim() : undefined,
+    companyName: row.companyName ? String(row.companyName).trim() : undefined,
   };
 }
 
@@ -28,14 +29,20 @@ export async function GET(req: NextRequest) {
   if (!isInternalRole(token.role)) {
     if (token.companyId) {
       try {
-        query = { companyId: new mongoose.Types.ObjectId(token.companyId) };
+        // Find by ID OR Name for maximum compatibility
+        query = { 
+          $or: [
+            { companyId: new mongoose.Types.ObjectId(token.companyId) },
+            { companyName: token.companyName }
+          ]
+        };
       } catch {
         query = { companyName: token.companyName };
       }
     } else if (token.companyName) {
       query = { companyName: token.companyName };
     } else {
-      return NextResponse.json({ locations: [] }); // return empty gracefully
+      return NextResponse.json({ locations: [] }); 
     }
   }
 
@@ -61,23 +68,27 @@ export async function POST(req: NextRequest) {
   const prepared = records.map(normalizeLocationRow).map((row: any) => {
     const location: any = {
       name: row.name,
-      locationLink: row.locationLink,
+      locationLink: row.locationLink || '',
       contactPerson: row.contactPerson || '',
       phoneNumber: row.phoneNumber || '',
     };
 
     if (!isInternalRole(token.role)) {
       if (token.companyId) {
-        location.companyId = new mongoose.Types.ObjectId(token.companyId);
+        try { location.companyId = new mongoose.Types.ObjectId(token.companyId); } catch {}
       }
+      location.companyName = token.companyName;
     } else {
       if (row.companyId) {
         try {
           location.companyId = new mongoose.Types.ObjectId(row.companyId);
-        } catch {
-          throw new Error('companyId ไม่ถูกต้อง');
-        }
-      } else {
+        } catch {}
+      }
+      if (row.companyName) {
+        location.companyName = row.companyName;
+      }
+      
+      if (!location.companyId && !location.companyName) {
         return null;
       }
     }
@@ -86,24 +97,19 @@ export async function POST(req: NextRequest) {
   }).filter((item: any) => item !== null);
 
   if (prepared.length === 0 && isInternalRole(token.role)) {
-    return NextResponse.json({ error: 'สำหรับ System Owner ต้องระบุ companyId ในไฟล์ Excel หรือข้อมูล' }, { status: 400 });
-  }
-
-  const invalidRows = prepared
-    .map((item: any, index: number) => ({ item, index }))
-    .filter(({ item }: any) => !item?.name || !item?.locationLink);
-
-  if (invalidRows.length > 0) {
-    return NextResponse.json({ error: `พบข้อมูลไม่ครบถ้วนในแถวที่ ${invalidRows.map((r: any) => r.index + 2).join(', ')}` }, { status: 400 });
+    return NextResponse.json({ error: 'สำหรับ System Owner ต้องระบุบริษัท (ID หรือ Name)' }, { status: 400 });
   }
 
   try {
-    // Using upsert logic for each record to avoid duplicates during import
     for (const record of prepared) {
+      const filter: any = { name: record.name.trim() };
+      if (record.companyId) filter.companyId = record.companyId;
+      else filter.companyName = record.companyName;
+
       await Location.findOneAndUpdate(
-        { companyId: record.companyId, name: record.name.trim() },
-        { $setOnInsert: record },
-        { upsert: true }
+        filter,
+        { $set: record },
+        { upsert: true, new: true }
       );
     }
     

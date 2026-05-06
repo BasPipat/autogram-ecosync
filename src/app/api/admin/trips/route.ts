@@ -50,48 +50,56 @@ export async function POST(req: NextRequest) {
       data.tripId = `TRP-${Math.floor(100000 + Math.random() * 900000)}`;
     }
 
-    // Ensure companyId is set for the trip and for auto-save logic
-    if (!data.companyId && token.companyId) {
+    // Populate tenant info
+    if (token.companyId) {
       try {
         data.companyId = new mongoose.Types.ObjectId(token.companyId);
-      } catch (e) {
-        console.error("Invalid companyId in token", e);
-      }
-    } else if (data.companyId && typeof data.companyId === 'string') {
-      data.companyId = new mongoose.Types.ObjectId(data.companyId);
+      } catch (e) {}
+    }
+    if (token.companyName) {
+      data.companyName = token.companyName;
     }
 
     const newTrip = await Trip.create(data);
 
     // Auto-save Origin & Destination to Location Master
-    if (data.companyId) {
-      const saveLocation = async (name: string, link: string, contact: string, phone: string) => {
-        if (!name) return;
-        try {
-          await Location.findOneAndUpdate(
-            { companyId: data.companyId, name: name.trim() },
-            { 
-              $setOnInsert: { 
-                companyId: data.companyId, 
-                name: name.trim(), 
-                locationLink: link, 
-                contactPerson: contact || '', 
-                phoneNumber: phone || '' 
-              } 
-            },
-            { upsert: true }
-          );
-        } catch (e) {
-          console.error("Failed to auto-save location", e);
+    const saveLocation = async (name: string, link: string, contact: string, phone: string) => {
+      if (!name) return;
+      try {
+        // Use a more robust filter that works with ID or Name
+        const filter: any = { name: name.trim() };
+        if (data.companyId) {
+          filter.companyId = data.companyId;
+        } else if (data.companyName) {
+          filter.companyName = data.companyName;
+        } else {
+          return; // Can't save without tenant info
         }
-      };
 
-      await saveLocation(data.origin, data.originMapUrl, data.originContactName, data.originContactPhone);
-      await saveLocation(data.destination, data.destinationMapUrl, data.destinationContactName, data.destinationContactPhone);
-    }
+        await Location.findOneAndUpdate(
+          filter,
+          { 
+            $setOnInsert: { 
+              ...filter,
+              locationLink: link || '', 
+              contactPerson: contact || '', 
+              phoneNumber: phone || '',
+              companyName: data.companyName || token.companyName
+            } 
+          },
+          { upsert: true }
+        );
+      } catch (e) {
+        console.error("Failed to auto-save location", e);
+      }
+    };
+
+    await saveLocation(data.origin, data.originMapUrl, data.originContactName, data.originContactPhone);
+    await saveLocation(data.destination, data.destinationMapUrl, data.destinationContactName, data.destinationContactPhone);
 
     return NextResponse.json({ message: 'สร้างงานสำเร็จ!', trip: newTrip }, { status: 201 });
   } catch (error: unknown) {
+    console.error("Trip creation error:", error);
     const err = error as { code?: number };
     if (err.code === 11000) {
       return NextResponse.json({ error: 'รหัสงานนี้มีซ้ำในระบบแล้ว กรุณาเปลี่ยนรหัสใหม่' }, { status: 400 });
