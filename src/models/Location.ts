@@ -12,7 +12,7 @@ export interface ILocation extends Document {
 
 const LocationSchema = new Schema<ILocation>({
   name: { type: String, required: true, trim: true, index: true },
-  locationLink: { type: String, required: true, trim: true },
+  locationLink: { type: String, trim: true },
   contactPerson: { type: String, trim: true },
   phoneNumber: { type: String, trim: true },
   companyId: { type: Schema.Types.ObjectId, ref: 'Company', required: true, index: true },

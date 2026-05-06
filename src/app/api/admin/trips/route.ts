@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Trip } from '@/models/Trip';
+import { Location } from '@/models/Location';
 import mongoose from 'mongoose';
 import { getSessionToken, isInternalRole } from '@/lib/access';
 
@@ -64,35 +65,29 @@ export async function POST(req: NextRequest) {
 
     // Auto-save Origin & Destination to Location Master
     if (data.companyId) {
-      try {
-        const { Location } = await import('@/models/Location');
-        
-        const saveLocation = async (name: string, link: string, contact: string, phone: string) => {
-          if (!name || !link) return;
-          try {
-            await Location.findOneAndUpdate(
-              { companyId: data.companyId, name: name.trim() },
-              { 
-                $setOnInsert: { 
-                  companyId: data.companyId, 
-                  name: name.trim(), 
-                  locationLink: link, 
-                  contactPerson: contact || '', 
-                  phoneNumber: phone || '' 
-                } 
-              },
-              { upsert: true }
-            );
-          } catch (e) {
-            console.error("Failed to auto-save location", e);
-          }
-        };
+      const saveLocation = async (name: string, link: string, contact: string, phone: string) => {
+        if (!name) return;
+        try {
+          await Location.findOneAndUpdate(
+            { companyId: data.companyId, name: name.trim() },
+            { 
+              $setOnInsert: { 
+                companyId: data.companyId, 
+                name: name.trim(), 
+                locationLink: link, 
+                contactPerson: contact || '', 
+                phoneNumber: phone || '' 
+              } 
+            },
+            { upsert: true }
+          );
+        } catch (e) {
+          console.error("Failed to auto-save location", e);
+        }
+      };
 
-        await saveLocation(data.origin, data.originMapUrl, data.originContactName, data.originContactPhone);
-        await saveLocation(data.destination, data.destinationMapUrl, data.destinationContactName, data.destinationContactPhone);
-      } catch (e) {
-        console.error("Error loading Location model for auto-save", e);
-      }
+      await saveLocation(data.origin, data.originMapUrl, data.originContactName, data.originContactPhone);
+      await saveLocation(data.destination, data.destinationMapUrl, data.destinationContactName, data.destinationContactPhone);
     }
 
     return NextResponse.json({ message: 'สร้างงานสำเร็จ!', trip: newTrip }, { status: 201 });
