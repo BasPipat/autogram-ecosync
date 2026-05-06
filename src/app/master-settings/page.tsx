@@ -120,17 +120,20 @@ export default function MasterSettingsPage() {
                   Emission Factor, Fuel Efficiency & TGO Compliance Configuration
                 </p>
               </div>
-                <div className="flex items-center gap-2">
-                  <Link href="/master-settings/location-master" className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700">
-                    <MapPin size={16} /> Location Master
-                  </Link>
-                </div>
-            <div className="card flex items-center justify-center py-16">
-              <Loader2 className="w-5 h-5 animate-spin mr-2" style={{ color: 'var(--accent)' }} />
-              <span style={{ color: 'var(--text-tertiary)' }}>กำลังโหลดข้อมูล...</span>
             </div>
-          ) : (
-            <div className="space-y-6">
+            <div className="flex items-center gap-2 mb-6">
+              <Link href="/master-settings/location-master" className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700">
+                <MapPin size={16} /> Location Master
+              </Link>
+            </div>
+
+            {loading ? (
+              <div className="card flex items-center justify-center py-16">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" style={{ color: 'var(--accent)' }} />
+                <span style={{ color: 'var(--text-tertiary)' }}>กำลังโหลดข้อมูล...</span>
+              </div>
+            ) : (
+              <div className="space-y-6">
 
               {/* ════════════════════════════════════════════ */}
               {/* Section 1: EF per Ton-KM (TGO Standard) — PRIMARY */}
