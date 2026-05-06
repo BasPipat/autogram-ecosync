@@ -122,14 +122,14 @@ export default function ManageTripsPage() {
       if (type === 'origin') {
         setForm(prev => ({
           ...prev,
-          originMapUrl: locationMatch.locationLink || prev.originMapUrl,
+          originMapUrl: ensureHttps(locationMatch.locationLink) || prev.originMapUrl,
           originContactName: locationMatch.contactPerson || prev.originContactName,
           originContactPhone: locationMatch.phoneNumber || prev.originContactPhone,
         }));
       } else {
         setForm(prev => ({
           ...prev,
-          destinationMapUrl: locationMatch.locationLink || prev.destinationMapUrl,
+          destinationMapUrl: ensureHttps(locationMatch.locationLink) || prev.destinationMapUrl,
           destinationContactName: locationMatch.contactPerson || prev.destinationContactName,
           destinationContactPhone: locationMatch.phoneNumber || prev.destinationContactPhone,
         }));
@@ -257,6 +257,14 @@ export default function ManageTripsPage() {
     }
   };
 
+  const ensureHttps = (url: string) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    if (url.startsWith('www.')) return `https://${url}`;
+    if (url.startsWith('google.com') || url.startsWith('maps.google.com')) return `https://www.${url}`;
+    return url;
+  };
+
   const confirmLocation = () => {
     if (!markerPos) return;
     const mapUrl = `https://www.google.com/maps?q=${markerPos.lat},${markerPos.lng}`;
@@ -281,13 +289,13 @@ export default function ManageTripsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tripId: form.tripId,
-          origin: form.origin, originMapUrl: form.originMapUrl,
+          origin: form.origin, originMapUrl: ensureHttps(form.originMapUrl),
           scheduledOriginDate: form.scheduledOriginDate,
           scheduledOriginTime: form.scheduledOriginTime,
           originContactName: form.originContactName,
           originContactPhone: form.originContactPhone,
 
-          destination: form.destination, destinationMapUrl: form.destinationMapUrl,
+          destination: form.destination, destinationMapUrl: ensureHttps(form.destinationMapUrl),
           scheduledDestinationDate: form.scheduledDestinationDate,
           scheduledDestinationTime: form.scheduledDestinationTime,
           destinationContactName: form.destinationContactName,
