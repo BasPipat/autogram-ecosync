@@ -24,9 +24,14 @@ export async function GET(req: NextRequest) {
 
   await connectToDatabase();
 
-  const query = isInternalRole(token.role)
-    ? {}
-    : { companyId: new ObjectId(token.companyId) };
+  let query = {};
+  if (!isInternalRole(token.role)) {
+    try {
+      query = { companyId: new ObjectId(token.companyId) };
+    } catch {
+      return NextResponse.json({ locations: [] }); // return empty gracefully if companyId invalid
+    }
+  }
 
   const locations = await Location.find(query).sort({ name: 1 }).lean();
   return NextResponse.json({ locations });

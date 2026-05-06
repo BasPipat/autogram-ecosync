@@ -60,6 +60,7 @@ export interface ITrip extends Document {
   status: string;
   gpsSession?: IGpsSession;
   companyName?: string;
+  customerName?: string;
   podImageUrl?: string;
 }
 
@@ -123,6 +124,7 @@ const TripSchema = new Schema({
   status: { type: String, enum: ['No POD', 'Pending', 'Verified'], default: 'No POD' },
   gpsSession: { type: GpsSessionSchema, default: () => ({ source: 'line_oa', status: 'inactive', isTracking: false }) },
   companyName: { type: String }, 
+  customerName: { type: String },
   podImageUrl: { type: String }, 
 }, { timestamps: true });
 

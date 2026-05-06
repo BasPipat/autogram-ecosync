@@ -14,7 +14,14 @@ export async function GET(req: NextRequest) {
     }
 
     await connectToDatabase();
-    const query = isInternalRole(token.role) ? {} : { companyId: new ObjectId(token.companyId) };
+    let query = {};
+    if (!isInternalRole(token.role)) {
+      try {
+        query = { companyId: new ObjectId(token.companyId) };
+      } catch {
+        return NextResponse.json([]); // return empty gracefully
+      }
+    }
     const trips = await Trip.find(query).sort({ createdAt: -1 });
     return NextResponse.json(trips);
   } catch {
@@ -36,7 +43,11 @@ export async function POST(req: NextRequest) {
       data.tripId = `TRP-${Math.floor(100000 + Math.random() * 900000)}`;
     }
     if (!isInternalRole(token.role)) {
-      data.companyId = new ObjectId(token.companyId);
+      try {
+        data.companyId = new ObjectId(token.companyId);
+      } catch {
+        return NextResponse.json({ error: 'Company ID ไม่ถูกต้อง' }, { status: 400 });
+      }
     }
 
     const newTrip = await Trip.create(data);

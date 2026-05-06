@@ -20,6 +20,7 @@ export default function ManageTripsPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [historicalLocations, setHistoricalLocations] = useState<string[]>([]);
   const [masterLocations, setMasterLocations] = useState<any[]>([]);
+  const [masterCustomers, setMasterCustomers] = useState<any[]>([]);
 
   const getTomorrowString = () => {
     const tomorrow = new Date();
@@ -33,7 +34,7 @@ export default function ManageTripsPage() {
     scheduledOriginDate: getTomorrowString(), scheduledOriginTime: '', originContactName: '', originContactPhone: '',
     destination: '', destinationMapUrl: '',
     scheduledDestinationDate: getTomorrowString(), scheduledDestinationTime: '', destinationContactName: '', destinationContactPhone: '',
-    distance: '', weight: '', carbon: '', companyName: '',
+    distance: '', weight: '', carbon: '', companyName: '', customerName: '',
     vehicleCount: 1,
   };
 
@@ -64,19 +65,17 @@ export default function ManageTripsPage() {
       const masterItems = Array.isArray(locationData.locations) ? locationData.locations : [];
       setMasterLocations(masterItems);
 
-      const isOwner = (r?: string) => r === 'system_owner' || r === 'owner';
-      let filteredTrips = allTrips;
+      const customerRes = await fetch('/api/master-settings/customers', { cache: 'no-store' });
+      const customerData = await customerRes.json();
+      setMasterCustomers(Array.isArray(customerData.customers) ? customerData.customers : []);
 
-      if (!isOwner(me?.role)) {
-        filteredTrips = allTrips.filter((t: any) => t.companyName === me?.companyName);
-      }
-      setTrips(filteredTrips);
+      setTrips(allTrips);
 
       // Extract unique locations for Auto-fill
       const uniqueLocations = Array.from(new Set([
         ...masterItems.map((item: any) => item.name),
-        ...filteredTrips.map((t: any) => t.origin),
-        ...filteredTrips.map((t: any) => t.destination)
+        ...allTrips.map((t: any) => t.origin),
+        ...allTrips.map((t: any) => t.destination)
       ])).filter(Boolean) as string[];
       setHistoricalLocations(uniqueLocations);
 
@@ -290,13 +289,16 @@ export default function ManageTripsPage() {
 
           vehicleCount: form.vehicleCount,
           distance: Number(form.distance), weight: Number(form.weight), carbon: Number(form.carbon),
-          companyName: currentUser?.role === 'owner' ? form.companyName : currentUser?.companyName
+          companyName: currentUser?.role === 'owner' ? form.companyName : currentUser?.companyName,
+          customerName: form.customerName
         }),
       });
 
       if (res.ok) {
+        const data = await res.json();
         alert('เพิ่มงานขนส่งเรียบร้อยแล้ว!');
         setForm(initialFormState);
+        setTrips(prev => [data.trip, ...prev]);
         fetchInitialData();
       } else {
         const data = await res.json();
@@ -440,12 +442,21 @@ export default function ManageTripsPage() {
                     </div>
                   </div>
 
-                  {(currentUser?.role === 'system_owner' || currentUser?.role === 'owner') && (
-                    <div className="mt-4">
-                      <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">ชื่อบริษัท</label>
-                      <input type="text" required placeholder="ระบุบริษัท" className="w-full md:w-1/4 p-2.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.companyName} onChange={e => setForm({ ...form, companyName: e.target.value })} />
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">ชื่อบริษัทลูกค้า (Customer)</label>
+                      <input list="customers-list" type="text" placeholder="เลือกลูกค้า หรือระบุชื่อใหม่" className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.customerName} onChange={e => setForm({ ...form, customerName: e.target.value })} />
+                      <datalist id="customers-list">
+                        {masterCustomers.map(c => <option key={c._id} value={c.companyName} />)}
+                      </datalist>
                     </div>
-                  )}
+                    {(currentUser?.role === 'system_owner' || currentUser?.role === 'owner') && (
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">ชื่อบริษัทขนส่ง (Provider)</label>
+                        <input type="text" required placeholder="ระบุบริษัท" className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.companyName} onChange={e => setForm({ ...form, companyName: e.target.value })} />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex justify-end pt-2">
@@ -467,10 +478,11 @@ export default function ManageTripsPage() {
                 <thead>
                   <tr className="bg-white text-slate-400 text-[10px] uppercase tracking-wider border-b border-slate-100">
                     <th className="p-4 font-bold">รหัสงาน</th>
-                    <th className="p-4 font-bold">บริษัท</th>
+                    <th className="p-4 font-bold">ลูกค้า / บริษัท</th>
                     <th className="p-4 font-bold w-1/3">เส้นทาง</th>
                     <th className="p-4 font-bold text-center">รถ / ระยะ / น้ำหนัก</th>
                     <th className="p-4 font-bold">คาร์บอน</th>
+                    <th className="p-4 font-bold">ทะเบียนรถ/คนขับ</th>
                     <th className="p-4 font-bold">สถานะ</th>
                   </tr>
                 </thead>
@@ -483,16 +495,20 @@ export default function ManageTripsPage() {
                         <td className="p-4"><div className="h-8 bg-slate-200 animate-pulse rounded w-full"></div></td>
                         <td className="p-4"><div className="h-8 bg-slate-200 animate-pulse rounded w-20 mx-auto"></div></td>
                         <td className="p-4"><div className="h-4 bg-slate-200 animate-pulse rounded w-16"></div></td>
+                        <td className="p-4"><div className="h-4 bg-slate-200 animate-pulse rounded w-20"></div></td>
                         <td className="p-4"><div className="h-6 bg-slate-200 animate-pulse rounded-full w-16"></div></td>
                       </tr>
                     ))
                   ) : trips.length === 0 ? (
-                    <tr><td colSpan={6} className="p-12 text-center text-slate-400 italic font-medium">ยังไม่พบข้อมูลงานในระบบ</td></tr>
+                    <tr><td colSpan={7} className="p-12 text-center text-slate-400 italic font-medium">ยังไม่พบข้อมูลงานในระบบ</td></tr>
                   ) : (
                     trips.map(trip => (
                       <tr key={trip._id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                         <td className="p-4 font-mono font-bold text-blue-600">{trip.tripId}</td>
-                        <td className="p-4 text-slate-500 font-medium text-xs">{trip.companyName || '-'}</td>
+                        <td className="p-4 text-slate-500 font-medium text-xs">
+                           <div>{trip.customerName ? <span className="font-bold text-emerald-700">{trip.customerName}</span> : '-'}</div>
+                           {(currentUser?.role === 'system_owner' || currentUser?.role === 'owner') && <div className="text-[10px] text-slate-400 mt-1">{trip.companyName}</div>}
+                        </td>
 
                         <td className="p-4">
                           <div className="flex flex-col gap-1.5">
@@ -521,6 +537,16 @@ export default function ManageTripsPage() {
                           <div className="flex items-center gap-1 text-green-600 font-bold">
                             <Leaf size={14} /> {trip.carbon?.toLocaleString()} <span className="text-[10px] text-slate-400 font-normal">kgCO2e</span>
                           </div>
+                        </td>
+                        <td className="p-4">
+                          {(!trip.licensePlate && !trip.driverName) ? (
+                             <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-md text-[10px] font-bold">รอพนักงานรับงาน</span>
+                          ) : (
+                             <div className="flex flex-col gap-1 text-[11px] font-bold text-slate-700">
+                               <span>{trip.licensePlate || '-'}</span>
+                               <span className="text-slate-500 font-medium">{trip.driverName || '-'}</span>
+                             </div>
+                          )}
                         </td>
                         <td className="p-4">
                           <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${trip.status === 'Verified' ? 'bg-green-50 text-green-700 border-green-100' : trip.status === 'Pending' ? 'bg-orange-50 text-orange-700 border-orange-100' : 'bg-slate-50 text-slate-500 border-slate-100'}`}>
