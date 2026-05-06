@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Location } from '@/models/Location';
 import { getSessionToken, isInternalRole } from '@/lib/access';
-import { ObjectId } from 'mongodb';
+import mongoose from 'mongoose';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   if (!isInternalRole(token.role)) {
     if (token.companyId) {
       try {
-        query = { companyId: new ObjectId(token.companyId) };
+        query = { companyId: new mongoose.Types.ObjectId(token.companyId) };
       } catch {
         query = { companyName: token.companyName };
       }
@@ -67,11 +67,13 @@ export async function POST(req: NextRequest) {
     };
 
     if (!isInternalRole(token.role)) {
-      location.companyId = new ObjectId(token.companyId);
+      if (token.companyId) {
+        location.companyId = new mongoose.Types.ObjectId(token.companyId);
+      }
     } else {
       if (row.companyId) {
         try {
-          location.companyId = new ObjectId(row.companyId);
+          location.companyId = new mongoose.Types.ObjectId(row.companyId);
         } catch {
           throw new Error('companyId ไม่ถูกต้อง');
         }
@@ -81,9 +83,9 @@ export async function POST(req: NextRequest) {
     }
 
     return location;
-  });
+  }).filter((item: any) => item !== null);
 
-  if (prepared.some((item: any) => item === null)) {
+  if (prepared.length === 0 && isInternalRole(token.role)) {
     return NextResponse.json({ error: 'สำหรับ System Owner ต้องระบุ companyId ในไฟล์ Excel หรือข้อมูล' }, { status: 400 });
   }
 
@@ -96,8 +98,16 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await Location.insertMany(prepared as any, { ordered: false });
-    return NextResponse.json({ message: 'นำเข้าข้อมูลสถานที่สำเร็จ', count: result.length, locations: result });
+    // Using upsert logic for each record to avoid duplicates during import
+    for (const record of prepared) {
+      await Location.findOneAndUpdate(
+        { companyId: record.companyId, name: record.name.trim() },
+        { $setOnInsert: record },
+        { upsert: true }
+      );
+    }
+    
+    return NextResponse.json({ message: 'บันทึกข้อมูลสถานที่สำเร็จ', count: prepared.length });
   } catch (error: unknown) {
     console.error('Location import error', error);
     return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการบันทึกข้อมูลสถานที่' }, { status: 500 });
