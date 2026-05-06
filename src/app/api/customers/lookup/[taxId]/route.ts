@@ -3,14 +3,14 @@ import { getSessionToken } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(req: NextRequest, { params }: { params: { taxId: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ taxId: string }> }) {
   try {
     const token = await getSessionToken(req);
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { taxId } = params;
+    const { taxId } = await params;
 
     if (!taxId || taxId.length !== 13) {
       return NextResponse.json({ error: 'Tax ID ต้องมี 13 หลัก' }, { status: 400 });
