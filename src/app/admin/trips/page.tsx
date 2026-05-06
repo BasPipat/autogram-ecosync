@@ -9,8 +9,8 @@ import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 const mapContainerStyle = { width: '100%', height: '400px', borderRadius: 'var(--radius-lg)' };
-const defaultCenter = { lat: 13.7563, lng: 100.5018 }; 
-const libraries: ("places")[] = ["places"]; 
+const defaultCenter = { lat: 13.7563, lng: 100.5018 };
+const libraries: ("places")[] = ["places"];
 
 export default function ManageTripsPage() {
   const [trips, setTrips] = useState<any[]>([]);
@@ -19,6 +19,7 @@ export default function ManageTripsPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [historicalLocations, setHistoricalLocations] = useState<string[]>([]);
+  const [masterLocations, setMasterLocations] = useState<any[]>([]);
 
   const getTomorrowString = () => {
     const tomorrow = new Date();
@@ -27,10 +28,10 @@ export default function ManageTripsPage() {
   };
 
   const initialFormState = {
-    tripId: '', 
-    origin: '', originMapUrl: '', 
+    tripId: '',
+    origin: '', originMapUrl: '',
     scheduledOriginDate: getTomorrowString(), scheduledOriginTime: '', originContactName: '', originContactPhone: '',
-    destination: '', destinationMapUrl: '', 
+    destination: '', destinationMapUrl: '',
     scheduledDestinationDate: getTomorrowString(), scheduledDestinationTime: '', destinationContactName: '', destinationContactPhone: '',
     distance: '', weight: '', carbon: '', companyName: '',
     vehicleCount: 1,
@@ -39,10 +40,10 @@ export default function ManageTripsPage() {
   const [form, setForm] = useState(initialFormState);
 
   const [mapModal, setMapModal] = useState({ isOpen: false, target: '' });
-  const [markerPos, setMarkerPos] = useState<{lat: number, lng: number} | null>(null);
+  const [markerPos, setMarkerPos] = useState<{ lat: number, lng: number } | null>(null);
   const [mapCenter, setMapCenter] = useState(defaultCenter);
   const [selectedPlaceName, setSelectedPlaceName] = useState<string>('');
-  
+
   const autocompleteRef = useRef<any>(null);
 
   const fetchInitialData = async (currentSession?: any) => {
@@ -58,10 +59,14 @@ export default function ManageTripsPage() {
 
       const tripRes = await fetch('/api/admin/trips', { cache: 'no-store' });
       const allTrips = await tripRes.json();
-      
+      const locationRes = await fetch('/api/master-settings/locations', { cache: 'no-store' });
+      const locationData = await locationRes.json();
+      const masterItems = Array.isArray(locationData.locations) ? locationData.locations : [];
+      setMasterLocations(masterItems);
+
       const isOwner = (r?: string) => r === 'system_owner' || r === 'owner';
       let filteredTrips = allTrips;
-      
+
       if (!isOwner(me?.role)) {
         filteredTrips = allTrips.filter((t: any) => t.companyName === me?.companyName);
       }
@@ -69,15 +74,16 @@ export default function ManageTripsPage() {
 
       // Extract unique locations for Auto-fill
       const uniqueLocations = Array.from(new Set([
-        ...filteredTrips.map((t:any) => t.origin), 
-        ...filteredTrips.map((t:any) => t.destination)
+        ...masterItems.map((item: any) => item.name),
+        ...filteredTrips.map((t: any) => t.origin),
+        ...filteredTrips.map((t: any) => t.destination)
       ])).filter(Boolean) as string[];
       setHistoricalLocations(uniqueLocations);
 
     } catch (e) {
       console.error('Error fetching trips:', e);
-    } finally { 
-      setLoading(false); 
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -108,9 +114,29 @@ export default function ManageTripsPage() {
 
   const handleLocationChange = (type: 'origin' | 'destination', value: string) => {
     setForm(prev => ({ ...prev, [type]: value }));
-    
+
     // Auto-fill logic
-    const match = trips.find(t => 
+    const locationMatch = masterLocations.find((loc: any) => loc.name === value);
+    if (locationMatch) {
+      if (type === 'origin') {
+        setForm(prev => ({
+          ...prev,
+          originMapUrl: locationMatch.locationLink || prev.originMapUrl,
+          originContactName: locationMatch.contactPerson || prev.originContactName,
+          originContactPhone: locationMatch.phoneNumber || prev.originContactPhone,
+        }));
+      } else {
+        setForm(prev => ({
+          ...prev,
+          destinationMapUrl: locationMatch.locationLink || prev.destinationMapUrl,
+          destinationContactName: locationMatch.contactPerson || prev.destinationContactName,
+          destinationContactPhone: locationMatch.phoneNumber || prev.destinationContactPhone,
+        }));
+      }
+      return;
+    }
+
+    const match = trips.find(t =>
       type === 'origin' ? t.origin === value : t.destination === value
     );
 
@@ -159,16 +185,16 @@ export default function ManageTripsPage() {
 
   const openMapPicker = (target: 'origin' | 'destination') => {
     setMapModal({ isOpen: true, target });
-    setMarkerPos(null); 
-    setMapCenter(defaultCenter); 
-    setSelectedPlaceName(''); 
+    setMarkerPos(null);
+    setMapCenter(defaultCenter);
+    setSelectedPlaceName('');
   };
 
   const handleMapClick = (e: any) => {
     const lat = e.latLng.lat();
     const lng = e.latLng.lng();
     setMarkerPos({ lat, lng });
-    setSelectedPlaceName('กำลังดึงชื่อสถานที่...'); 
+    setSelectedPlaceName('กำลังดึงชื่อสถานที่...');
 
     if ((window as any).google) {
       const geocoder = new (window as any).google.maps.Geocoder();
@@ -220,9 +246,9 @@ export default function ManageTripsPage() {
 
         let finalString = placeName;
         if (locationDetails.length > 0 && !placeName.includes(province)) {
-           finalString = `${placeName} (${locationDetails.join(', ')})`;
+          finalString = `${placeName} (${locationDetails.join(', ')})`;
         } else if (place.formatted_address && !placeName) {
-           finalString = place.formatted_address;
+          finalString = place.formatted_address;
         }
 
         setSelectedPlaceName(finalString);
@@ -233,7 +259,7 @@ export default function ManageTripsPage() {
   const confirmLocation = () => {
     if (!markerPos) return;
     const mapUrl = `http://googleusercontent.com/maps.google.com/?q=${markerPos.lat},${markerPos.lng}`;
-    
+
     if (mapModal.target === 'origin') {
       setForm({ ...form, originMapUrl: mapUrl, origin: selectedPlaceName ? selectedPlaceName : form.origin });
     } else {
@@ -249,13 +275,13 @@ export default function ManageTripsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          tripId: form.tripId, 
+          tripId: form.tripId,
           origin: form.origin, originMapUrl: form.originMapUrl,
           scheduledOriginDate: form.scheduledOriginDate,
           scheduledOriginTime: form.scheduledOriginTime,
           originContactName: form.originContactName,
           originContactPhone: form.originContactPhone,
-          
+
           destination: form.destination, destinationMapUrl: form.destinationMapUrl,
           scheduledDestinationDate: form.scheduledDestinationDate,
           scheduledDestinationTime: form.scheduledDestinationTime,
@@ -270,8 +296,8 @@ export default function ManageTripsPage() {
 
       if (res.ok) {
         alert('เพิ่มงานขนส่งเรียบร้อยแล้ว!');
-        setForm(initialFormState); 
-        fetchInitialData(); 
+        setForm(initialFormState);
+        fetchInitialData();
       } else {
         const data = await res.json();
         alert(data.error || 'เกิดข้อผิดพลาด');
@@ -302,14 +328,14 @@ export default function ManageTripsPage() {
               <h2 className="text-md font-bold text-slate-700 flex items-center gap-2 mb-5">
                 <PlusCircle size={18} className="text-blue-500" /> รายละเอียดงานใหม่
               </h2>
-              
+
               <form onSubmit={handleCreateTrip} className="space-y-6">
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Origin */}
                   <div className="p-5 bg-slate-50 border border-slate-100 rounded-xl space-y-4">
                     <h4 className="font-bold text-sm text-slate-700 flex items-center gap-2">
-                      <MapPin size={16} className="text-orange-500"/> ข้อมูลต้นทาง (Origin)
+                      <MapPin size={16} className="text-orange-500" /> ข้อมูลต้นทาง (Origin)
                     </h4>
                     <div>
                       <label className="block text-[11px] font-bold text-slate-400 uppercase mb-1">ชื่อสถานที่จุดรับสินค้า</label>
@@ -318,21 +344,21 @@ export default function ManageTripsPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">วันที่เข้ารับ</label>
-                        <input type="date" required className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500" value={form.scheduledOriginDate} onChange={e => setForm({...form, scheduledOriginDate: e.target.value})} />
+                        <input type="date" required className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500" value={form.scheduledOriginDate} onChange={e => setForm({ ...form, scheduledOriginDate: e.target.value })} />
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">เวลา</label>
-                        <input type="time" className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500" value={form.scheduledOriginTime} onChange={e => setForm({...form, scheduledOriginTime: e.target.value})} />
+                        <input type="time" className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500" value={form.scheduledOriginTime} onChange={e => setForm({ ...form, scheduledOriginTime: e.target.value })} />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">ชื่อผู้ติดต่อ</label>
-                        <input type="text" placeholder="ชื่อผู้รับ" className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500" value={form.originContactName} onChange={e => setForm({...form, originContactName: e.target.value})} />
+                        <input type="text" placeholder="ชื่อผู้รับ" className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500" value={form.originContactName} onChange={e => setForm({ ...form, originContactName: e.target.value })} />
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">เบอร์โทรศัพท์</label>
-                        <input type="tel" placeholder="08x-xxx-xxxx" className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500" value={form.originContactPhone} onChange={e => setForm({...form, originContactPhone: e.target.value})} />
+                        <input type="tel" placeholder="08x-xxx-xxxx" className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-blue-500" value={form.originContactPhone} onChange={e => setForm({ ...form, originContactPhone: e.target.value })} />
                       </div>
                     </div>
                     <div>
@@ -349,7 +375,7 @@ export default function ManageTripsPage() {
                   {/* Destination */}
                   <div className="p-5 bg-slate-50 border border-slate-100 rounded-xl space-y-4">
                     <h4 className="font-bold text-sm text-slate-700 flex items-center gap-2">
-                      <MapPin size={16} className="text-green-500"/> ข้อมูลปลายทาง (Destination)
+                      <MapPin size={16} className="text-green-500" /> ข้อมูลปลายทาง (Destination)
                     </h4>
                     <div>
                       <label className="block text-[11px] font-bold text-slate-400 uppercase mb-1">ชื่อสถานที่จุดส่งสินค้า</label>
@@ -358,21 +384,21 @@ export default function ManageTripsPage() {
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">วันที่ส่งมอบ</label>
-                        <input type="date" required className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-green-500" value={form.scheduledDestinationDate} onChange={e => setForm({...form, scheduledDestinationDate: e.target.value})} />
+                        <input type="date" required className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-green-500" value={form.scheduledDestinationDate} onChange={e => setForm({ ...form, scheduledDestinationDate: e.target.value })} />
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">เวลา</label>
-                        <input type="time" className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-green-500" value={form.scheduledDestinationTime} onChange={e => setForm({...form, scheduledDestinationTime: e.target.value})} />
+                        <input type="time" className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-green-500" value={form.scheduledDestinationTime} onChange={e => setForm({ ...form, scheduledDestinationTime: e.target.value })} />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">ชื่อผู้ติดต่อ</label>
-                        <input type="text" placeholder="ชื่อผู้ส่ง" className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-green-500" value={form.destinationContactName} onChange={e => setForm({...form, destinationContactName: e.target.value})} />
+                        <input type="text" placeholder="ชื่อผู้ส่ง" className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-green-500" value={form.destinationContactName} onChange={e => setForm({ ...form, destinationContactName: e.target.value })} />
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">เบอร์โทรศัพท์</label>
-                        <input type="tel" placeholder="08x-xxx-xxxx" className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-green-500" value={form.destinationContactPhone} onChange={e => setForm({...form, destinationContactPhone: e.target.value})} />
+                        <input type="tel" placeholder="08x-xxx-xxxx" className="w-full p-2 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-green-500" value={form.destinationContactPhone} onChange={e => setForm({ ...form, destinationContactPhone: e.target.value })} />
                       </div>
                     </div>
                     <div>
@@ -394,30 +420,30 @@ export default function ManageTripsPage() {
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                     <div>
                       <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">รหัสงาน (Trip ID)</label>
-                      <input type="text" required placeholder="TRP-..." className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.tripId} onChange={e => setForm({...form, tripId: e.target.value})} />
+                      <input type="text" required placeholder="TRP-..." className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.tripId} onChange={e => setForm({ ...form, tripId: e.target.value })} />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-purple-600 uppercase mb-1 flex items-center gap-1"><Truck size={12}/> จำนวนรถ (คัน)</label>
-                      <input type="number" min="1" required className="w-full p-2.5 bg-white border border-purple-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500 font-bold text-purple-700" value={form.vehicleCount} onChange={e => setForm({...form, vehicleCount: Number(e.target.value)})} />
+                      <label className="block text-[11px] font-bold text-purple-600 uppercase mb-1 flex items-center gap-1"><Truck size={12} /> จำนวนรถ (คัน)</label>
+                      <input type="number" min="1" required className="w-full p-2.5 bg-white border border-purple-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-purple-500 font-bold text-purple-700" value={form.vehicleCount} onChange={e => setForm({ ...form, vehicleCount: Number(e.target.value) })} />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-blue-600 uppercase mb-1 flex items-center gap-1"><Route size={12}/> ระยะทาง (km)</label>
-                      <input type="number" step="0.01" required placeholder="คำนวณอัตโนมัติ" className="w-full p-2.5 bg-white border border-blue-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 font-bold text-blue-700" value={form.distance} onChange={e => setForm({...form, distance: e.target.value})} />
+                      <label className="block text-[11px] font-bold text-blue-600 uppercase mb-1 flex items-center gap-1"><Route size={12} /> ระยะทาง (km)</label>
+                      <input type="number" step="0.01" required placeholder="คำนวณอัตโนมัติ" className="w-full p-2.5 bg-white border border-blue-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 font-bold text-blue-700" value={form.distance} onChange={e => setForm({ ...form, distance: e.target.value })} />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-orange-600 uppercase mb-1 flex items-center gap-1"><Package size={12}/> น้ำหนัก (ton)</label>
-                      <input type="number" step="0.01" required placeholder="ระบุน้ำหนัก" className="w-full p-2.5 bg-white border border-orange-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500 font-bold text-orange-700" value={form.weight} onChange={e => setForm({...form, weight: e.target.value})} />
+                      <label className="block text-[11px] font-bold text-orange-600 uppercase mb-1 flex items-center gap-1"><Package size={12} /> น้ำหนัก (ton)</label>
+                      <input type="number" step="0.01" required placeholder="ระบุน้ำหนัก" className="w-full p-2.5 bg-white border border-orange-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-orange-500 font-bold text-orange-700" value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value })} />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-green-600 uppercase mb-1 flex items-center gap-1"><Leaf size={12}/> คาร์บอน (kgCO2e)</label>
-                      <input type="number" step="0.01" required placeholder="ผลลัพธ์..." className="w-full p-2.5 bg-green-100 border border-green-300 rounded-lg text-sm outline-none font-bold text-green-800" value={form.carbon} onChange={e => setForm({...form, carbon: e.target.value})} />
+                      <label className="block text-[11px] font-bold text-green-600 uppercase mb-1 flex items-center gap-1"><Leaf size={12} /> คาร์บอน (kgCO2e)</label>
+                      <input type="number" step="0.01" required placeholder="ผลลัพธ์..." className="w-full p-2.5 bg-green-100 border border-green-300 rounded-lg text-sm outline-none font-bold text-green-800" value={form.carbon} onChange={e => setForm({ ...form, carbon: e.target.value })} />
                     </div>
                   </div>
-                  
+
                   {(currentUser?.role === 'system_owner' || currentUser?.role === 'owner') && (
                     <div className="mt-4">
-                      <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">ชื่อบริษัทลูกค้า (สำหรับวางบิล)</label>
-                      <input type="text" required placeholder="ระบุบริษัท" className="w-full md:w-1/4 p-2.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.companyName} onChange={e => setForm({...form, companyName: e.target.value})} />
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">ชื่อบริษัท</label>
+                      <input type="text" required placeholder="ระบุบริษัท" className="w-full md:w-1/4 p-2.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.companyName} onChange={e => setForm({ ...form, companyName: e.target.value })} />
                     </div>
                   )}
                 </div>
@@ -433,8 +459,8 @@ export default function ManageTripsPage() {
 
           <div className="card overflow-hidden">
             <div className="px-6 py-4 flex justify-between items-center" style={{ borderBottom: '1px solid var(--border-light)' }}>
-               <h3 className="font-bold text-[14px]" style={{ color: 'var(--text-primary)' }}>ประวัติการเดินรถล่าสุด</h3>
-               <span className="text-[11px] font-medium px-2.5 py-1 rounded-full" style={{ background: 'var(--border-light)', color: 'var(--text-tertiary)' }}>พบทั้งหมด {trips.length} รายการ</span>
+              <h3 className="font-bold text-[14px]" style={{ color: 'var(--text-primary)' }}>ประวัติการเดินรถล่าสุด</h3>
+              <span className="text-[11px] font-medium px-2.5 py-1 rounded-full" style={{ background: 'var(--border-light)', color: 'var(--text-tertiary)' }}>พบทั้งหมด {trips.length} รายการ</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
@@ -467,18 +493,18 @@ export default function ManageTripsPage() {
                       <tr key={trip._id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                         <td className="p-4 font-mono font-bold text-blue-600">{trip.tripId}</td>
                         <td className="p-4 text-slate-500 font-medium text-xs">{trip.companyName || '-'}</td>
-                        
+
                         <td className="p-4">
                           <div className="flex flex-col gap-1.5">
                             <div className="flex items-center gap-1.5 text-slate-700 font-medium text-[11px]">
-                              <span className="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0"></span> 
+                              <span className="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0"></span>
                               <span className="truncate max-w-xs">{trip.origin}</span>
-                              {trip.originMapUrl && <a href={trip.originMapUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500"><ExternalLink size={10}/></a>}
+                              {trip.originMapUrl && <a href={trip.originMapUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500"><ExternalLink size={10} /></a>}
                             </div>
                             <div className="flex items-center gap-1.5 text-slate-700 font-medium text-[11px]">
-                              <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span> 
+                              <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span>
                               <span className="truncate max-w-xs">{trip.destination}</span>
-                              {trip.destinationMapUrl && <a href={trip.destinationMapUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500"><ExternalLink size={10}/></a>}
+                              {trip.destinationMapUrl && <a href={trip.destinationMapUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500"><ExternalLink size={10} /></a>}
                             </div>
                           </div>
                         </td>
@@ -515,12 +541,12 @@ export default function ManageTripsPage() {
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col">
               <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                 <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                  <MapPinned className={mapModal.target === 'origin' ? 'text-orange-500' : 'text-green-500'} /> 
+                  <MapPinned className={mapModal.target === 'origin' ? 'text-orange-500' : 'text-green-500'} />
                   {mapModal.target === 'origin' ? 'ค้นหาและปักหมุดจุดรับสินค้า (Origin)' : 'ค้นหาและปักหมุดจุดส่งสินค้า (Destination)'}
                 </h3>
                 <button onClick={() => setMapModal({ isOpen: false, target: '' })} className="p-1 hover:bg-slate-200 rounded-full text-slate-400 transition-colors"><X size={20} /></button>
               </div>
-              
+
               <div className="p-4 bg-slate-100 flex flex-col gap-3">
                 <Autocomplete onLoad={(auto) => autocompleteRef.current = auto} onPlaceChanged={onPlaceChanged}>
                   <div className="relative">

@@ -1,8 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import SidebarLayout from '@/components/SidebarLayout';
-import { Loader2, Save, Plus, Trash2, Settings, Fuel, FlaskConical, History, Leaf } from 'lucide-react';
+import { Loader2, Save, Plus, Trash2, Settings, Fuel, FlaskConical, History, Leaf, MapPin } from 'lucide-react';
 
 type VehicleTypeSetting = { typeName: string; minKmPerLiter: string; maxKmPerLiter: string };
 type EFSetting = { vehicleType: string; efTonKm: string; fuelType: string; tgoRef: string };
@@ -119,10 +120,11 @@ export default function MasterSettingsPage() {
                   Emission Factor, Fuel Efficiency & TGO Compliance Configuration
                 </p>
               </div>
-            </div>
-          </div>
-
-          {loading ? (
+                <div className="flex items-center gap-2">
+                  <Link href="/master-settings/location-master" className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700">
+                    <MapPin size={16} /> Location Master
+                  </Link>
+                </div>
             <div className="card flex items-center justify-center py-16">
               <Loader2 className="w-5 h-5 animate-spin mr-2" style={{ color: 'var(--accent)' }} />
               <span style={{ color: 'var(--text-tertiary)' }}>กำลังโหลดข้อมูล...</span>
