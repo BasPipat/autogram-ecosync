@@ -928,6 +928,21 @@ export default function ManageUsersPage() {
                       >
                         ไม่ผ่าน
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAiAnalyze(driver.lineUserId)}
+                        disabled={!!analyzingLineUserId}
+                        className="py-1.5 px-3 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
+                        style={{ background: '#F0FDFA', color: '#0D9488', border: '1px solid #CCFBF1' }}
+                        title="ใช้ AI วิเคราะห์เอกสารและกรอกข้อมูลอัตโนมัติ"
+                      >
+                        {analyzingLineUserId === driver.lineUserId ? (
+                          <Loader2 className="animate-spin" size={12} />
+                        ) : (
+                          <Sparkles size={12} />
+                        )}
+                        AI วิเคราะห์
+                      </button>
                     </div>
                   </td>
                 </tr>
