@@ -139,8 +139,9 @@ export default function MasterSettingsPage() {
                 <MapPin size={16} /> Location Master
               </Link>
             </div>
+          </div>
 
-            <div className="space-y-6">
+          <div className="space-y-6">
 
               {/* ════════════════════════════════════════════ */}
               {/* Section 1: EF per Ton-KM (TGO Standard) — PRIMARY */}

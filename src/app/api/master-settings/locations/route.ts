@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'ไม่มีข้อมูลสำหรับบันทึก' }, { status: 400 });
   }
 
-  const prepared = records.map(normalizeLocationRow).map((row) => {
+  const prepared = records.map(normalizeLocationRow).map((row: any) => {
     const location: any = {
       name: row.name,
       locationLink: row.locationLink,
@@ -72,16 +72,16 @@ export async function POST(req: NextRequest) {
     return location;
   });
 
-  if (prepared.some((item) => item === null)) {
+  if (prepared.some((item: any) => item === null)) {
     return NextResponse.json({ error: 'สำหรับ System Owner ต้องระบุ companyId ในไฟล์ Excel หรือข้อมูล' }, { status: 400 });
   }
 
   const invalidRows = prepared
-    .map((item, index) => ({ item, index }))
-    .filter(({ item }) => !item?.name || !item?.locationLink);
+    .map((item: any, index: number) => ({ item, index }))
+    .filter(({ item }: any) => !item?.name || !item?.locationLink);
 
   if (invalidRows.length > 0) {
-    return NextResponse.json({ error: `พบข้อมูลไม่ครบถ้วนในแถวที่ ${invalidRows.map((r) => r.index + 2).join(', ')}` }, { status: 400 });
+    return NextResponse.json({ error: `พบข้อมูลไม่ครบถ้วนในแถวที่ ${invalidRows.map((r: any) => r.index + 2).join(', ')}` }, { status: 400 });
   }
 
   try {
