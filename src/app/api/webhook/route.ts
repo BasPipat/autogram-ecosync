@@ -341,12 +341,61 @@ async function handleTextMessage(lineUserId: string, text: string, replyToken: s
   const driver = await getOrCreateDriver(lineUserId);
   const normalized = text.trim();
 
+  if (driver.status === 'approved') {
+    if (normalized === 'ดูงาน' || normalized === 'งาน') {
+      await showAvailableJobs(lineUserId, replyToken);
+      return;
+    }
+
+    if (normalized === 'เริ่มงาน' && driver.activeTripId) {
+      await Trip.findByIdAndUpdate(driver.activeTripId, {
+        lineAssignmentStatus: 'in_progress',
+        gpsSession: {
+          source: 'line_oa',
+          status: 'active',
+          isTracking: true,
+          startedAt: new Date(),
+          lastPingAt: new Date(),
+        },
+      });
+      await getLineClient().replyMessage(replyToken, { type: 'text', text: 'เริ่มงานเรียบร้อยครับ กรุณาส่งพิกัดเป็นระยะ และพิมพ์ "ส่งของเสร็จ" เมื่อส่งสินค้าแล้ว' });
+      return;
+    }
+
+    if (normalized === 'ส่งของเสร็จ' && driver.activeTripId) {
+      await LineDriver.findOneAndUpdate({ lineUserId }, { pendingDocumentType: 'pod_image' });
+      await getLineClient().replyMessage(replyToken, {
+        type: 'text',
+        text: 'กรุณาถ่ายรูปหลักฐานส่งงานครับ',
+        quickReply: {
+          items: [
+            { type: 'action', action: { type: 'camera', label: 'ถ่ายรูปส่งงาน' } },
+            { type: 'action', action: { type: 'cameraRoll', label: 'เลือกรูป' } },
+          ],
+        },
+      });
+      return;
+    }
+
+    if (normalized === 'สถานะ') {
+      await getLineClient().replyMessage(replyToken, { type: 'text', text: 'บัญชีของคุณได้รับการอนุมัติและพร้อมรับงานแล้วครับ' });
+      return;
+    }
+
+    // Default for approved drivers
+    await getLineClient().replyMessage(replyToken, {
+      type: 'text',
+      text: 'คุณได้รับการอนุมัติแล้วครับ! พิมพ์ "งาน" หรือ "ดูงาน" เพื่อดูงานที่เปิดรับครับ',
+    });
+    return;
+  }
+
   if (driver.pendingDocumentType && ['phone_number', 'bank_account'].includes(driver.pendingDocumentType)) {
     const saved = await saveTextDocument(driver, normalized, replyToken);
     if (saved) return;
   }
 
-  if (normalized === 'ดูงาน') {
+  if (normalized === 'ดูงาน' || normalized === 'งาน') {
     await showAvailableJobs(lineUserId, replyToken);
     return;
   }
@@ -389,14 +438,6 @@ async function handleTextMessage(lineUserId: string, text: string, replyToken: s
           { type: 'action', action: { type: 'cameraRoll', label: 'เลือกรูป' } },
         ],
       },
-    });
-    return;
-  }
-
-  if (driver.status === 'approved') {
-    await getLineClient().replyMessage(replyToken, {
-      type: 'text',
-      text: 'คุณได้รับการอนุมัติแล้วครับ! พิมพ์ "ดูงาน" เพื่อดูงานที่เปิดรับ หรือรอรับการแจ้งเตือนงานใหม่จากทางระบบครับ',
     });
     return;
   }
