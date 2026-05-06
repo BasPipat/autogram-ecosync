@@ -597,16 +597,9 @@ export default function ManageTripsPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">ชื่อบริษัทลูกค้า (Customer)</label>
-                      <input list="customers-list" type="text" placeholder="เลือกลูกค้า หรือระบุชื่อใหม่" className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.customerName} onChange={e => setForm({ ...form, customerName: e.target.value })} />
-                      <datalist id="customers-list">
-                        {masterCustomers.map(c => <option key={c._id} value={c.companyName} />)}
-                      </datalist>
-                    </div>
+                  <div className="mt-4">
                     {(currentUser?.role === 'system_owner' || currentUser?.role === 'owner') && (
-                      <div>
+                      <div className="max-w-md">
                         <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">ชื่อบริษัทขนส่ง (Provider)</label>
                         <input type="text" required placeholder="ระบุบริษัท" className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.companyName} onChange={e => setForm({ ...form, companyName: e.target.value })} />
                       </div>
