@@ -393,6 +393,14 @@ async function handleTextMessage(lineUserId: string, text: string, replyToken: s
     return;
   }
 
+  if (driver.status === 'approved') {
+    await getLineClient().replyMessage(replyToken, {
+      type: 'text',
+      text: 'คุณได้รับการอนุมัติแล้วครับ! พิมพ์ "ดูงาน" เพื่อดูงานที่เปิดรับ หรือรอรับการแจ้งเตือนงานใหม่จากทางระบบครับ',
+    });
+    return;
+  }
+
   await getLineClient().replyMessage(replyToken, onboardingMenuMessage());
 }
 

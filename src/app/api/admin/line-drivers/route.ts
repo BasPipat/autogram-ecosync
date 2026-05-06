@@ -169,6 +169,19 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'ไม่พบคนขับ LINE' }, { status: 404 });
     }
 
+    // Send push message if approved
+    if (nextStatus === 'approved') {
+      try {
+        const { getLineClient } = await import('@/lib/line');
+        await getLineClient().pushMessage(lineUserId, {
+          type: 'text',
+          text: 'ยินดีด้วยครับ! บัญชีรถร่วมของคุณได้รับการอนุมัติเรียบร้อยแล้ว ตอนนี้คุณสามารถเริ่มรับงานผ่านทาง LINE OA ได้ทันทีครับ\n\nพิมพ์ "ดูงาน" เพื่อตรวจสอบงานที่เปิดรับอยู่ครับ',
+        });
+      } catch (e) {
+        console.error('Failed to send approval push message:', e);
+      }
+    }
+
     if (finalSharedTruckId) {
       await SharedTruck.findByIdAndUpdate(finalSharedTruckId, {
         lineUserId,
