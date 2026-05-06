@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Trip } from '@/models/Trip';
 import { Driver } from '@/models/Driver';
-import { ObjectId } from 'mongodb';
+import mongoose from 'mongoose';
 import { getSessionToken, isInternalRole } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
@@ -22,11 +22,25 @@ export async function GET(req: NextRequest) {
     }
 
     await connectToDatabase();
-    const activeTrips = await Trip.find({
-      ...(isInternalRole(role) ? {} : { companyId: new ObjectId(token.companyId) }),
+    
+    let query: any = {
       'gpsSession.status': 'active',
       'gpsSession.isTracking': true,
-    })
+    };
+
+    if (!isInternalRole(role)) {
+      if (token.companyId) {
+        try {
+          query.companyId = new mongoose.Types.ObjectId(token.companyId);
+        } catch {
+          query.companyName = token.companyName;
+        }
+      } else {
+        query.companyName = token.companyName;
+      }
+    }
+
+    const activeTrips = await Trip.find(query)
       .sort({ updatedAt: -1 })
       .lean();
 

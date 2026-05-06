@@ -1,8 +1,9 @@
 'use client';
 
 import SidebarLayout from '@/components/SidebarLayout';
-import React, { useEffect, useState, useMemo, lazy, Suspense } from 'react';
-import { Leaf, Truck, FileCheck, Loader2, UploadCloud, X, CheckCircle, TrendingUp, ArrowUpRight } from 'lucide-react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Leaf, Truck, CheckCircle, Loader2, UploadCloud, X, TrendingUp } from 'lucide-react';
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
 
 const defaultCenter = { lat: 13.7563, lng: 100.5018 };
 
@@ -15,10 +16,14 @@ type ActiveMarker = {
   driverPhone: string;
 };
 
-// Lazy-loaded Map Component
+// Map Section Component
 function MapSection({ markers, hasKey }: { markers: ActiveMarker[]; hasKey: boolean }) {
-  const { useJsApiLoader, GoogleMap, Marker, InfoWindow } = require('@react-google-maps/api');
   const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+  });
 
   const lightMapStyle = [
     { elementType: 'geometry', stylers: [{ color: '#f5f5f5' }] },
@@ -29,11 +34,6 @@ function MapSection({ markers, hasKey }: { markers: ActiveMarker[]; hasKey: bool
     { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#c0e8e8' }] },
   ];
 
-  const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-  });
-
   const selectedMarker = useMemo(() =>
     markers.find(m => m.tripId === selectedMarkerId),
     [markers, selectedMarkerId]
@@ -41,21 +41,23 @@ function MapSection({ markers, hasKey }: { markers: ActiveMarker[]; hasKey: bool
 
   if (!hasKey) {
     return (
-      <div
-        className="w-full h-full flex items-center justify-center"
-        style={{ background: 'var(--border-light)', color: 'var(--text-tertiary)' }}
-      >
-        Map service unavailable
+      <div className="w-full h-full flex items-center justify-center text-slate-400 bg-slate-50">
+        Google Maps API Key missing
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="w-full h-full flex items-center justify-center text-rose-500 bg-rose-50 p-4 text-center">
+        Error loading Google Maps. Please check your API key or connection.
       </div>
     );
   }
 
   if (!isLoaded) {
     return (
-      <div
-        className="w-full h-full flex items-center justify-center gap-2"
-        style={{ background: 'var(--border-light)', color: 'var(--text-tertiary)' }}
-      >
+      <div className="w-full h-full flex items-center justify-center gap-2 text-slate-400 bg-slate-50">
         <Loader2 className="animate-spin" size={18} /> Loading map...
       </div>
     );
@@ -66,7 +68,12 @@ function MapSection({ markers, hasKey }: { markers: ActiveMarker[]; hasKey: bool
       mapContainerStyle={{ width: '100%', height: '100%' }}
       center={markers[0] ? { lat: markers[0].lat, lng: markers[0].lng } : defaultCenter}
       zoom={markers[0] ? 9 : 6}
-      options={{ disableDefaultUI: true, zoomControl: true, styles: lightMapStyle }}
+      options={{ 
+        disableDefaultUI: true, 
+        zoomControl: true, 
+        styles: lightMapStyle,
+        gestureHandling: 'cooperative'
+      }}
     >
       {markers.map((marker: ActiveMarker) => (
         <Marker
@@ -80,11 +87,13 @@ function MapSection({ markers, hasKey }: { markers: ActiveMarker[]; hasKey: bool
           position={{ lat: selectedMarker.lat, lng: selectedMarker.lng }}
           onCloseClick={() => setSelectedMarkerId(null)}
         >
-          <div className="text-sm p-2">
-            <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{selectedMarker.tripId}</p>
-            <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{selectedMarker.locationName}</p>
-            <p className="mt-2 text-sm">Driver: <span className="font-medium" style={{ color: 'var(--accent)' }}>{selectedMarker.driverName}</span></p>
-            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Phone: {selectedMarker.driverPhone}</p>
+          <div className="p-2 max-w-[200px]">
+            <p className="font-bold text-slate-900">{selectedMarker.tripId}</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">{selectedMarker.locationName}</p>
+            <div className="mt-2 pt-2 border-t border-slate-100">
+              <p className="text-[12px]"><span className="text-slate-400">Driver:</span> <span className="font-medium text-blue-600">{selectedMarker.driverName}</span></p>
+              <p className="text-[12px]"><span className="text-slate-400">Phone:</span> {selectedMarker.driverPhone}</p>
+            </div>
           </div>
         </InfoWindow>
       )}
@@ -240,7 +249,7 @@ export default function Dashboard() {
 
   return (
     <SidebarLayout>
-      <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
+      <div className="min-h-screen pb-10" style={{ background: 'var(--bg-base)' }}>
         {/* Header */}
         <div className="px-6 pt-6 pb-2 animate-fade-in">
           <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Dashboard</h1>
@@ -258,10 +267,11 @@ export default function Dashboard() {
               background: showMap ? 'var(--accent-glow)' : 'var(--bg-card)',
               color: showMap ? 'var(--accent)' : 'var(--text-secondary)',
               border: `1px solid ${showMap ? 'rgba(16,185,129,0.2)' : 'var(--border)'}`,
+              boxShadow: showMap ? '0 4px 12px rgba(16,185,129,0.1)' : 'none'
             }}
           >
             <TrendingUp size={15} />
-            {showMap ? 'ซ่อนแผนที่' : 'แสดงแผนที่ติดตาม'}
+            {showMap ? 'ซ่อนแผนที่ติดตาม' : 'แสดงแผนที่ติดตาม (Live)'}
           </button>
         </div>
 
@@ -274,6 +284,7 @@ export default function Dashboard() {
                 borderRadius: 'var(--radius-xl)',
                 border: '1px solid var(--border)',
                 boxShadow: 'var(--shadow-md)',
+                background: 'var(--bg-card)'
               }}
             >
               <MapSection markers={mapMarkers} hasKey={hasGoogleMapsKey} />
@@ -288,7 +299,7 @@ export default function Dashboard() {
             return (
               <div
                 key={card.label}
-                className="glass-card p-5 cursor-default"
+                className="glass-card p-5 cursor-default hover:shadow-lg transition-shadow duration-300"
               >
                 <div className="flex items-start justify-between">
                   <div>
@@ -315,7 +326,7 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Trips */}
-        <div className="px-6 mt-6 mb-8 animate-fade-in">
+        <div className="px-6 mt-6 animate-fade-in">
           <div className="card overflow-hidden">
             <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border-light)' }}>
               <h3 className="text-[15px] font-bold" style={{ color: 'var(--text-primary)' }}>Recent Trips</h3>
@@ -323,22 +334,17 @@ export default function Dashboard() {
                 {trips.length} trips
               </span>
             </div>
-            <div>
+            <div className="divide-y divide-slate-50">
               {trips.length === 0 ? (
                 <div className="p-8 text-center" style={{ color: 'var(--text-tertiary)' }}>
                   <Truck size={32} className="mx-auto mb-3 opacity-30" />
                   <p className="text-sm">No trips found</p>
                 </div>
               ) : (
-                trips.map((trip, i) => (
+                trips.map((trip) => (
                   <div
                     key={trip.id}
-                    className="px-6 py-4 transition-colors duration-150"
-                    style={{
-                      borderBottom: i < trips.length - 1 ? '1px solid var(--border-light)' : 'none',
-                    }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--border-light)'; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                    className="px-6 py-4 hover:bg-slate-50 transition-colors duration-150"
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
@@ -350,8 +356,8 @@ export default function Dashboard() {
                       <span
                         className="px-2.5 py-1 rounded-full text-[11px] font-semibold"
                         style={{
-                          background: trip.status === 'Verified' ? '#ECFDF5' : trip.status === 'Pending' ? '#FFF7ED' : 'var(--border-light)',
-                          color: trip.status === 'Verified' ? '#059669' : trip.status === 'Pending' ? '#C2410C' : 'var(--text-tertiary)',
+                          background: trip.status === 'Verified' ? '#ECFDF5' : trip.status === 'Pending' ? '#FFF7ED' : '#F8FAFC',
+                          color: trip.status === 'Verified' ? '#059669' : trip.status === 'Pending' ? '#C2410C' : '#64748B',
                         }}
                       >
                         {trip.status}
@@ -365,24 +371,19 @@ export default function Dashboard() {
                         {trip.status === 'No POD' ? (
                           <button
                             onClick={() => handleOpenModal(trip.id)}
-                            className="text-[11px] px-3 py-1.5 rounded-lg font-semibold transition-all"
-                            style={{
-                              background: 'var(--accent)',
-                              color: '#fff',
-                            }}
+                            className="text-[11px] px-3 py-1.5 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-all"
                           >
                             Upload POD
                           </button>
                         ) : trip.status === 'Pending' ? (
                           <button
                             onClick={() => handleOpenVerifyModal(trip.id)}
-                            className="text-[11px] px-3 py-1.5 rounded-lg font-semibold transition-all"
-                            style={{ background: '#FFF7ED', color: '#C2410C' }}
+                            className="text-[11px] px-3 py-1.5 rounded-lg font-semibold bg-orange-50 text-orange-700 hover:bg-orange-100 transition-all border border-orange-200"
                           >
                             Verify
                           </button>
                         ) : (
-                          <span className="text-[11px] font-semibold flex items-center gap-1" style={{ color: 'var(--accent)' }}>
+                          <span className="text-[11px] font-semibold flex items-center gap-1 text-emerald-600">
                             <CheckCircle size={12} /> Verified
                           </span>
                         )}
@@ -395,56 +396,33 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Upload POD Modal */}
+        {/* Modals remain the same ... */}
         {isModalOpen && (
-          <div
-            className="fixed inset-0 flex items-center justify-center z-50 p-4"
-            style={{ background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(8px)' }}
-          >
-            <div
-              className="w-full max-w-md p-6 animate-fade-in"
-              style={{
-                background: 'var(--bg-card)',
-                borderRadius: 'var(--radius-xl)',
-                boxShadow: 'var(--shadow-lg)',
-                border: '1px solid var(--border)',
-              }}
-            >
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-slate-900/40 backdrop-blur-sm">
+            <div className="w-full max-w-md p-6 bg-white rounded-3xl shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-200">
               <div className="flex justify-between items-center mb-5">
-                <h3 className="text-[16px] font-bold" style={{ color: 'var(--text-primary)' }}>Upload POD</h3>
-                <button onClick={() => setIsModalOpen(false)} style={{ color: 'var(--text-tertiary)' }}>
+                <h3 className="text-lg font-bold text-slate-900">Upload POD</h3>
+                <button onClick={() => setIsModalOpen(false)} className="p-1 hover:bg-slate-100 rounded-full text-slate-400">
                   <X size={20} />
                 </button>
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-[12px] font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>POD Image URL</label>
+                  <label className="block text-[12px] font-bold text-slate-500 uppercase mb-2 ml-1">POD Image URL</label>
                   <input
                     type="url"
                     value={podUrl}
                     onChange={(e) => setPodUrl(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl text-[13px] outline-none"
-                    style={{
-                      border: '1px solid var(--border)',
-                      color: 'var(--text-primary)',
-                      background: 'var(--bg-base)',
-                    }}
+                    className="w-full px-4 py-3 rounded-xl text-[13px] border border-slate-200 bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                     placeholder="https://example.com/pod-image.jpg"
                   />
                 </div>
-                <div className="flex gap-3 pt-1">
-                  <button
-                    onClick={() => setIsModalOpen(false)}
-                    className="flex-1 px-4 py-2.5 rounded-xl text-[13px] font-medium transition-colors"
-                    style={{ background: 'var(--border-light)', color: 'var(--text-secondary)' }}
-                  >
-                    Cancel
-                  </button>
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-2.5 rounded-xl text-[13px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-all">Cancel</button>
                   <button
                     onClick={handleUploadPOD}
                     disabled={isUploading || !podUrl.trim()}
-                    className="flex-1 px-4 py-2.5 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-                    style={{ background: 'var(--accent)', color: '#fff' }}
+                    className="flex-1 px-4 py-2.5 rounded-xl text-[13px] font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                   >
                     {isUploading ? <Loader2 className="animate-spin" size={15} /> : <UploadCloud size={15} />}
                     Upload
@@ -455,56 +433,32 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Verify POD Modal */}
         {isVerifyModalOpen && (
-          <div
-            className="fixed inset-0 flex items-center justify-center z-50 p-4"
-            style={{ background: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(8px)' }}
-          >
-            <div
-              className="w-full max-w-md p-6 animate-fade-in"
-              style={{
-                background: 'var(--bg-card)',
-                borderRadius: 'var(--radius-xl)',
-                boxShadow: 'var(--shadow-lg)',
-                border: '1px solid var(--border)',
-              }}
-            >
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-slate-900/40 backdrop-blur-sm">
+            <div className="w-full max-w-md p-6 bg-white rounded-3xl shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-200">
               <div className="flex justify-between items-center mb-5">
-                <h3 className="text-[16px] font-bold" style={{ color: 'var(--text-primary)' }}>Verify POD</h3>
-                <button onClick={() => setIsVerifyModalOpen(false)} style={{ color: 'var(--text-tertiary)' }}>
+                <h3 className="text-lg font-bold text-slate-900">Verify POD</h3>
+                <button onClick={() => setIsVerifyModalOpen(false)} className="p-1 hover:bg-slate-100 rounded-full text-slate-400">
                   <X size={20} />
                 </button>
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-[12px] font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>Verification Image URL</label>
+                  <label className="block text-[12px] font-bold text-slate-500 uppercase mb-2 ml-1">Verification Image URL</label>
                   <input
                     type="url"
                     value={verifyImageUrl}
                     onChange={(e) => setVerifyImageUrl(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl text-[13px] outline-none"
-                    style={{
-                      border: '1px solid var(--border)',
-                      color: 'var(--text-primary)',
-                      background: 'var(--bg-base)',
-                    }}
+                    className="w-full px-4 py-3 rounded-xl text-[13px] border border-slate-200 bg-slate-50 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                     placeholder="https://example.com/verification-image.jpg"
                   />
                 </div>
-                <div className="flex gap-3 pt-1">
-                  <button
-                    onClick={() => setIsVerifyModalOpen(false)}
-                    className="flex-1 px-4 py-2.5 rounded-xl text-[13px] font-medium transition-colors"
-                    style={{ background: 'var(--border-light)', color: 'var(--text-secondary)' }}
-                  >
-                    Cancel
-                  </button>
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => setIsVerifyModalOpen(false)} className="flex-1 px-4 py-2.5 rounded-xl text-[13px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-all">Cancel</button>
                   <button
                     onClick={handleVerifyPOD}
                     disabled={isVerifying || !verifyImageUrl.trim()}
-                    className="flex-1 px-4 py-2.5 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
-                    style={{ background: 'var(--accent)', color: '#fff' }}
+                    className="flex-1 px-4 py-2.5 rounded-xl text-[13px] font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                   >
                     {isVerifying ? <Loader2 className="animate-spin" size={15} /> : <CheckCircle size={15} />}
                     Verify
