@@ -1,113 +1,13 @@
 'use client';
 
 import SidebarLayout from '@/components/SidebarLayout';
-import React, { useEffect, useState, useMemo } from 'react';
-import { Leaf, Truck, CheckCircle, Loader2, UploadCloud, X, TrendingUp } from 'lucide-react';
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
-
-const defaultCenter = { lat: 13.7563, lng: 100.5018 };
-
-type ActiveMarker = {
-  tripId: string;
-  lat: number;
-  lng: number;
-  locationName: string;
-  driverName: string;
-  driverPhone: string;
-};
-
-// Map Section Component
-function MapSection({ markers, hasKey }: { markers: ActiveMarker[]; hasKey: boolean }) {
-  const [selectedMarkerId, setSelectedMarkerId] = useState<string | null>(null);
-
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-  });
-
-  const lightMapStyle = [
-    { elementType: 'geometry', stylers: [{ color: '#f5f5f5' }] },
-    { elementType: 'labels.text.stroke', stylers: [{ color: '#ffffff' }] },
-    { elementType: 'labels.text.fill', stylers: [{ color: '#616161' }] },
-    { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
-    { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#fafafa' }] },
-    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#c0e8e8' }] },
-  ];
-
-  const selectedMarker = useMemo(() =>
-    markers.find(m => m.tripId === selectedMarkerId),
-    [markers, selectedMarkerId]
-  );
-
-  if (!hasKey) {
-    return (
-      <div className="w-full h-full flex items-center justify-center text-slate-400 bg-slate-50">
-        Google Maps API Key missing
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="w-full h-full flex items-center justify-center text-rose-500 bg-rose-50 p-4 text-center">
-        Error loading Google Maps. Please check your API key or connection.
-      </div>
-    );
-  }
-
-  if (!isLoaded) {
-    return (
-      <div className="w-full h-full flex items-center justify-center gap-2 text-slate-400 bg-slate-50">
-        <Loader2 className="animate-spin" size={18} /> Loading map...
-      </div>
-    );
-  }
-
-  return (
-    <GoogleMap
-      mapContainerStyle={{ width: '100%', height: '100%' }}
-      center={markers[0] ? { lat: markers[0].lat, lng: markers[0].lng } : defaultCenter}
-      zoom={markers[0] ? 9 : 6}
-      options={{ 
-        disableDefaultUI: true, 
-        zoomControl: true, 
-        styles: lightMapStyle,
-        gestureHandling: 'cooperative'
-      }}
-    >
-      {markers.map((marker: ActiveMarker) => (
-        <Marker
-          key={marker.tripId}
-          position={{ lat: marker.lat, lng: marker.lng }}
-          onClick={() => setSelectedMarkerId(marker.tripId)}
-        />
-      ))}
-      {selectedMarker && (
-        <InfoWindow
-          position={{ lat: selectedMarker.lat, lng: selectedMarker.lng }}
-          onCloseClick={() => setSelectedMarkerId(null)}
-        >
-          <div className="p-2 max-w-[200px]">
-            <p className="font-bold text-slate-900">{selectedMarker.tripId}</p>
-            <p className="text-[11px] text-slate-500 mt-0.5">{selectedMarker.locationName}</p>
-            <div className="mt-2 pt-2 border-t border-slate-100">
-              <p className="text-[12px]"><span className="text-slate-400">Driver:</span> <span className="font-medium text-blue-600">{selectedMarker.driverName}</span></p>
-              <p className="text-[12px]"><span className="text-slate-400">Phone:</span> {selectedMarker.driverPhone}</p>
-            </div>
-          </div>
-        </InfoWindow>
-      )}
-    </GoogleMap>
-  );
-}
+import React, { useEffect, useState } from 'react';
+import { Leaf, Truck, CheckCircle, Loader2, UploadCloud, X } from 'lucide-react';
 
 export default function Dashboard() {
-  const hasGoogleMapsKey = !!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const [stats, setStats] = useState({ totalTrips: 0, totalCarbon: "0.00", verifiedPODs: 0 });
   const [trips, setTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [mapMarkers, setMapMarkers] = useState<ActiveMarker[]>([]);
-  const [showMap, setShowMap] = useState(false);
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -121,20 +21,12 @@ export default function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const [dashRes, mapRes] = await Promise.all([
-        fetch('/api/dashboard', { cache: 'no-store' }),
-        fetch('/api/overview/active-trucks', { cache: 'no-store' }),
-      ]);
+      const response = await fetch('/api/dashboard', { cache: 'no-store' });
+      const data = await response.json();
 
-      const dashData = await dashRes.json();
-      const mapData = await mapRes.json();
-
-      if (!dashData.error) {
-        setStats(dashData.stats);
-        setTrips(dashData.recentTrips || []);
-      }
-      if (mapData.markers) {
-        setMapMarkers(mapData.markers);
+      if (!data.error) {
+        setStats(data.stats);
+        setTrips(data.recentTrips || []);
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -258,40 +150,6 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* Map Toggle + Section */}
-        <div className="px-6 mt-4">
-          <button
-            onClick={() => setShowMap(!showMap)}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium transition-all duration-200"
-            style={{
-              background: showMap ? 'var(--accent-glow)' : 'var(--bg-card)',
-              color: showMap ? 'var(--accent)' : 'var(--text-secondary)',
-              border: `1px solid ${showMap ? 'rgba(16,185,129,0.2)' : 'var(--border)'}`,
-              boxShadow: showMap ? '0 4px 12px rgba(16,185,129,0.1)' : 'none'
-            }}
-          >
-            <TrendingUp size={15} />
-            {showMap ? 'ซ่อนแผนที่ติดตาม' : 'แสดงแผนที่ติดตาม (Live)'}
-          </button>
-        </div>
-
-        {showMap && (
-          <div className="px-6 mt-4 animate-fade-in">
-            <div
-              className="relative w-full overflow-hidden"
-              style={{
-                height: '550px',
-                borderRadius: 'var(--radius-xl)',
-                border: '1px solid var(--border)',
-                boxShadow: 'var(--shadow-md)',
-                background: 'var(--bg-card)'
-              }}
-            >
-              <MapSection markers={mapMarkers} hasKey={hasGoogleMapsKey} />
-            </div>
-          </div>
-        )}
-
         {/* Stats Cards */}
         <div className="px-6 mt-6 grid md:grid-cols-3 gap-4 stagger">
           {statCards.map((card) => {
@@ -396,7 +254,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Modals remain the same ... */}
+        {/* Upload POD Modal */}
         {isModalOpen && (
           <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-slate-900/40 backdrop-blur-sm">
             <div className="w-full max-w-md p-6 bg-white rounded-3xl shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-200">
@@ -433,6 +291,7 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Verify POD Modal */}
         {isVerifyModalOpen && (
           <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-slate-900/40 backdrop-blur-sm">
             <div className="w-full max-w-md p-6 bg-white rounded-3xl shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-200">
