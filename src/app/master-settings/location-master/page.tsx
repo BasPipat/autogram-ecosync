@@ -341,7 +341,15 @@ export default function LocationMasterPage() {
                         </td>
                         <td className="p-4">
                           {item.locationLink ? (
-                            <a href={item.locationLink} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1 max-w-[200px] truncate">
+                            <a 
+                              href={item.locationLink.includes('googleusercontent.com/maps.google.com') 
+                                ? item.locationLink.replace('http://googleusercontent.com/maps.google.com', 'https://www.google.com/maps') 
+                                : item.locationLink.startsWith('http') ? item.locationLink : `https://${item.locationLink}`
+                              } 
+                              target="_blank" 
+                              rel="noreferrer" 
+                              className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1 max-w-[200px] truncate"
+                            >
                               <Globe size={12} /> ดูบนแผนที่
                             </a>
                           ) : (

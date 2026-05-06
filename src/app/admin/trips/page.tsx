@@ -259,7 +259,7 @@ export default function ManageTripsPage() {
 
   const confirmLocation = () => {
     if (!markerPos) return;
-    const mapUrl = `http://googleusercontent.com/maps.google.com/?q=${markerPos.lat},${markerPos.lng}`;
+    const mapUrl = `https://www.google.com/maps?q=${markerPos.lat},${markerPos.lng}`;
 
     if (mapModal.target === 'origin') {
       setForm({ ...form, originMapUrl: mapUrl, origin: selectedPlaceName ? selectedPlaceName : form.origin });
