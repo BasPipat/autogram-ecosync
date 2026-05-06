@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import SidebarLayout from '@/components/SidebarLayout';
-import { Truck, MapPin, Leaf, PlusCircle, ExternalLink, MapPinned, X, Route, Package } from 'lucide-react';
+import { Truck, MapPin, Leaf, PlusCircle, ExternalLink, MapPinned, X, Route, Package, Edit2, Trash2 } from 'lucide-react';
 import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
@@ -22,6 +22,7 @@ export default function ManageTripsPage() {
   const [masterLocations, setMasterLocations] = useState<any[]>([]);
   const [masterCustomers, setMasterCustomers] = useState<any[]>([]);
   const [filterTab, setFilterTab] = useState<'all' | 'pending'>('all');
+  const [editTripId, setEditTripId] = useState<string | null>(null);
 
   const getTomorrowString = () => {
     const tomorrow = new Date();
@@ -271,8 +272,12 @@ export default function ManageTripsPage() {
   const handleCreateTrip = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/admin/trips', {
-        method: 'POST',
+      const isEdit = !!editTripId;
+      const url = isEdit ? `/api/admin/trips/${editTripId}` : '/api/admin/trips';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tripId: form.tripId,
@@ -297,15 +302,51 @@ export default function ManageTripsPage() {
 
       if (res.ok) {
         const data = await res.json();
-        alert('เพิ่มงานขนส่งเรียบร้อยแล้ว!');
+        alert(isEdit ? 'แก้ไขงานเรียบร้อยแล้ว!' : 'เพิ่มงานขนส่งเรียบร้อยแล้ว!');
         setForm(initialFormState);
-        setTrips(prev => [data.trip, ...prev]);
+        if (isEdit) {
+          setTrips(prev => prev.map(t => t._id === editTripId ? data.trip : t));
+          setEditTripId(null);
+        } else {
+          setTrips(prev => [data.trip, ...prev]);
+        }
         fetchInitialData();
       } else {
         const data = await res.json();
         alert(data.error || 'เกิดข้อผิดพลาด');
       }
     } catch (error) { alert('ระบบขัดข้อง'); }
+  };
+
+  const handleEditClick = (trip: any) => {
+    setEditTripId(trip._id);
+    setForm({
+      tripId: trip.tripId || '',
+      origin: trip.origin || '', originMapUrl: trip.originMapUrl || '',
+      scheduledOriginDate: trip.scheduledOriginDate || '', scheduledOriginTime: trip.scheduledOriginTime || '', 
+      originContactName: trip.originContactName || '', originContactPhone: trip.originContactPhone || '',
+      destination: trip.destination || '', destinationMapUrl: trip.destinationMapUrl || '',
+      scheduledDestinationDate: trip.scheduledDestinationDate || '', scheduledDestinationTime: trip.scheduledDestinationTime || '',
+      destinationContactName: trip.destinationContactName || '', destinationContactPhone: trip.destinationContactPhone || '',
+      distance: trip.distance || '', weight: trip.weight || '', carbon: trip.carbon || '', 
+      companyName: trip.companyName || '', customerName: trip.customerName || '',
+      vehicleCount: trip.vehicleCount || 1,
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeleteTrip = async (id: string) => {
+    if (!confirm('คุณต้องการลบงานนี้ใช่หรือไม่?')) return;
+    try {
+      const res = await fetch(`/api/admin/trips/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        alert('ลบงานเรียบร้อยแล้ว');
+        setTrips(prev => prev.filter(t => t._id !== id));
+      } else {
+        const data = await res.json();
+        alert(data.error || 'เกิดข้อผิดพลาดในการลบงาน');
+      }
+    } catch { alert('ระบบขัดข้อง'); }
   };
 
   const displayedTrips = filterTab === 'pending' ? trips.filter(t => !t.licensePlate && !t.driverName) : trips;
@@ -330,6 +371,7 @@ export default function ManageTripsPage() {
               <th className="p-4 font-bold">คาร์บอน</th>
               <th className="p-4 font-bold">ทะเบียนรถ/คนขับ</th>
               <th className="p-4 font-bold">สถานะ</th>
+              <th className="p-4 font-bold text-center">จัดการ</th>
             </tr>
           </thead>
           <tbody className="text-sm">
@@ -343,10 +385,11 @@ export default function ManageTripsPage() {
                   <td className="p-4"><div className="h-4 bg-slate-200 animate-pulse rounded w-16"></div></td>
                   <td className="p-4"><div className="h-4 bg-slate-200 animate-pulse rounded w-20"></div></td>
                   <td className="p-4"><div className="h-6 bg-slate-200 animate-pulse rounded-full w-16"></div></td>
+                  <td className="p-4"><div className="h-6 bg-slate-200 animate-pulse rounded w-12 mx-auto"></div></td>
                 </tr>
               ))
             ) : displayedTrips.length === 0 ? (
-              <tr><td colSpan={7} className="p-12 text-center text-slate-400 italic font-medium">ยังไม่พบข้อมูลงานในระบบ</td></tr>
+              <tr><td colSpan={8} className="p-12 text-center text-slate-400 italic font-medium">ยังไม่พบข้อมูลงานในระบบ</td></tr>
             ) : (
               displayedTrips.map(trip => (
                 <tr key={trip._id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
@@ -399,6 +442,16 @@ export default function ManageTripsPage() {
                       {trip.status.toUpperCase()}
                     </span>
                   </td>
+                  <td className="p-4 text-center">
+                    <div className="flex items-center justify-center gap-3">
+                      <button type="button" onClick={() => handleEditClick(trip)} className="text-slate-400 hover:text-blue-600 transition-colors" title="แก้ไขงาน">
+                        <Edit2 size={16} />
+                      </button>
+                      <button type="button" onClick={() => handleDeleteTrip(trip._id)} className="text-slate-400 hover:text-red-500 transition-colors" title="ลบงาน">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))
             )}
@@ -429,7 +482,8 @@ export default function ManageTripsPage() {
           {['system_owner', 'owner', 'admin', 'operator', 'corp_admin'].includes(currentUser?.role || '') && (
             <div className="card p-6 mb-6">
               <h2 className="text-md font-bold text-slate-700 flex items-center gap-2 mb-5">
-                <PlusCircle size={18} className="text-blue-500" /> รายละเอียดงานใหม่
+                {editTripId ? <Edit2 size={18} className="text-blue-500" /> : <PlusCircle size={18} className="text-blue-500" />} 
+                {editTripId ? `แก้ไขรายละเอียดงาน: ${form.tripId}` : 'รายละเอียดงานใหม่'}
               </h2>
 
               <form onSubmit={handleCreateTrip} className="space-y-6">
@@ -560,9 +614,14 @@ export default function ManageTripsPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-2">
-                  <button type="submit" className="font-bold py-3 px-10 rounded-xl text-sm transition-all" style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 4px 12px rgba(16,185,129,0.2)' }}>
-                    + สร้างงานขนส่ง
+                <div className="flex justify-end gap-3 pt-2">
+                  {editTripId && (
+                    <button type="button" onClick={() => { setEditTripId(null); setForm(initialFormState); }} className="font-bold py-3 px-6 rounded-xl text-sm transition-all bg-slate-100 text-slate-600 hover:bg-slate-200">
+                      ยกเลิก
+                    </button>
+                  )}
+                  <button type="submit" className={`font-bold py-3 px-10 rounded-xl text-sm transition-all text-white shadow-lg ${editTripId ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20' : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20'}`}>
+                    {editTripId ? 'บันทึกการแก้ไข' : '+ สร้างงานขนส่ง'}
                   </button>
                 </div>
               </form>
