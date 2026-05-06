@@ -16,17 +16,6 @@ function isValidThaiTaxId(taxId: string): boolean {
   return checkDigit === parseInt(taxId.charAt(12));
 }
 
-function normalizeCustomerRow(row: any) {
-  return {
-    taxId: String(row.taxId || row['taxId'] || row['เลขประจำตัวผู้เสียภาษี'] || row['Tax ID'] || '').trim().replace(/[^0-9]/g, ''),
-    companyName: String(row.companyName || row['companyName'] || row['ชื่อบริษัท'] || row['Company Name'] || '').trim(),
-    address: String(row.address || row['address'] || row['ที่อยู่'] || row['Address'] || '').trim(),
-    email: String(row.email || row['email'] || row['อีเมล'] || row['Email'] || '').trim(),
-    phoneNumber: String(row.phoneNumber || row['phoneNumber'] || row['เบอร์โทรศัพท์'] || row['Phone Number'] || row['Phone'] || '').trim(),
-    companyId: row.companyId ? String(row.companyId).trim() : undefined,
-  };
-}
-
 export async function GET(req: NextRequest) {
   const token = await getSessionToken(req);
   if (!token) {
@@ -36,22 +25,21 @@ export async function GET(req: NextRequest) {
   await connectToDatabase();
 
   let query: Record<string, any> = {};
-  if (!isInternalRole(token.role)) {
-    if (token.companyId) {
-      try {
-        query = { companyId: new ObjectId(token.companyId) };
-      } catch {
-        query = { companyName: token.companyName };
-      }
-    } else if (token.companyName) {
+  if (token.companyId) {
+    try {
+      query = { companyId: new ObjectId(token.companyId) };
+    } catch {
       query = { companyName: token.companyName };
-    } else {
-      return NextResponse.json({ customers: [] });
     }
+  } else if (token.companyName) {
+    query = { companyName: token.companyName };
+  } else {
+    return NextResponse.json({ profile: null });
   }
 
-  const customers = await Customer.find(query).sort({ companyName: 1 }).lean();
-  return NextResponse.json({ customers });
+  // Get the single profile for this tenant
+  const profile = await Customer.findOne(query).lean();
+  return NextResponse.json({ profile });
 }
 
 export async function POST(req: NextRequest) {
@@ -63,59 +51,60 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   await connectToDatabase();
 
-  const records = Array.isArray(body.records) ? body.records : [body];
+  const { taxId, address, email, phoneNumber } = body;
 
-  if (records.length === 0) {
-    return NextResponse.json({ error: 'ไม่มีข้อมูลสำหรับบันทึก' }, { status: 400 });
+  // The companyName is strictly locked to the user's session companyName
+  // unless they are internal, but even then, this page is for the logged in user's profile.
+  const companyName = token.companyName;
+
+  if (!taxId || !isValidThaiTaxId(taxId)) {
+    return NextResponse.json({ error: 'เลขประจำตัวผู้เสียภาษี (Tax ID) 13 หลักไม่ถูกต้อง' }, { status: 400 });
   }
 
-  const prepared = records.map(normalizeCustomerRow).map((row: any) => {
-    const customer: any = {
-      taxId: row.taxId,
-      companyName: row.companyName,
-      address: row.address || '',
-      email: row.email || '',
-      phoneNumber: row.phoneNumber || '',
-    };
-
-    if (!isInternalRole(token.role)) {
-      customer.companyId = new ObjectId(token.companyId);
-    } else {
-      if (row.companyId) {
-        try {
-          customer.companyId = new ObjectId(row.companyId);
-        } catch {
-          throw new Error('companyId ไม่ถูกต้อง');
-        }
-      } else {
-        return null;
-      }
+  let query: Record<string, any> = {};
+  if (token.companyId) {
+    try {
+      query = { companyId: new ObjectId(token.companyId) };
+    } catch {
+      query = { companyName: token.companyName };
     }
-
-    return customer;
-  });
-
-  if (prepared.some((item: any) => item === null)) {
-    return NextResponse.json({ error: 'สำหรับ System Owner ต้องระบุ companyId ในไฟล์ Excel หรือข้อมูล' }, { status: 400 });
+  } else if (token.companyName) {
+    query = { companyName: token.companyName };
+  } else {
+    return NextResponse.json({ error: 'ไม่พบข้อมูลบริษัทของบัญชีนี้' }, { status: 400 });
   }
 
-  const invalidRows = prepared
-    .map((item: any, index: number) => ({ item, index }))
-    .filter(({ item }: any) => !item?.taxId || !item?.companyName || !isValidThaiTaxId(item.taxId));
+  const updateData: any = {
+    taxId,
+    address: address || '',
+    email: email || '',
+    phoneNumber: phoneNumber || '',
+  };
 
-  if (invalidRows.length > 0) {
-    return NextResponse.json({ error: `พบข้อมูลไม่ครบถ้วนหรือไม่ถูกต้องในแถวที่ ${invalidRows.map((r: any) => r.index + 2).join(', ')} (ต้องมีชื่อบริษัท และเลข Tax ID 13 หลักที่ถูกต้อง)` }, { status: 400 });
+  // Ensure companyName is set on insert, but we don't allow changing it if it already exists
+  updateData.$setOnInsert = {
+    companyName: companyName,
+  };
+  
+  if (token.companyId) {
+     try {
+       updateData.$setOnInsert.companyId = new ObjectId(token.companyId);
+     } catch (e) {}
   }
 
   try {
-    const result = await Customer.insertMany(prepared as any, { ordered: false });
-    return NextResponse.json({ message: 'นำเข้าข้อมูลลูกค้าสำเร็จ', count: result.length, customers: result });
+    const result = await Customer.findOneAndUpdate(
+      query,
+      { $set: updateData.taxId ? { taxId, address, email, phoneNumber } : updateData, $setOnInsert: updateData.$setOnInsert },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    return NextResponse.json({ message: 'บันทึกโปรไฟล์บริษัทสำเร็จ', profile: result });
   } catch (error: unknown) {
     const err = error as any;
     if (err.code === 11000) {
-        return NextResponse.json({ error: 'พบข้อมูล Tax ID ซ้ำในระบบ' }, { status: 400 });
+        return NextResponse.json({ error: 'พบข้อมูล Tax ID ซ้ำในระบบ (บริษัทอื่นอาจใช้งานอยู่)' }, { status: 400 });
     }
-    console.error('Customer import error', error);
-    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการบันทึกข้อมูลลูกค้า' }, { status: 500 });
+    console.error('Company Profile save error', error);
+    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล' }, { status: 500 });
   }
 }
