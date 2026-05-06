@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
       } else if (token.companyName) {
         query = { companyName: token.companyName };
       } else {
-        return NextResponse.json([]); // return empty gracefully
+        return NextResponse.json([]); 
       }
     }
     const trips = await Trip.find(query).sort({ createdAt: -1 });
@@ -46,9 +46,8 @@ export async function POST(req: NextRequest) {
     const data = await req.json();
     await connectToDatabase();
 
-    if (!data.tripId) {
-      data.tripId = `TRP-${Math.floor(100000 + Math.random() * 900000)}`;
-    }
+    const baseTripId = data.tripId || `TRP-${Math.floor(100000 + Math.random() * 900000)}`;
+    const count = Math.max(1, parseInt(data.vehicleCount) || 1);
 
     // Populate tenant info
     if (token.companyId) {
@@ -60,20 +59,31 @@ export async function POST(req: NextRequest) {
       data.companyName = token.companyName;
     }
 
-    const newTrip = await Trip.create(data);
+    const createdTrips = [];
 
-    // Auto-save Origin & Destination to Location Master
+    for (let i = 0; i < count; i++) {
+      const tripData = { ...data };
+      // If count > 1, add a suffix to tripId to make them unique and sequential
+      tripData.tripId = count > 1 ? `${baseTripId}-${i + 1}` : baseTripId;
+      
+      // Each trip record should represent 1 vehicle in the system for tracking
+      tripData.vehicleCount = 1; 
+
+      const newTrip = await Trip.create(tripData);
+      createdTrips.push(newTrip);
+    }
+
+    // Auto-save Origin & Destination to Location Master (only once)
     const saveLocation = async (name: string, link: string, contact: string, phone: string) => {
       if (!name) return;
       try {
-        // Use a more robust filter that works with ID or Name
         const filter: any = { name: name.trim() };
         if (data.companyId) {
           filter.companyId = data.companyId;
         } else if (data.companyName) {
           filter.companyName = data.companyName;
         } else {
-          return; // Can't save without tenant info
+          return; 
         }
 
         await Location.findOneAndUpdate(
@@ -97,12 +107,17 @@ export async function POST(req: NextRequest) {
     await saveLocation(data.origin, data.originMapUrl, data.originContactName, data.originContactPhone);
     await saveLocation(data.destination, data.destinationMapUrl, data.destinationContactName, data.destinationContactPhone);
 
-    return NextResponse.json({ message: 'สร้างงานสำเร็จ!', trip: newTrip }, { status: 201 });
+    return NextResponse.json({ 
+      message: count > 1 ? `สร้างงานสำเร็จ ${count} รายการ!` : 'สร้างงานสำเร็จ!', 
+      trip: count > 1 ? createdTrips[0] : createdTrips[0], // Keep backward compatibility for single trip return
+      trips: createdTrips 
+    }, { status: 201 });
+
   } catch (error: unknown) {
     console.error("Trip creation error:", error);
     const err = error as { code?: number };
     if (err.code === 11000) {
-      return NextResponse.json({ error: 'รหัสงานนี้มีซ้ำในระบบแล้ว กรุณาเปลี่ยนรหัสใหม่' }, { status: 400 });
+      return NextResponse.json({ error: 'รหัสงานนี้มีซ้ำในระบบแล้ว (หรือรหัสที่รันลำดับซ้ำ) กรุณาเปลี่ยนรหัสใหม่' }, { status: 400 });
     }
     return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการสร้างงาน' }, { status: 500 });
   }

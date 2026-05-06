@@ -308,7 +308,8 @@ export default function ManageTripsPage() {
           setTrips(prev => prev.map(t => t._id === editTripId ? data.trip : t));
           setEditTripId(null);
         } else {
-          setTrips(prev => [data.trip, ...prev]);
+          const newTrips = data.trips || [data.trip];
+          setTrips(prev => [...newTrips, ...prev]);
         }
         fetchInitialData();
       } else {
