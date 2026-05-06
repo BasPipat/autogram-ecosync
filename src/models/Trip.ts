@@ -46,6 +46,16 @@ export interface ITrip extends Document {
   vehicleType?: string;     // e.g. 'Trailer 22-Wheel', '10-Wheel'
   licensePlate?: string;    // for audit verification
   driverName?: string;      // snapshot at trip close
+  sharedTruckId?: mongoose.Types.ObjectId;
+  lineUserId?: string;
+  tailLicensePlate?: string;
+  acceptedFreightPrice?: number;
+  lineAssignmentStatus?: 'none' | 'offered' | 'accepted' | 'in_progress' | 'delivered' | 'documents_submitted' | 'payment_requested' | 'paid';
+  lineJobOfferId?: mongoose.Types.ObjectId;
+  lineAcceptedAt?: Date;
+  deliveredAt?: Date;
+  deliveryDocumentVideoMessageId?: string;
+  paymentRequestedAt?: Date;
 
   // ── TGO Compliance: Calculated (Pre-computed Snapshot) ──
   tonKm?: number;           // weight × distance
@@ -110,6 +120,21 @@ const TripSchema = new Schema({
   vehicleType: { type: String },
   licensePlate: { type: String },
   driverName: { type: String },
+  sharedTruckId: { type: Schema.Types.ObjectId, ref: 'SharedTruck', index: true },
+  lineUserId: { type: String, index: true },
+  tailLicensePlate: { type: String },
+  acceptedFreightPrice: { type: Number },
+  lineAssignmentStatus: {
+    type: String,
+    enum: ['none', 'offered', 'accepted', 'in_progress', 'delivered', 'documents_submitted', 'payment_requested', 'paid'],
+    default: 'none',
+    index: true,
+  },
+  lineJobOfferId: { type: Schema.Types.ObjectId, ref: 'JobOffer', index: true },
+  lineAcceptedAt: { type: Date },
+  deliveredAt: { type: Date },
+  deliveryDocumentVideoMessageId: { type: String },
+  paymentRequestedAt: { type: Date },
 
   // ── TGO Compliance: Calculated ──
   tonKm: { type: Number },

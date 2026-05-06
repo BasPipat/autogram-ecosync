@@ -3,8 +3,10 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties, type For
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import SidebarLayout from '@/components/SidebarLayout';
+import { DRIVER_DOCUMENT_LABELS } from '@/lib/line-driver-flow';
 import {
   CalendarDays,
+  ExternalLink,
   IdCard,
   Loader2,
   Pencil,
@@ -31,6 +33,9 @@ interface IUser {
 
 interface ISharedTruck {
   _id: string;
+  lineUserId?: string;
+  onboardingStatus?: string;
+  gpsConsentStatus?: string;
   headPlateNumber: string;
   tailPlateNumber: string;
   compulsoryInsuranceExpiresAt: string;
@@ -43,6 +48,32 @@ interface ISharedTruck {
   bankName: string;
   bankAccountNumber: string;
   bankAccountName?: string;
+}
+
+interface ILineDriverDocument {
+  _id: string;
+  documentType: keyof typeof DRIVER_DOCUMENT_LABELS;
+  mediaType: 'image' | 'video' | 'file' | 'text';
+  status: string;
+  textValue?: string;
+  fileName?: string;
+  createdAt?: string;
+}
+
+interface ILineDriver {
+  _id: string;
+  lineUserId: string;
+  displayName?: string;
+  status: string;
+  pendingDocumentType?: string;
+  phone?: string;
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankAccountName?: string;
+  sharedTruckId?: string;
+  gpsConsentStatus: string;
+  lastLocation?: { latitude: number; longitude: number; address?: string; updatedAt: string } | null;
+  documents: ILineDriverDocument[];
 }
 
 type ActiveTab = 'users' | 'sharedTrucks';
@@ -151,6 +182,9 @@ export default function ManageUsersPage() {
   const [editingSharedTruckId, setEditingSharedTruckId] = useState<string | null>(null);
   const [sharedTruckForm, setSharedTruckForm] = useState<SharedTruckForm>(EMPTY_SHARED_TRUCK_FORM);
   const [savingSharedTruck, setSavingSharedTruck] = useState(false);
+  const [lineDrivers, setLineDrivers] = useState<ILineDriver[]>([]);
+  const [lineDriverTruckLinks, setLineDriverTruckLinks] = useState<Record<string, string>>({});
+  const [lineDriversLoading, setLineDriversLoading] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -186,6 +220,26 @@ export default function ManageUsersPage() {
     }
   }, []);
 
+  const fetchLineDrivers = useCallback(async () => {
+    setLineDriversLoading(true);
+    try {
+      const res = await fetch('/api/admin/line-drivers', { cache: 'no-store' });
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) {
+        setLineDrivers(data);
+        const links: Record<string, string> = {};
+        for (const driver of data as ILineDriver[]) {
+          links[driver.lineUserId] = driver.sharedTruckId || '';
+        }
+        setLineDriverTruckLinks(links);
+      }
+    } catch {
+      // keep the shared truck tab usable even if LINE onboarding cannot load
+    } finally {
+      setLineDriversLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (status === 'loading') return;
     if (!session) {
@@ -198,11 +252,12 @@ export default function ManageUsersPage() {
       fetchUsers();
       if (isOwner(sessionRole)) {
         fetchSharedTrucks();
+        fetchLineDrivers();
       }
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [fetchSharedTrucks, fetchUsers, router, session, status]);
+  }, [fetchLineDrivers, fetchSharedTrucks, fetchUsers, router, session, status]);
 
   const currentUser = allUsers.find(u => u.email === session?.user?.email);
   const sessionRole = (session?.user as { role?: string } | undefined)?.role;
@@ -405,6 +460,36 @@ export default function ManageUsersPage() {
       fetchSharedTrucks();
     } catch {
       setSharedTruckError('ระบบขัดข้องขณะลบข้อมูลรถร่วม');
+    }
+  };
+
+  const handleLineDriverStatus = async (lineUserId: string, nextStatus: 'approved' | 'rejected') => {
+    const sharedTruckId = lineDriverTruckLinks[lineUserId] || '';
+    if (nextStatus === 'approved' && !sharedTruckId) {
+      alert('กรุณาเลือกรถร่วมที่จะผูกกับ LINE นี้ก่อนอนุมัติ');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/line-drivers', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lineUserId,
+          status: nextStatus,
+          sharedTruckId,
+          reviewNote: nextStatus === 'approved' ? 'อนุมัติจากหน้า Users' : 'เอกสารไม่ผ่านจากหน้า Users',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'อัปเดตสถานะคนขับไม่สำเร็จ');
+        return;
+      }
+      fetchLineDrivers();
+      fetchSharedTrucks();
+    } catch {
+      alert('ระบบขัดข้องขณะอัปเดตสถานะคนขับ');
     }
   };
 
@@ -661,6 +746,139 @@ export default function ManageUsersPage() {
     </>
   );
 
+  const renderLineDriversSection = () => (
+    <div className="card overflow-hidden mb-6 animate-fade-in">
+      <div className="px-6 py-4 flex flex-wrap items-center justify-between gap-3" style={{ borderBottom: '1px solid var(--border-light)' }}>
+        <div>
+          <h3 className="text-[14px] font-bold" style={{ color: 'var(--text-primary)' }}>คนขับ LINE รอตรวจ</h3>
+          <p className="text-[12px]" style={{ color: 'var(--text-tertiary)' }}>{lineDrivers.length} LINE profiles</p>
+        </div>
+        <button
+          type="button"
+          onClick={fetchLineDrivers}
+          className="px-3 py-2 rounded-lg text-[12px] font-semibold"
+          style={{ background: 'var(--border-light)', color: 'var(--text-secondary)' }}
+        >
+          รีเฟรช
+        </button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left min-w-[1150px]">
+          <thead>
+            <tr style={{ background: 'var(--bg-base)' }}>
+              {['LINE', 'สถานะ', 'GPS', 'เอกสาร', 'ข้อมูลติดต่อ', 'ผูกรถร่วม', 'ตรวจสอบ'].map(h => (
+                <th key={h} className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider"
+                  style={{ color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border)' }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="text-[13px]">
+            {lineDriversLoading ? (
+              <tr>
+                <td colSpan={7} className="p-10 text-center" style={{ color: 'var(--text-tertiary)' }}>
+                  <Loader2 className="inline animate-spin mr-2" size={16} />
+                  กำลังดึงข้อมูลคนขับ LINE...
+                </td>
+              </tr>
+            ) : lineDrivers.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="p-10 text-center" style={{ color: 'var(--text-tertiary)' }}>
+                  ยังไม่มีคนขับเพิ่มเพื่อน LINE OA
+                </td>
+              </tr>
+            ) : (
+              lineDrivers.map(driver => (
+                <tr key={driver.lineUserId} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                  <td className="px-4 py-3">
+                    <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{driver.displayName || 'ไม่ระบุชื่อ'}</div>
+                    <div className="font-mono text-[11px]" style={{ color: 'var(--text-tertiary)' }}>{driver.lineUserId}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                      style={{
+                        background: driver.status === 'approved' ? '#ECFDF5' : driver.status === 'rejected' ? '#FEF2F2' : '#FFF7ED',
+                        color: driver.status === 'approved' ? '#059669' : driver.status === 'rejected' ? '#DC2626' : '#C2410C',
+                      }}>
+                      {driver.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>
+                    <div>{driver.gpsConsentStatus}</div>
+                    {driver.lastLocation && (
+                      <div className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+                        {driver.lastLocation.latitude.toFixed(5)}, {driver.lastLocation.longitude.toFixed(5)}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1.5 max-w-[360px]">
+                      {driver.documents.slice(0, 12).map(document => (
+                        <a
+                          key={document._id}
+                          href={document.mediaType === 'text' ? undefined : `/api/admin/line-driver-documents/${document._id}/content`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold"
+                          style={{ background: 'var(--border-light)', color: 'var(--text-secondary)' }}
+                        >
+                          {DRIVER_DOCUMENT_LABELS[document.documentType] || document.documentType}
+                          {document.mediaType !== 'text' && <ExternalLink size={11} />}
+                        </a>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>
+                    <div>{driver.phone || 'ไม่ระบุเบอร์'}</div>
+                    <div className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+                      {driver.bankName ? `${driver.bankName} ${driver.bankAccountNumber || ''}` : 'ไม่ระบุบัญชี'}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <select
+                      className="w-full min-w-[220px] p-2 text-[12px] outline-none"
+                      style={inputStyle}
+                      value={lineDriverTruckLinks[driver.lineUserId] || ''}
+                      onChange={e => setLineDriverTruckLinks(prev => ({ ...prev, [driver.lineUserId]: e.target.value }))}
+                    >
+                      <option value="">เลือกรถร่วม</option>
+                      {sharedTrucks.map(truck => (
+                        <option key={truck._id} value={truck._id}>
+                          {truck.headPlateNumber} / {truck.tailPlateNumber} - {truck.driverFirstName} {truck.driverLastName}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleLineDriverStatus(driver.lineUserId, 'approved')}
+                        className="py-1.5 px-3 rounded-lg text-[11px] font-bold"
+                        style={{ background: '#ECFDF5', color: '#059669' }}
+                      >
+                        อนุมัติ
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleLineDriverStatus(driver.lineUserId, 'rejected')}
+                        className="py-1.5 px-3 rounded-lg text-[11px] font-bold"
+                        style={{ background: '#FEF2F2', color: '#DC2626' }}
+                      >
+                        ไม่ผ่าน
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
   const renderSharedTruckForm = () => (
     <div className="card p-6 mb-6 animate-fade-in">
       <div className="flex items-center justify-between gap-4 mb-5">
@@ -856,6 +1074,8 @@ export default function ManageUsersPage() {
           {sharedTruckError}
         </div>
       )}
+
+      {renderLineDriversSection()}
 
       {showTruckForm && renderSharedTruckForm()}
 

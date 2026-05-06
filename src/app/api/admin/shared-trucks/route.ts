@@ -99,6 +99,11 @@ function buildPayload(body: SharedTruckBody): { payload: SharedTruckPayload } | 
 function serializeSharedTruck(sharedTruck: ISharedTruck) {
   return {
     _id: sharedTruck._id.toString(),
+    lineUserId: sharedTruck.lineUserId || '',
+    onboardingStatus: sharedTruck.onboardingStatus || 'manual',
+    gpsConsentStatus: sharedTruck.gpsConsentStatus || 'pending',
+    gpsConsentAt: sharedTruck.gpsConsentAt?.toISOString(),
+    documentReviewNote: sharedTruck.documentReviewNote || '',
     headPlateNumber: sharedTruck.headPlateNumber,
     tailPlateNumber: sharedTruck.tailPlateNumber,
     compulsoryInsuranceExpiresAt: sharedTruck.compulsoryInsuranceExpiresAt?.toISOString(),

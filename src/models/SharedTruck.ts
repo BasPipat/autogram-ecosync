@@ -1,6 +1,11 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface ISharedTruck extends Document {
+  lineUserId?: string;
+  onboardingStatus?: 'manual' | 'awaiting_documents' | 'under_review' | 'approved' | 'rejected';
+  gpsConsentStatus?: 'pending' | 'granted' | 'denied';
+  gpsConsentAt?: Date;
+  documentReviewNote?: string;
   headPlateNumber: string;
   tailPlateNumber: string;
   compulsoryInsuranceExpiresAt: Date;
@@ -18,6 +23,19 @@ export interface ISharedTruck extends Document {
 }
 
 const SharedTruckSchema = new Schema<ISharedTruck>({
+  lineUserId: { type: String, trim: true, index: true, sparse: true },
+  onboardingStatus: {
+    type: String,
+    enum: ['manual', 'awaiting_documents', 'under_review', 'approved', 'rejected'],
+    default: 'manual',
+  },
+  gpsConsentStatus: {
+    type: String,
+    enum: ['pending', 'granted', 'denied'],
+    default: 'pending',
+  },
+  gpsConsentAt: { type: Date },
+  documentReviewNote: { type: String, trim: true },
   headPlateNumber: { type: String, required: true, trim: true },
   tailPlateNumber: { type: String, required: true, trim: true },
   compulsoryInsuranceExpiresAt: { type: Date, required: true },

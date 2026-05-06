@@ -349,6 +349,34 @@ export default function ManageTripsPage() {
     } catch { alert('ระบบขัดข้อง'); }
   };
 
+  const handleSendToSharedTrucks = async (trip: { _id: string; tripId: string }) => {
+    const input = prompt(`กรอกราคาตั้งต้นสำหรับงาน ${trip.tripId}\nระบบจะส่งให้รถร่วมในราคา -1%`);
+    if (!input) return;
+
+    const basePrice = Number(input.replace(/,/g, '').trim());
+    if (!Number.isFinite(basePrice) || basePrice <= 0) {
+      alert('กรุณากรอกราคาเป็นตัวเลขมากกว่า 0');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/line-job-offers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tripId: trip._id, basePrice }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'ส่งงานให้รถร่วมไม่สำเร็จ');
+        return;
+      }
+      alert(data.message || 'ส่งงานให้รถร่วมสำเร็จ');
+      fetchInitialData();
+    } catch {
+      alert('ระบบขัดข้องขณะส่งงานให้รถร่วม');
+    }
+  };
+
   const displayedTrips = filterTab === 'pending' ? trips.filter(t => !t.licensePlate && !t.driverName) : trips;
 
   const renderTableContent = () => (
@@ -446,6 +474,9 @@ export default function ManageTripsPage() {
                     <div className="flex items-center justify-center gap-3">
                       <button type="button" onClick={() => handleEditClick(trip)} className="text-slate-400 hover:text-blue-600 transition-colors" title="แก้ไขงาน">
                         <Edit2 size={16} />
+                      </button>
+                      <button type="button" onClick={() => handleSendToSharedTrucks(trip)} className="text-slate-400 hover:text-emerald-600 transition-colors" title="ส่งงานให้รถร่วม">
+                        <Truck size={16} />
                       </button>
                       <button type="button" onClick={() => handleDeleteTrip(trip._id)} className="text-slate-400 hover:text-red-500 transition-colors" title="ลบงาน">
                         <Trash2 size={16} />

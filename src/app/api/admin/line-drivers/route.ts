@@ -1,0 +1,157 @@
+import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
+import { connectToDatabase } from '@/lib/mongodb';
+import { getSessionToken, isInternalRole } from '@/lib/access';
+import { LineDriver, ILineDriver, LineDriverStatus } from '@/models/LineDriver';
+import { DriverDocument, IDriverDocument } from '@/models/DriverDocument';
+import { SharedTruck } from '@/models/SharedTruck';
+
+export const dynamic = 'force-dynamic';
+
+type UpdateLineDriverBody = {
+  lineUserId?: unknown;
+  status?: unknown;
+  reviewNote?: unknown;
+  sharedTruckId?: unknown;
+};
+
+const allowedStatuses: LineDriverStatus[] = ['new', 'awaiting_documents', 'under_review', 'approved', 'rejected', 'suspended'];
+
+function text(value: unknown) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+async function requireInternal(req: NextRequest) {
+  const token = await getSessionToken(req);
+  if (!token) {
+    return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
+  }
+
+  if (!isInternalRole(token.role)) {
+    return { response: NextResponse.json({ error: 'เฉพาะ System Owner เท่านั้น' }, { status: 403 }) };
+  }
+
+  return { token };
+}
+
+function serializeDocument(document: IDriverDocument) {
+  return {
+    _id: document._id.toString(),
+    lineUserId: document.lineUserId,
+    documentType: document.documentType,
+    mediaType: document.mediaType,
+    lineMessageId: document.lineMessageId || '',
+    textValue: document.textValue || '',
+    fileName: document.fileName || '',
+    mimeType: document.mimeType || '',
+    status: document.status,
+    reviewNote: document.reviewNote || '',
+    tripId: document.tripId?.toString(),
+    jobOfferId: document.jobOfferId?.toString(),
+    createdAt: document.createdAt?.toISOString(),
+    updatedAt: document.updatedAt?.toISOString(),
+  };
+}
+
+function serializeDriver(driver: ILineDriver, documents: IDriverDocument[]) {
+  return {
+    _id: driver._id.toString(),
+    lineUserId: driver.lineUserId,
+    displayName: driver.displayName || '',
+    pictureUrl: driver.pictureUrl || '',
+    status: driver.status,
+    pendingDocumentType: driver.pendingDocumentType || '',
+    phone: driver.phone || '',
+    bankName: driver.bankName || '',
+    bankAccountNumber: driver.bankAccountNumber || '',
+    bankAccountName: driver.bankAccountName || '',
+    sharedTruckId: driver.sharedTruckId?.toString(),
+    activeTripId: driver.activeTripId?.toString(),
+    activeJobOfferId: driver.activeJobOfferId?.toString(),
+    gpsConsentStatus: driver.gpsConsentStatus,
+    gpsConsentAt: driver.gpsConsentAt?.toISOString(),
+    lastLocation: driver.lastLocation || null,
+    reviewNote: driver.reviewNote || '',
+    approvedAt: driver.approvedAt?.toISOString(),
+    rejectedAt: driver.rejectedAt?.toISOString(),
+    createdAt: driver.createdAt?.toISOString(),
+    updatedAt: driver.updatedAt?.toISOString(),
+    documents: documents.map(serializeDocument),
+  };
+}
+
+export async function GET(req: NextRequest) {
+  try {
+    const auth = await requireInternal(req);
+    if ('response' in auth) return auth.response;
+
+    await connectToDatabase();
+    const drivers = await LineDriver.find({}).sort({ updatedAt: -1 });
+    const lineUserIds = drivers.map(driver => driver.lineUserId);
+    const documents = await DriverDocument.find({ lineUserId: { $in: lineUserIds } }).sort({ createdAt: -1 });
+    const documentsByLineUserId = new Map<string, IDriverDocument[]>();
+
+    for (const document of documents) {
+      const items = documentsByLineUserId.get(document.lineUserId) || [];
+      items.push(document);
+      documentsByLineUserId.set(document.lineUserId, items);
+    }
+
+    return NextResponse.json(drivers.map(driver => serializeDriver(driver, documentsByLineUserId.get(driver.lineUserId) || [])));
+  } catch {
+    return NextResponse.json({ error: 'ไม่สามารถดึงข้อมูลคนขับ LINE ได้' }, { status: 500 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const auth = await requireInternal(req);
+    if ('response' in auth) return auth.response;
+
+    const body = await req.json() as UpdateLineDriverBody;
+    const lineUserId = text(body.lineUserId);
+    const nextStatus = text(body.status) as LineDriverStatus;
+    const sharedTruckId = text(body.sharedTruckId);
+
+    if (!lineUserId || !allowedStatuses.includes(nextStatus)) {
+      return NextResponse.json({ error: 'ข้อมูลสถานะคนขับไม่ถูกต้อง' }, { status: 400 });
+    }
+
+    await connectToDatabase();
+    const updateData: Partial<ILineDriver> = {
+      status: nextStatus,
+      reviewNote: text(body.reviewNote),
+    };
+
+    if (nextStatus === 'approved') {
+      updateData.approvedAt = new Date();
+      updateData.rejectedAt = undefined;
+    }
+    if (nextStatus === 'rejected') {
+      updateData.rejectedAt = new Date();
+    }
+
+    if (sharedTruckId) {
+      updateData.sharedTruckId = new mongoose.Types.ObjectId(sharedTruckId);
+    }
+
+    const driver = await LineDriver.findOneAndUpdate({ lineUserId }, updateData, { new: true });
+    if (!driver) {
+      return NextResponse.json({ error: 'ไม่พบคนขับ LINE' }, { status: 404 });
+    }
+
+    if (sharedTruckId) {
+      await SharedTruck.findByIdAndUpdate(sharedTruckId, {
+        lineUserId,
+        onboardingStatus: nextStatus === 'approved' ? 'approved' : 'under_review',
+        gpsConsentStatus: driver.gpsConsentStatus,
+        gpsConsentAt: driver.gpsConsentAt,
+        documentReviewNote: driver.reviewNote,
+      });
+    }
+
+    return NextResponse.json({ message: 'อัปเดตสถานะคนขับสำเร็จ', driver: serializeDriver(driver, []) });
+  } catch {
+    return NextResponse.json({ error: 'อัปเดตสถานะคนขับไม่สำเร็จ' }, { status: 500 });
+  }
+}
