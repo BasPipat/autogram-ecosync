@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Customer } from '@/models/Customer';
 import { getSessionToken, isInternalRole } from '@/lib/access';
-import { ObjectId } from 'mongodb';
+import mongoose from 'mongoose';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
   let query: Record<string, any> = {};
   if (token.companyId) {
     try {
-      query = { companyId: new ObjectId(token.companyId) };
+      query = { companyId: new mongoose.Types.ObjectId(token.companyId) };
     } catch {
       query = { companyName: token.companyName };
     }
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
   let query: Record<string, any> = {};
   if (token.companyId) {
     try {
-      query = { companyId: new ObjectId(token.companyId) };
+      query = { companyId: new mongoose.Types.ObjectId(token.companyId) };
     } catch {
       query = { companyName: token.companyName };
     }
@@ -82,20 +82,23 @@ export async function POST(req: NextRequest) {
   };
 
   // Ensure companyName is set on insert, but we don't allow changing it if it already exists
-  updateData.$setOnInsert = {
+  const setOnInsert: any = {
     companyName: companyName,
   };
   
   if (token.companyId) {
      try {
-       updateData.$setOnInsert.companyId = new ObjectId(token.companyId);
+       setOnInsert.companyId = new mongoose.Types.ObjectId(token.companyId);
      } catch (e) {}
   }
 
   try {
     const result = await Customer.findOneAndUpdate(
       query,
-      { $set: updateData.taxId ? { taxId, address, email, phoneNumber } : updateData, $setOnInsert: updateData.$setOnInsert },
+      { 
+        $set: { taxId, address, email, phoneNumber }, 
+        $setOnInsert: setOnInsert 
+      },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
     return NextResponse.json({ message: 'บันทึกโปรไฟล์บริษัทสำเร็จ', profile: result });
