@@ -412,6 +412,12 @@ async function saveMediaDocument(
   fileName?: string
 ) {
   const driver = await getOrCreateDriver(lineUserId);
+
+  if (driver.status === 'approved' && !driver.activeTripId && !driver.pendingDocumentType) {
+    await getLineClient().replyMessage(replyToken, { type: 'text', text: 'ได้รับไฟล์แล้วครับ แต่เนื่องจากคุณได้รับการอนุมัติแล้ว และไม่มีงานที่กำลังดำเนินการอยู่ ระบบจึงไม่ได้นำไปประมวลผลครับ' });
+    return;
+  }
+
   const documentType = driver.pendingDocumentType ||
     (driver.activeTripId && mediaType === 'image' ? 'pod_image' : undefined) ||
     (driver.activeTripId && mediaType === 'video' ? 'delivery_documents_video' : undefined);
@@ -530,6 +536,12 @@ async function handlePostback(lineUserId: string, data: string, replyToken: stri
     const docType = params.get('docType') || '';
     if (!isDriverDocumentType(docType)) {
       await getLineClient().replyMessage(replyToken, { type: 'text', text: 'ประเภทเอกสารไม่ถูกต้องครับ' });
+      return;
+    }
+
+    const driver = await getOrCreateDriver(lineUserId);
+    if (driver.status === 'approved') {
+      await getLineClient().replyMessage(replyToken, { type: 'text', text: 'คุณได้รับการอนุมัติเรียบร้อยแล้ว ไม่จำเป็นต้องส่งเอกสารเพิ่มเติมครับ' });
       return;
     }
 

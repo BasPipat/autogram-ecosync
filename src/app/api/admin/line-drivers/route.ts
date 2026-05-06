@@ -127,6 +127,7 @@ export async function PUT(req: NextRequest) {
     if (nextStatus === 'approved') {
       updateData.approvedAt = new Date();
       updateData.rejectedAt = undefined;
+      updateData.pendingDocumentType = undefined;
     }
     if (nextStatus === 'rejected') {
       updateData.rejectedAt = new Date();
