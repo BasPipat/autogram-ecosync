@@ -14,6 +14,7 @@ interface IGpsSession {
   startedAt?: Date;
   stoppedAt?: Date;
   lastPingAt?: Date;
+  currentPin?: IMapPin; // Added for live tracking
 }
 
 export interface ITrip extends Document {
@@ -37,15 +38,14 @@ export interface ITrip extends Document {
   
   originPin?: IMapPin;
   destinationPin?: IMapPin;
-  vehicleCount?: number; // Default 1
-  distance?: number; // km
-  weight?: number;   // ton
-  carbon: number;    // (legacy) backward compatible
+  vehicleCount?: number; 
+  distance?: number; 
+  weight?: number;   
+  carbon: number;    
 
-  // ── TGO Compliance: Identity ──
-  vehicleType?: string;     // e.g. 'Trailer 22-Wheel', '10-Wheel'
-  licensePlate?: string;    // for audit verification
-  driverName?: string;      // snapshot at trip close
+  vehicleType?: string;     
+  licensePlate?: string;    
+  driverName?: string;      
   sharedTruckId?: mongoose.Types.ObjectId;
   lineUserId?: string;
   tailLicensePlate?: string;
@@ -57,15 +57,13 @@ export interface ITrip extends Document {
   deliveryDocumentVideoMessageId?: string;
   paymentRequestedAt?: Date;
 
-  // ── TGO Compliance: Calculated (Pre-computed Snapshot) ──
-  tonKm?: number;           // weight × distance
-  emissionFactor?: number;  // EF used at time of calculation (kgCO2e / ton-km)
-  emissionKgCo2e?: number;  // tonKm × emissionFactor
+  tonKm?: number;           
+  emissionFactor?: number;  
+  emissionKgCo2e?: number;  
 
-  // ── TGO Compliance: Audit Trail ──
-  tgoVersion?: string;           // e.g. 'TGO-2024'
-  calculatedAt?: Date;           // when emission was computed
-  settingSnapshotId?: mongoose.Types.ObjectId; // ref to Setting version used
+  tgoVersion?: string;           
+  calculatedAt?: Date;           
+  settingSnapshotId?: mongoose.Types.ObjectId; 
 
   status: string;
   gpsSession?: IGpsSession;
@@ -88,6 +86,7 @@ const GpsSessionSchema = new Schema<IGpsSession>({
   startedAt: { type: Date },
   stoppedAt: { type: Date },
   lastPingAt: { type: Date },
+  currentPin: { type: MapPinSchema }, // Added for live tracking
 }, { _id: false });
 
 const TripSchema = new Schema({
@@ -114,9 +113,8 @@ const TripSchema = new Schema({
   vehicleCount: { type: Number, default: 1 },
   distance: { type: Number, default: 0 },
   weight: { type: Number, default: 0 },
-  carbon: { type: Number, default: 0 }, // legacy
+  carbon: { type: Number, default: 0 }, 
 
-  // ── TGO Compliance: Identity ──
   vehicleType: { type: String },
   licensePlate: { type: String },
   driverName: { type: String },
@@ -136,12 +134,10 @@ const TripSchema = new Schema({
   deliveryDocumentVideoMessageId: { type: String },
   paymentRequestedAt: { type: Date },
 
-  // ── TGO Compliance: Calculated ──
   tonKm: { type: Number },
   emissionFactor: { type: Number },
   emissionKgCo2e: { type: Number },
 
-  // ── TGO Compliance: Audit Trail ──
   tgoVersion: { type: String },
   calculatedAt: { type: Date },
   settingSnapshotId: { type: Schema.Types.ObjectId, ref: 'Setting' },

@@ -509,6 +509,12 @@ async function handleLocation(lineUserId: string, latitude: number, longitude: n
       'gpsSession.status': 'active',
       'gpsSession.isTracking': true,
       'gpsSession.lastPingAt': now,
+      'gpsSession.currentPin': {
+        lat: latitude,
+        lng: longitude,
+        address: address || '',
+        googleMapsUrl: `https://www.google.com/maps?q=${latitude},${longitude}`
+      }
     });
   }
 

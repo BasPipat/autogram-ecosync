@@ -54,7 +54,7 @@ export async function GET(req: NextRequest) {
 
     const markers = activeTrips
       .map((trip) => {
-        const pin = trip.destinationPin || trip.originPin;
+        const pin = trip.gpsSession?.currentPin || trip.destinationPin || trip.originPin;
         if (!pin?.lat || !pin?.lng) return null;
         const driver = trip.driverId ? driverById.get(String(trip.driverId)) : null;
         return {
