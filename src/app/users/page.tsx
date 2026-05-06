@@ -14,6 +14,7 @@ import {
   Save,
   Search,
   Shield,
+  Sparkles,
   Trash2,
   Truck,
   UserPlus,
@@ -185,6 +186,7 @@ export default function ManageUsersPage() {
   const [lineDrivers, setLineDrivers] = useState<ILineDriver[]>([]);
   const [lineDriverTruckLinks, setLineDriverTruckLinks] = useState<Record<string, string>>({});
   const [lineDriversLoading, setLineDriversLoading] = useState(false);
+  const [analyzingLineUserId, setAnalyzingLineUserId] = useState<string | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -475,6 +477,44 @@ export default function ManageUsersPage() {
       }
     } catch {
       alert('ระบบขัดข้อง');
+    }
+  };
+
+  const handleAiAnalyze = async (lineUserId: string) => {
+    setAnalyzingLineUserId(lineUserId);
+    try {
+      const res = await fetch('/api/admin/ai-analyze-driver', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lineUserId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'AI วิเคราะห์ไม่สำเร็จ');
+        return;
+      }
+
+      setSharedTruckForm({
+        headPlateNumber: data.headPlateNumber || '',
+        tailPlateNumber: data.tailPlateNumber || '',
+        compulsoryInsuranceExpiresAt: data.compulsoryInsuranceExpiresAt || '',
+        vehicleInsuranceType: data.vehicleInsuranceType || '',
+        cargoInsuranceAmount: String(data.cargoInsuranceAmount || ''),
+        driverFirstName: data.driverFirstName || '',
+        driverLastName: data.driverLastName || '',
+        driverLicenseType: data.driverLicenseType || '',
+        driverPhone: data.driverPhone || '',
+        bankName: data.bankName || '',
+        bankAccountNumber: data.bankAccountNumber || '',
+        bankAccountName: data.bankAccountName || '',
+      });
+      setEditingSharedTruckId(null);
+      setShowTruckForm(true);
+      setActiveTab('sharedTrucks');
+    } catch (error) {
+      alert('ระบบขัดข้องขณะเรียกใช้งาน AI');
+    } finally {
+      setAnalyzingLineUserId(null);
     }
   };
 
