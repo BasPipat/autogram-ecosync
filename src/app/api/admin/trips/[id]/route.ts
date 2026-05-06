@@ -13,6 +13,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = resolvedParams;
     const data = await req.json();
 
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json({ error: 'Invalid trip ID format' }, { status: 400 });
+    }
+
     await connectToDatabase();
 
     const query: any = { _id: new ObjectId(id) };
@@ -30,9 +34,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     return NextResponse.json({ message: 'แก้ไขงานสำเร็จ!', trip: updatedTrip });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Update trip error:', error);
-    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการแก้ไขงาน' }, { status: 500 });
+    return NextResponse.json({ error: `เกิดข้อผิดพลาดในการแก้ไขงาน: ${error?.message || error}` }, { status: 500 });
   }
 }
 
@@ -43,6 +47,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const resolvedParams = await params;
     const { id } = resolvedParams;
+
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json({ error: 'Invalid trip ID format' }, { status: 400 });
+    }
 
     await connectToDatabase();
 
@@ -61,8 +69,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     return NextResponse.json({ message: 'ลบงานสำเร็จ!' });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Delete trip error:', error);
-    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการลบงาน' }, { status: 500 });
+    return NextResponse.json({ error: `เกิดข้อผิดพลาดในการลบงาน: ${error?.message || error}` }, { status: 500 });
   }
 }
