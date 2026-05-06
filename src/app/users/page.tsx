@@ -766,7 +766,7 @@ export default function ManageUsersPage() {
         <table className="w-full text-left min-w-[1150px]">
           <thead>
             <tr style={{ background: 'var(--bg-base)' }}>
-              {['LINE', 'สถานะ', 'GPS', 'เอกสาร', 'ข้อมูลติดต่อ', 'ผูกรถร่วม', 'ตรวจสอบ'].map(h => (
+              {['LINE', 'สถานะ', 'เอกสาร', 'ข้อมูลติดต่อ', 'ผูกรถร่วม', 'ตรวจสอบ'].map(h => (
                 <th key={h} className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider"
                   style={{ color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border)' }}>
                   {h}
@@ -804,14 +804,7 @@ export default function ManageUsersPage() {
                       {driver.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>
-                    <div>{driver.gpsConsentStatus}</div>
-                    {driver.lastLocation && (
-                      <div className="text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
-                        {driver.lastLocation.latitude.toFixed(5)}, {driver.lastLocation.longitude.toFixed(5)}
-                      </div>
-                    )}
-                  </td>
+
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1.5 max-w-[360px]">
                       {driver.documents.slice(0, 12).map(document => (
