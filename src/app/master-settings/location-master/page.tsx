@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import SidebarLayout from '@/components/SidebarLayout';
-import { Download, Upload, Search, Plus, FileText, MapPin, User, Phone, Globe, ShieldCheck } from 'lucide-react';
+import { Download, Upload, Search, Plus, FileText, MapPin, ShieldCheck, Pencil, Trash2, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 const FIELD_HEADERS = [
@@ -22,9 +22,9 @@ export default function LocationMasterPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploadMessage, setUploadMessage] = useState<string>('');
   const [importing, setImporting] = useState(false);
   const [newLocation, setNewLocation] = useState({ name: '', locationLink: '', contactPerson: '', phoneNumber: '' });
+  const [editId, setEditId] = useState<string | null>(null);
   const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
@@ -94,7 +94,6 @@ export default function LocationMasterPage() {
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setUploadMessage('');
     setAlert(null);
     const file = event.target.files?.[0] || null;
     setUploadFile(file);
@@ -123,7 +122,6 @@ export default function LocationMasterPage() {
       if (res.ok) {
         setAlert({ type: 'success', message: `นำเข้าสำเร็จ ${data.count || parsed.length} รายการ` });
         setUploadFile(null);
-        setUploadMessage('');
         fetchLocations();
       } else {
         setAlert({ type: 'error', message: data.error || 'นำเข้า Excel ไม่สำเร็จ' });
@@ -136,25 +134,57 @@ export default function LocationMasterPage() {
     }
   };
 
-  const handleCreateLocation = async (event: React.FormEvent) => {
+  const handleCreateOrUpdate = async (event: React.FormEvent) => {
     event.preventDefault();
     setAlert(null);
     try {
-      const res = await fetch('/api/master-settings/locations', {
-        method: 'POST',
+      const url = editId ? `/api/master-settings/locations/${editId}` : '/api/master-settings/locations';
+      const method = editId ? 'PUT' : 'POST';
+      
+      const res = await fetch(url, {
+        method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newLocation),
       });
       const data = await res.json();
       if (res.ok) {
-        setAlert({ type: 'success', message: 'บันทึกสถานที่ใหม่สำเร็จ' });
+        setAlert({ type: 'success', message: editId ? 'แก้ไขสถานที่สำเร็จ' : 'บันทึกสถานที่ใหม่สำเร็จ' });
         setNewLocation({ name: '', locationLink: '', contactPerson: '', phoneNumber: '' });
+        setEditId(null);
         fetchLocations();
       } else {
-        setAlert({ type: 'error', message: data.error || 'ไม่สามารถบันทึกสถานที่ได้' });
+        setAlert({ type: 'error', message: data.error || 'ไม่สามารถบันทึกได้' });
       }
     } catch (error) {
       setAlert({ type: 'error', message: 'เกิดข้อผิดพลาดขณะบันทึก' });
+    }
+  };
+
+  const handleEditClick = (item: any) => {
+    setEditId(item._id);
+    setNewLocation({
+      name: item.name,
+      locationLink: item.locationLink || '',
+      contactPerson: item.contactPerson || '',
+      phoneNumber: item.phoneNumber || '',
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('คุณแน่ใจหรือไม่ว่าต้องการลบสถานที่นี้?')) return;
+    
+    try {
+      const res = await fetch(`/api/master-settings/locations/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok) {
+        setAlert({ type: 'success', message: 'ลบสถานที่สำเร็จ' });
+        fetchLocations();
+      } else {
+        setAlert({ type: 'error', message: data.error || 'ลบไม่สำเร็จ' });
+      }
+    } catch (error) {
+      setAlert({ type: 'error', message: 'เกิดข้อผิดพลาดขณะลบ' });
     }
   };
 
@@ -162,6 +192,7 @@ export default function LocationMasterPage() {
     <SidebarLayout>
       <div className="min-h-screen p-6" style={{ background: 'var(--bg-base)' }}>
         <div className="max-w-6xl mx-auto space-y-6">
+          {/* Header */}
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <div className="flex items-center gap-3 mb-3">
@@ -185,12 +216,13 @@ export default function LocationMasterPage() {
           </div>
 
           {alert && (
-            <div className={`rounded-2xl px-4 py-3 text-sm font-medium ${alert.type === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'}`}>
+            <div className={`rounded-2xl px-4 py-3 text-sm font-medium animate-in fade-in slide-in-from-top-2 duration-300 ${alert.type === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'}`}>
               {alert.message}
             </div>
           )}
 
-          <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+            {/* Import Box */}
             <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-200">
               <div className="flex items-center justify-between gap-3 mb-5">
                 <div>
@@ -215,89 +247,119 @@ export default function LocationMasterPage() {
                       </div>
                       <div className="text-xs text-slate-500">{(uploadFile.size / 1024).toFixed(1)} KB</div>
                     </div>
-                    <p className="mt-3 text-slate-500">หัวตารางที่รองรับ: name, locationLink, contactPerson, phoneNumber, companyId</p>
                   </div>
                 )}
                 <div className="flex flex-wrap gap-3">
                   <button type="button" onClick={handleImport} disabled={importing} className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
                     <Upload size={16} /> {importing ? 'กำลังนำเข้า...' : 'นำเข้า Excel'}
                   </button>
-                  <button type="button" onClick={downloadTemplate} className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-                    <Download size={16} /> ดาวน์โหลดเทมเพลตใหม่
-                  </button>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-200">
+            {/* Form Box */}
+            <div className={`rounded-3xl bg-white p-6 shadow-sm border transition-all duration-500 ${editId ? 'border-blue-400 ring-2 ring-blue-50' : 'border-slate-200'}`}>
               <div className="flex items-center justify-between gap-3 mb-5">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900">เพิ่มสถานที่ใหม่</h2>
-                  <p className="text-sm text-slate-500">บันทึกที่เดียวเพื่อใช้ใน Job Management</p>
+                  <h2 className="text-lg font-semibold text-slate-900">{editId ? 'แก้ไขข้อมูลสถานที่' : 'เพิ่มสถานที่ใหม่'}</h2>
+                  <p className="text-sm text-slate-500">ข้อมูลนี้จะถูกดึงไปใช้ในหน้าจัดการงานขนส่ง</p>
                 </div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
-                  <ShieldCheck size={14} /> Data Isolation
+                <div className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold ${editId ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                  {editId ? <Pencil size={14} /> : <ShieldCheck size={14} />} {editId ? 'Editing Mode' : 'Data Isolation'}
                 </div>
               </div>
-              <form onSubmit={handleCreateLocation} className="space-y-4">
+              <form onSubmit={handleCreateOrUpdate} className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="block text-sm font-medium text-slate-700">ชื่อสถานที่</label>
-                  <input value={newLocation.name} required onChange={(e) => setNewLocation((prev) => ({ ...prev, name: e.target.value }))} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200" />
-                  <label className="block text-sm font-medium text-slate-700">ลิงก์พิกัดแผนที่</label>
-                  <input value={newLocation.locationLink} required onChange={(e) => setNewLocation((prev) => ({ ...prev, locationLink: e.target.value }))} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200" placeholder="https://maps.google.com/?q=13.7,100.5" />
-                  <label className="block text-sm font-medium text-slate-700">ผู้ติดต่อ</label>
-                  <input value={newLocation.contactPerson} onChange={(e) => setNewLocation((prev) => ({ ...prev, contactPerson: e.target.value }))} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200" />
-                  <label className="block text-sm font-medium text-slate-700">เบอร์โทรศัพท์</label>
-                  <input value={newLocation.phoneNumber} onChange={(e) => setNewLocation((prev) => ({ ...prev, phoneNumber: e.target.value }))} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200" placeholder="08x-xxx-xxxx" />
+                  <div className="col-span-full">
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">ชื่อสถานที่</label>
+                    <input value={newLocation.name} required onChange={(e) => setNewLocation((prev) => ({ ...prev, name: e.target.value }))} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" placeholder="เช่น ท่าเรือแหลมฉบัง, คลังสินค้าบางปะอิน" />
+                  </div>
+                  <div className="col-span-full">
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">ลิงก์พิกัดแผนที่ (Google Maps)</label>
+                    <input value={newLocation.locationLink} onChange={(e) => setNewLocation((prev) => ({ ...prev, locationLink: e.target.value }))} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" placeholder="https://maps.google.com/?q=..." />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">ชื่อผู้ติดต่อ</label>
+                    <input value={newLocation.contactPerson} onChange={(e) => setNewLocation((prev) => ({ ...prev, contactPerson: e.target.value }))} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" placeholder="ระบุชื่อ" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">เบอร์โทรศัพท์</label>
+                    <input value={newLocation.phoneNumber} onChange={(e) => setNewLocation((prev) => ({ ...prev, phoneNumber: e.target.value }))} className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" placeholder="08x-xxx-xxxx" />
+                  </div>
                 </div>
-                <button type="submit" className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700">
-                  <Plus size={16} /> บันทึก Location
-                </button>
+                <div className="flex gap-3 pt-2">
+                  <button type="submit" className={`flex-1 inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-sm font-bold text-white transition-all shadow-lg ${editId ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200' : 'bg-slate-900 hover:bg-slate-800 shadow-slate-200'}`}>
+                    {editId ? <Pencil size={16} /> : <Plus size={16} />} {editId ? 'บันทึกการแก้ไข' : 'บันทึก Location'}
+                  </button>
+                  {editId && (
+                    <button type="button" onClick={() => { setEditId(null); setNewLocation({ name: '', locationLink: '', contactPerson: '', phoneNumber: '' }); }} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-100 px-5 py-3 text-sm font-bold text-slate-600 hover:bg-slate-200 transition-all">
+                      <X size={16} /> ยกเลิก
+                    </button>
+                  )}
+                </div>
               </form>
             </div>
           </div>
 
+          {/* Table Box */}
           <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-200">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">รายการ Location ทั้งหมด</h2>
-                <p className="text-sm text-slate-500">ค้นหาและจัดการข้อมูลสถานที่เพื่อใช้ในฟอร์ม Job Management</p>
+                <p className="text-sm text-slate-500">จัดการข้อมูลสถานที่ของคุณเพื่อความสะดวกในการเรียกใช้งาน</p>
               </div>
-              <div className="relative w-full md:w-72">
+              <div className="relative w-full md:w-80">
                 <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="ค้นหา ชื่อ สถานที่ ผู้ติดต่อ หรือเบอร์" className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-11 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200" />
+                <input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="ค้นหาชื่อ, พิกัด หรือเบอร์ติดต่อ..." className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-11 py-3 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" />
               </div>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-2xl border border-slate-100">
               <table className="min-w-full border-separate border-spacing-0 text-left">
                 <thead>
-                  <tr className="bg-slate-50 text-slate-500 text-[12px] uppercase tracking-[0.08em]">
-                    <th className="p-4 rounded-tl-3xl">ชื่อสถานที่</th>
-                    <th className="p-4">พิกัด / ลิงก์</th>
-                    <th className="p-4">ผู้ติดต่อ</th>
-                    <th className="p-4">เบอร์โทร</th>
-                    <th className="p-4 rounded-tr-3xl">บริษัท</th>
+                  <tr className="bg-slate-50/80 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
+                    <th className="p-4 border-b border-slate-100">ชื่อสถานที่</th>
+                    <th className="p-4 border-b border-slate-100">พิกัด / ลิงก์</th>
+                    <th className="p-4 border-b border-slate-100 text-center">ผู้ติดต่อ</th>
+                    <th className="p-4 border-b border-slate-100 text-center">เบอร์โทร</th>
+                    <th className="p-4 border-b border-slate-100 text-right pr-6">จัดการ</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-slate-50">
                   {loading ? (
                     [...Array(5)].map((_, idx) => (
-                      <tr key={idx} className="border-t border-slate-100">
-                        {Array.from({ length: 5 }).map((__, cellIdx) => (
-                          <td key={cellIdx} className="p-4"><div className="h-4 w-full rounded-full bg-slate-200 animate-pulse" /></td>
-                        ))}
+                      <tr key={idx}>
+                        <td colSpan={5} className="p-4"><div className="h-10 w-full rounded-xl bg-slate-50 animate-pulse" /></td>
                       </tr>
                     ))
                   ) : filteredLocations.length === 0 ? (
-                    <tr><td colSpan={5} className="p-8 text-center text-slate-500">ไม่พบ Location ที่ตรงกับคำค้น</td></tr>
+                    <tr><td colSpan={5} className="p-12 text-center text-slate-400 italic">ไม่พบข้อมูลในระบบ</td></tr>
                   ) : (
                     filteredLocations.map((item) => (
-                      <tr key={item._id} className="border-t border-slate-100 hover:bg-slate-50 transition-colors">
-                        <td className="p-4 font-semibold text-slate-900">{item.name}</td>
-                        <td className="p-4 text-slate-600 break-words"><a href={item.locationLink} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{item.locationLink}</a></td>
-                        <td className="p-4 text-slate-700">{item.contactPerson || '-'}</td>
-                        <td className="p-4 text-slate-700">{item.phoneNumber || '-'}</td>
-                        <td className="p-4 text-slate-500 text-xs">{String(item.companyId).slice(-6)}</td>
+                      <tr key={item._id} className={`group hover:bg-slate-50/50 transition-all ${editId === item._id ? 'bg-blue-50/30' : ''}`}>
+                        <td className="p-4">
+                          <div className="font-bold text-slate-800 text-sm">{item.name}</div>
+                        </td>
+                        <td className="p-4">
+                          {item.locationLink ? (
+                            <a href={item.locationLink} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1 max-w-[200px] truncate">
+                              <Globe size={12} /> ดูบนแผนที่
+                            </a>
+                          ) : (
+                            <span className="text-xs text-slate-300 italic">ไม่มีพิกัด</span>
+                          )}
+                        </td>
+                        <td className="p-4 text-slate-600 text-sm text-center">{item.contactPerson || '-'}</td>
+                        <td className="p-4 text-slate-600 text-sm text-center font-mono">{item.phoneNumber || '-'}</td>
+                        <td className="p-4 text-right pr-6">
+                          <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => handleEditClick(item)} className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="แก้ไข">
+                              <Pencil size={16} />
+                            </button>
+                            <button onClick={() => handleDelete(item._id)} className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all" title="ลบ">
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))
                   )}
