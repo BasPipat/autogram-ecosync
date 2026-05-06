@@ -13,6 +13,7 @@ type UpdateLineDriverBody = {
   status?: unknown;
   reviewNote?: unknown;
   sharedTruckId?: unknown;
+  createPlaceholderTruck?: boolean;
 };
 
 const allowedStatuses: LineDriverStatus[] = ['new', 'awaiting_documents', 'under_review', 'approved', 'rejected', 'suspended'];
@@ -131,8 +132,36 @@ export async function PUT(req: NextRequest) {
       updateData.rejectedAt = new Date();
     }
 
-    if (sharedTruckId) {
-      updateData.sharedTruckId = new mongoose.Types.ObjectId(sharedTruckId);
+    let finalSharedTruckId = sharedTruckId;
+
+    if (body.createPlaceholderTruck && nextStatus === 'approved' && !finalSharedTruckId) {
+      const existingDriver = await LineDriver.findOne({ lineUserId });
+      if (existingDriver && !existingDriver.sharedTruckId) {
+        // Create placeholder truck
+        const placeholderTruck = await SharedTruck.create({
+          lineUserId,
+          onboardingStatus: 'approved',
+          gpsConsentStatus: existingDriver.gpsConsentStatus || 'granted',
+          gpsConsentAt: existingDriver.gpsConsentAt || new Date(),
+          headPlateNumber: `[รอระบุ]-${lineUserId.slice(-4)}`,
+          tailPlateNumber: '[รอระบุ]',
+          compulsoryInsuranceExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days default
+          vehicleInsuranceType: 'ไม่มีประกัน',
+          cargoInsuranceAmount: 0,
+          driverFirstName: existingDriver.displayName || 'คนขับ',
+          driverLastName: '[รอระบุ]',
+          driverLicenseType: 'บ.2',
+          driverPhone: existingDriver.phone || '[รอระบุ]',
+          bankName: existingDriver.bankName || '[รอระบุ]',
+          bankAccountNumber: existingDriver.bankAccountNumber || '[รอระบุ]',
+          bankAccountName: existingDriver.bankAccountName || existingDriver.displayName,
+        });
+        finalSharedTruckId = placeholderTruck._id.toString();
+      }
+    }
+
+    if (finalSharedTruckId) {
+      updateData.sharedTruckId = new mongoose.Types.ObjectId(finalSharedTruckId);
     }
 
     const driver = await LineDriver.findOneAndUpdate({ lineUserId }, updateData, { new: true });
@@ -140,8 +169,8 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'ไม่พบคนขับ LINE' }, { status: 404 });
     }
 
-    if (sharedTruckId) {
-      await SharedTruck.findByIdAndUpdate(sharedTruckId, {
+    if (finalSharedTruckId) {
+      await SharedTruck.findByIdAndUpdate(finalSharedTruckId, {
         lineUserId,
         onboardingStatus: nextStatus === 'approved' ? 'approved' : 'under_review',
         gpsConsentStatus: driver.gpsConsentStatus,

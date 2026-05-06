@@ -519,10 +519,15 @@ export default function ManageUsersPage() {
   };
 
   const handleLineDriverStatus = async (lineUserId: string, nextStatus: 'approved' | 'rejected') => {
-    const sharedTruckId = lineDriverTruckLinks[lineUserId] || '';
+    let sharedTruckId = lineDriverTruckLinks[lineUserId] || '';
+    let createPlaceholderTruck = false;
+
     if (nextStatus === 'approved' && !sharedTruckId) {
-      alert('กรุณาเลือกรถร่วมที่จะผูกกับ LINE นี้ก่อนอนุมัติ');
-      return;
+      if (confirm('คุณยังไม่ได้ผูกรถร่วมให้กับคนขับนี้ ต้องการให้ระบบสร้างข้อมูลรถร่วมชั่วคราวให้ก่อนเพื่อให้คนขับรับงานได้ทันทีหรือไม่?')) {
+        createPlaceholderTruck = true;
+      } else {
+        return;
+      }
     }
 
     try {
@@ -533,6 +538,7 @@ export default function ManageUsersPage() {
           lineUserId,
           status: nextStatus,
           sharedTruckId,
+          createPlaceholderTruck,
           reviewNote: nextStatus === 'approved' ? 'อนุมัติจากหน้า Users' : 'เอกสารไม่ผ่านจากหน้า Users',
         }),
       });
