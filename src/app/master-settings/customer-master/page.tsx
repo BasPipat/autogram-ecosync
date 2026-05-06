@@ -16,6 +16,16 @@ const FIELD_HEADERS = [
   { key: 'companyId', label: 'companyId (optional for System Owner)' },
 ];
 
+function isValidThaiTaxId(taxId: string): boolean {
+  if (!taxId || taxId.length !== 13 || !/^\d{13}$/.test(taxId)) return false;
+  let sum = 0;
+  for (let i = 0; i < 12; i++) {
+    sum += parseInt(taxId.charAt(i)) * (13 - i);
+  }
+  const checkDigit = (11 - (sum % 11)) % 10;
+  return checkDigit === parseInt(taxId.charAt(12));
+}
+
 export default function CustomerMasterPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
@@ -42,7 +52,13 @@ export default function CustomerMasterPage() {
   useEffect(() => {
     const taxId = newCustomer.taxId.replace(/[^0-9]/g, '');
     if (taxId.length === 13) {
-      lookupTaxId(taxId);
+      if (isValidThaiTaxId(taxId)) {
+        lookupTaxId(taxId);
+      } else {
+        setAlert({ type: 'error', message: 'เลขประจำตัวผู้เสียภาษี 13 หลัก ไม่ถูกต้องตามรูปแบบมาตรฐาน' });
+      }
+    } else if (alert?.message?.includes('ไม่ถูกต้องตามรูปแบบมาตรฐาน')) {
+      setAlert(null); // Clear alert when backspacing
     }
   }, [newCustomer.taxId]);
 
@@ -173,6 +189,13 @@ export default function CustomerMasterPage() {
   const handleCreateCustomer = async (event: React.FormEvent) => {
     event.preventDefault();
     setAlert(null);
+
+    const taxId = newCustomer.taxId.replace(/[^0-9]/g, '');
+    if (!isValidThaiTaxId(taxId)) {
+      setAlert({ type: 'error', message: 'เลขประจำตัวผู้เสียภาษีไม่ถูกต้อง โปรดตรวจสอบอีกครั้ง' });
+      return;
+    }
+
     try {
       const res = await fetch('/api/master-settings/customers', {
         method: 'POST',

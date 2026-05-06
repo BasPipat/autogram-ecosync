@@ -6,9 +6,19 @@ import { ObjectId } from 'mongodb';
 
 export const dynamic = 'force-dynamic';
 
+function isValidThaiTaxId(taxId: string): boolean {
+  if (!taxId || taxId.length !== 13 || !/^\d{13}$/.test(taxId)) return false;
+  let sum = 0;
+  for (let i = 0; i < 12; i++) {
+    sum += parseInt(taxId.charAt(i)) * (13 - i);
+  }
+  const checkDigit = (11 - (sum % 11)) % 10;
+  return checkDigit === parseInt(taxId.charAt(12));
+}
+
 function normalizeCustomerRow(row: any) {
   return {
-    taxId: String(row.taxId || row['taxId'] || row['เลขประจำตัวผู้เสียภาษี'] || row['Tax ID'] || '').trim(),
+    taxId: String(row.taxId || row['taxId'] || row['เลขประจำตัวผู้เสียภาษี'] || row['Tax ID'] || '').trim().replace(/[^0-9]/g, ''),
     companyName: String(row.companyName || row['companyName'] || row['ชื่อบริษัท'] || row['Company Name'] || '').trim(),
     address: String(row.address || row['address'] || row['ที่อยู่'] || row['Address'] || '').trim(),
     email: String(row.email || row['email'] || row['อีเมล'] || row['Email'] || '').trim(),
@@ -25,11 +35,17 @@ export async function GET(req: NextRequest) {
 
   await connectToDatabase();
 
-  let query = {};
+  let query: Record<string, any> = {};
   if (!isInternalRole(token.role)) {
-    try {
-      query = { companyId: new ObjectId(token.companyId) };
-    } catch {
+    if (token.companyId) {
+      try {
+        query = { companyId: new ObjectId(token.companyId) };
+      } catch {
+        query = { companyName: token.companyName };
+      }
+    } else if (token.companyName) {
+      query = { companyName: token.companyName };
+    } else {
       return NextResponse.json({ customers: [] });
     }
   }
@@ -85,10 +101,10 @@ export async function POST(req: NextRequest) {
 
   const invalidRows = prepared
     .map((item: any, index: number) => ({ item, index }))
-    .filter(({ item }: any) => !item?.taxId || !item?.companyName);
+    .filter(({ item }: any) => !item?.taxId || !item?.companyName || !isValidThaiTaxId(item.taxId));
 
   if (invalidRows.length > 0) {
-    return NextResponse.json({ error: `พบข้อมูลไม่ครบถ้วนในแถวที่ ${invalidRows.map((r: any) => r.index + 2).join(', ')} (ต้องมีเลขประจำตัวผู้เสียภาษีและชื่อบริษัท)` }, { status: 400 });
+    return NextResponse.json({ error: `พบข้อมูลไม่ครบถ้วนหรือไม่ถูกต้องในแถวที่ ${invalidRows.map((r: any) => r.index + 2).join(', ')} (ต้องมีชื่อบริษัท และเลข Tax ID 13 หลักที่ถูกต้อง)` }, { status: 400 });
   }
 
   try {

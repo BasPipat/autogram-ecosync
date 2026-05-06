@@ -307,6 +307,103 @@ export default function ManageTripsPage() {
     } catch (error) { alert('ระบบขัดข้อง'); }
   };
 
+  const pendingTrips = trips.filter(t => !t.licensePlate && !t.driverName);
+
+  const renderTable = (data: any[], title: string) => (
+    <div className="card overflow-hidden mb-6">
+      <div className="px-6 py-4 flex justify-between items-center" style={{ borderBottom: '1px solid var(--border-light)' }}>
+        <h3 className="font-bold text-[14px]" style={{ color: 'var(--text-primary)' }}>{title}</h3>
+        <span className="text-[11px] font-medium px-2.5 py-1 rounded-full" style={{ background: 'var(--border-light)', color: 'var(--text-tertiary)' }}>พบทั้งหมด {data.length} รายการ</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-white text-slate-400 text-[10px] uppercase tracking-wider border-b border-slate-100">
+              <th className="p-4 font-bold">รหัสงาน</th>
+              <th className="p-4 font-bold">ลูกค้า / บริษัท</th>
+              <th className="p-4 font-bold w-1/3">เส้นทาง</th>
+              <th className="p-4 font-bold text-center">รถ / ระยะ / น้ำหนัก</th>
+              <th className="p-4 font-bold">คาร์บอน</th>
+              <th className="p-4 font-bold">ทะเบียนรถ/คนขับ</th>
+              <th className="p-4 font-bold">สถานะ</th>
+            </tr>
+          </thead>
+          <tbody className="text-sm">
+            {loading ? (
+              [...Array(3)].map((_, i) => (
+                <tr key={i} className="border-b border-slate-50">
+                  <td className="p-4"><div className="h-4 bg-slate-200 animate-pulse rounded w-16"></div></td>
+                  <td className="p-4"><div className="h-4 bg-slate-200 animate-pulse rounded w-24"></div></td>
+                  <td className="p-4"><div className="h-8 bg-slate-200 animate-pulse rounded w-full"></div></td>
+                  <td className="p-4"><div className="h-8 bg-slate-200 animate-pulse rounded w-20 mx-auto"></div></td>
+                  <td className="p-4"><div className="h-4 bg-slate-200 animate-pulse rounded w-16"></div></td>
+                  <td className="p-4"><div className="h-4 bg-slate-200 animate-pulse rounded w-20"></div></td>
+                  <td className="p-4"><div className="h-6 bg-slate-200 animate-pulse rounded-full w-16"></div></td>
+                </tr>
+              ))
+            ) : data.length === 0 ? (
+              <tr><td colSpan={7} className="p-12 text-center text-slate-400 italic font-medium">ยังไม่พบข้อมูลงานในระบบ</td></tr>
+            ) : (
+              data.map(trip => (
+                <tr key={trip._id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                  <td className="p-4 font-mono font-bold text-blue-600">{trip.tripId}</td>
+                  <td className="p-4 text-slate-500 font-medium text-xs">
+                     <div>{trip.customerName ? <span className="font-bold text-emerald-700">{trip.customerName}</span> : '-'}</div>
+                     {(currentUser?.role === 'system_owner' || currentUser?.role === 'owner') && <div className="text-[10px] text-slate-400 mt-1">{trip.companyName}</div>}
+                  </td>
+
+                  <td className="p-4">
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-1.5 text-slate-700 font-medium text-[11px]">
+                        <span className="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0"></span>
+                        <span className="truncate max-w-xs">{trip.origin}</span>
+                        {trip.originMapUrl && <a href={trip.originMapUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500"><ExternalLink size={10} /></a>}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-slate-700 font-medium text-[11px]">
+                        <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span>
+                        <span className="truncate max-w-xs">{trip.destination}</span>
+                        {trip.destinationMapUrl && <a href={trip.destinationMapUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500"><ExternalLink size={10} /></a>}
+                      </div>
+                    </div>
+                  </td>
+
+                  <td className="p-4 text-center">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded">{trip.vehicleCount || 1} คัน</span>
+                      <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{trip.distance || 0} km</span>
+                      <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded">{trip.weight || 0} tons</span>
+                    </div>
+                  </td>
+
+                  <td className="p-4">
+                    <div className="flex items-center gap-1 text-green-600 font-bold">
+                      <Leaf size={14} /> {trip.carbon?.toLocaleString()} <span className="text-[10px] text-slate-400 font-normal">kgCO2e</span>
+                    </div>
+                  </td>
+                  <td className="p-4">
+                    {(!trip.licensePlate && !trip.driverName) ? (
+                       <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-md text-[10px] font-bold">รอพนักงานรับงาน</span>
+                    ) : (
+                       <div className="flex flex-col gap-1 text-[11px] font-bold text-slate-700">
+                         <span>{trip.licensePlate || '-'}</span>
+                         <span className="text-slate-500 font-medium">{trip.driverName || '-'}</span>
+                       </div>
+                    )}
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${trip.status === 'Verified' ? 'bg-green-50 text-green-700 border-green-100' : trip.status === 'Pending' ? 'bg-orange-50 text-orange-700 border-orange-100' : 'bg-slate-50 text-slate-500 border-slate-100'}`}>
+                      {trip.status.toUpperCase()}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
   return (
     <SidebarLayout>
       <datalist id="historical-locations">
@@ -468,98 +565,8 @@ export default function ManageTripsPage() {
             </div>
           )}
 
-          <div className="card overflow-hidden">
-            <div className="px-6 py-4 flex justify-between items-center" style={{ borderBottom: '1px solid var(--border-light)' }}>
-              <h3 className="font-bold text-[14px]" style={{ color: 'var(--text-primary)' }}>ประวัติการเดินรถล่าสุด</h3>
-              <span className="text-[11px] font-medium px-2.5 py-1 rounded-full" style={{ background: 'var(--border-light)', color: 'var(--text-tertiary)' }}>พบทั้งหมด {trips.length} รายการ</span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-white text-slate-400 text-[10px] uppercase tracking-wider border-b border-slate-100">
-                    <th className="p-4 font-bold">รหัสงาน</th>
-                    <th className="p-4 font-bold">ลูกค้า / บริษัท</th>
-                    <th className="p-4 font-bold w-1/3">เส้นทาง</th>
-                    <th className="p-4 font-bold text-center">รถ / ระยะ / น้ำหนัก</th>
-                    <th className="p-4 font-bold">คาร์บอน</th>
-                    <th className="p-4 font-bold">ทะเบียนรถ/คนขับ</th>
-                    <th className="p-4 font-bold">สถานะ</th>
-                  </tr>
-                </thead>
-                <tbody className="text-sm">
-                  {loading ? (
-                    [...Array(3)].map((_, i) => (
-                      <tr key={i} className="border-b border-slate-50">
-                        <td className="p-4"><div className="h-4 bg-slate-200 animate-pulse rounded w-16"></div></td>
-                        <td className="p-4"><div className="h-4 bg-slate-200 animate-pulse rounded w-24"></div></td>
-                        <td className="p-4"><div className="h-8 bg-slate-200 animate-pulse rounded w-full"></div></td>
-                        <td className="p-4"><div className="h-8 bg-slate-200 animate-pulse rounded w-20 mx-auto"></div></td>
-                        <td className="p-4"><div className="h-4 bg-slate-200 animate-pulse rounded w-16"></div></td>
-                        <td className="p-4"><div className="h-4 bg-slate-200 animate-pulse rounded w-20"></div></td>
-                        <td className="p-4"><div className="h-6 bg-slate-200 animate-pulse rounded-full w-16"></div></td>
-                      </tr>
-                    ))
-                  ) : trips.length === 0 ? (
-                    <tr><td colSpan={7} className="p-12 text-center text-slate-400 italic font-medium">ยังไม่พบข้อมูลงานในระบบ</td></tr>
-                  ) : (
-                    trips.map(trip => (
-                      <tr key={trip._id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                        <td className="p-4 font-mono font-bold text-blue-600">{trip.tripId}</td>
-                        <td className="p-4 text-slate-500 font-medium text-xs">
-                           <div>{trip.customerName ? <span className="font-bold text-emerald-700">{trip.customerName}</span> : '-'}</div>
-                           {(currentUser?.role === 'system_owner' || currentUser?.role === 'owner') && <div className="text-[10px] text-slate-400 mt-1">{trip.companyName}</div>}
-                        </td>
-
-                        <td className="p-4">
-                          <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center gap-1.5 text-slate-700 font-medium text-[11px]">
-                              <span className="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0"></span>
-                              <span className="truncate max-w-xs">{trip.origin}</span>
-                              {trip.originMapUrl && <a href={trip.originMapUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500"><ExternalLink size={10} /></a>}
-                            </div>
-                            <div className="flex items-center gap-1.5 text-slate-700 font-medium text-[11px]">
-                              <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span>
-                              <span className="truncate max-w-xs">{trip.destination}</span>
-                              {trip.destinationMapUrl && <a href={trip.destinationMapUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500"><ExternalLink size={10} /></a>}
-                            </div>
-                          </div>
-                        </td>
-
-                        <td className="p-4 text-center">
-                          <div className="flex flex-col gap-1">
-                            <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded">{trip.vehicleCount || 1} คัน</span>
-                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{trip.distance || 0} km</span>
-                            <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded">{trip.weight || 0} tons</span>
-                          </div>
-                        </td>
-
-                        <td className="p-4">
-                          <div className="flex items-center gap-1 text-green-600 font-bold">
-                            <Leaf size={14} /> {trip.carbon?.toLocaleString()} <span className="text-[10px] text-slate-400 font-normal">kgCO2e</span>
-                          </div>
-                        </td>
-                        <td className="p-4">
-                          {(!trip.licensePlate && !trip.driverName) ? (
-                             <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-md text-[10px] font-bold">รอพนักงานรับงาน</span>
-                          ) : (
-                             <div className="flex flex-col gap-1 text-[11px] font-bold text-slate-700">
-                               <span>{trip.licensePlate || '-'}</span>
-                               <span className="text-slate-500 font-medium">{trip.driverName || '-'}</span>
-                             </div>
-                          )}
-                        </td>
-                        <td className="p-4">
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${trip.status === 'Verified' ? 'bg-green-50 text-green-700 border-green-100' : trip.status === 'Pending' ? 'bg-orange-50 text-orange-700 border-orange-100' : 'bg-slate-50 text-slate-500 border-slate-100'}`}>
-                            {trip.status.toUpperCase()}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {renderTable(pendingTrips, 'ใบงานขนส่ง (งานรอจัดสรรรถ)')}
+          {renderTable(trips, 'ประวัติการเดินรถทั้งหมด')}
         </div>
 
         {mapModal.isOpen && (

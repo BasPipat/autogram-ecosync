@@ -14,11 +14,17 @@ export async function GET(req: NextRequest) {
     }
 
     await connectToDatabase();
-    let query = {};
+    let query: Record<string, any> = {};
     if (!isInternalRole(token.role)) {
-      try {
-        query = { companyId: new ObjectId(token.companyId) };
-      } catch {
+      if (token.companyId) {
+        try {
+          query = { companyId: new ObjectId(token.companyId) };
+        } catch {
+          query = { companyName: token.companyName };
+        }
+      } else if (token.companyName) {
+        query = { companyName: token.companyName };
+      } else {
         return NextResponse.json([]); // return empty gracefully
       }
     }
