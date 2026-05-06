@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Trip } from '@/models/Trip';
-import { ObjectId } from 'mongodb';
+import mongoose from 'mongoose';
 import { getSessionToken, isInternalRole } from '@/lib/access';
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -13,16 +13,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = resolvedParams;
     const data = await req.json();
 
-    if (!ObjectId.isValid(id)) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: 'Invalid trip ID format' }, { status: 400 });
     }
 
     await connectToDatabase();
 
-    const query: any = { _id: new ObjectId(id) };
+    const query: any = { _id: new mongoose.Types.ObjectId(id) };
     if (!isInternalRole(token.role)) {
       if (token.companyId) {
-         try { query.companyId = new ObjectId(token.companyId); } catch {}
+         try { query.companyId = new mongoose.Types.ObjectId(token.companyId); } catch {}
       } else {
          query.companyName = token.companyName;
       }
@@ -48,16 +48,16 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const resolvedParams = await params;
     const { id } = resolvedParams;
 
-    if (!ObjectId.isValid(id)) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: 'Invalid trip ID format' }, { status: 400 });
     }
 
     await connectToDatabase();
 
-    const query: any = { _id: new ObjectId(id) };
+    const query: any = { _id: new mongoose.Types.ObjectId(id) };
     if (!isInternalRole(token.role)) {
       if (token.companyId) {
-         try { query.companyId = new ObjectId(token.companyId); } catch {}
+         try { query.companyId = new mongoose.Types.ObjectId(token.companyId); } catch {}
       } else {
          query.companyName = token.companyName;
       }
