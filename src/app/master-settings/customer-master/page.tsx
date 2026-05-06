@@ -59,9 +59,9 @@ export default function CompanyProfilePage() {
           email: data.profile.email || '',
           phoneNumber: data.profile.phoneNumber || ''
         });
-      } else if (session?.user?.name) {
+      } else if (session?.user) {
         // Fallback to name in session if no profile exists yet
-        setForm(prev => ({ ...prev, companyName: (session as any).companyName || session.user?.name || '' }));
+        setForm(prev => ({ ...prev, companyName: (session.user as any).companyName || session.user?.name || '' }));
       }
     } catch (error) {
       setAlert({ type: 'error', message: 'เกิดข้อผิดพลาดขณะโหลดข้อมูลโปรไฟล์' });
