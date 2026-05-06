@@ -21,6 +21,7 @@ export default function ManageTripsPage() {
   const [historicalLocations, setHistoricalLocations] = useState<string[]>([]);
   const [masterLocations, setMasterLocations] = useState<any[]>([]);
   const [masterCustomers, setMasterCustomers] = useState<any[]>([]);
+  const [filterTab, setFilterTab] = useState<'all' | 'pending'>('all');
 
   const getTomorrowString = () => {
     const tomorrow = new Date();
@@ -307,13 +308,16 @@ export default function ManageTripsPage() {
     } catch (error) { alert('ระบบขัดข้อง'); }
   };
 
-  const pendingTrips = trips.filter(t => !t.licensePlate && !t.driverName);
+  const displayedTrips = filterTab === 'pending' ? trips.filter(t => !t.licensePlate && !t.driverName) : trips;
 
-  const renderTable = (data: any[], title: string) => (
+  const renderTableContent = () => (
     <div className="card overflow-hidden mb-6">
-      <div className="px-6 py-4 flex justify-between items-center" style={{ borderBottom: '1px solid var(--border-light)' }}>
-        <h3 className="font-bold text-[14px]" style={{ color: 'var(--text-primary)' }}>{title}</h3>
-        <span className="text-[11px] font-medium px-2.5 py-1 rounded-full" style={{ background: 'var(--border-light)', color: 'var(--text-tertiary)' }}>พบทั้งหมด {data.length} รายการ</span>
+      <div className="px-6 py-4 flex justify-between items-center bg-white" style={{ borderBottom: '1px solid var(--border-light)' }}>
+        <div className="flex gap-4">
+          <button onClick={() => setFilterTab('all')} className={`text-sm font-bold pb-4 -mb-4 transition-colors ${filterTab === 'all' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>ประวัติทั้งหมด</button>
+          <button onClick={() => setFilterTab('pending')} className={`text-sm font-bold pb-4 -mb-4 transition-colors ${filterTab === 'pending' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>รอจัดสรรรถ</button>
+        </div>
+        <span className="text-[11px] font-medium px-2.5 py-1 rounded-full" style={{ background: 'var(--border-light)', color: 'var(--text-tertiary)' }}>พบ {displayedTrips.length} รายการ</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
@@ -341,10 +345,10 @@ export default function ManageTripsPage() {
                   <td className="p-4"><div className="h-6 bg-slate-200 animate-pulse rounded-full w-16"></div></td>
                 </tr>
               ))
-            ) : data.length === 0 ? (
+            ) : displayedTrips.length === 0 ? (
               <tr><td colSpan={7} className="p-12 text-center text-slate-400 italic font-medium">ยังไม่พบข้อมูลงานในระบบ</td></tr>
             ) : (
-              data.map(trip => (
+              displayedTrips.map(trip => (
                 <tr key={trip._id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                   <td className="p-4 font-mono font-bold text-blue-600">{trip.tripId}</td>
                   <td className="p-4 text-slate-500 font-medium text-xs">
@@ -565,8 +569,7 @@ export default function ManageTripsPage() {
             </div>
           )}
 
-          {renderTable(pendingTrips, 'ใบงานขนส่ง (งานรอจัดสรรรถ)')}
-          {renderTable(trips, 'ประวัติการเดินรถทั้งหมด')}
+          {renderTableContent()}
         </div>
 
         {mapModal.isOpen && (

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import SidebarLayout from '@/components/SidebarLayout';
-import { Loader2, Save, Plus, Trash2, Settings, Fuel, FlaskConical, History, Leaf, MapPin } from 'lucide-react';
+import { Loader2, Save, Plus, Trash2, Settings, Fuel, FlaskConical, History, Leaf, MapPin, Users } from 'lucide-react';
 
 type VehicleTypeSetting = { typeName: string; minKmPerLiter: string; maxKmPerLiter: string };
 type EFSetting = { vehicleType: string; efTonKm: string; fuelType: string; tgoRef: string };
@@ -137,6 +137,9 @@ export default function MasterSettingsPage() {
             <div className="flex items-center gap-2 mb-6">
               <Link href="/master-settings/location-master" className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700">
                 <MapPin size={16} /> Location Master
+              </Link>
+              <Link href="/master-settings/customer-master" className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700">
+                <Users size={16} /> Customer Master
               </Link>
             </div>
           </div>
