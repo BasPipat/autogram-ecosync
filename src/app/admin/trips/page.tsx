@@ -315,7 +315,7 @@ export default function ManageTripsPage() {
       <div className="px-6 py-4 flex justify-between items-center bg-white" style={{ borderBottom: '1px solid var(--border-light)' }}>
         <div className="flex gap-4">
           <button onClick={() => setFilterTab('all')} className={`text-sm font-bold pb-4 -mb-4 transition-colors ${filterTab === 'all' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>ประวัติทั้งหมด</button>
-          <button onClick={() => setFilterTab('pending')} className={`text-sm font-bold pb-4 -mb-4 transition-colors ${filterTab === 'pending' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>รอจัดสรรรถ</button>
+          <button onClick={() => setFilterTab('pending')} className={`text-sm font-bold pb-4 -mb-4 transition-colors ${filterTab === 'pending' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>รอจัดสรร</button>
         </div>
         <span className="text-[11px] font-medium px-2.5 py-1 rounded-full" style={{ background: 'var(--border-light)', color: 'var(--text-tertiary)' }}>พบ {displayedTrips.length} รายการ</span>
       </div>
@@ -352,8 +352,8 @@ export default function ManageTripsPage() {
                 <tr key={trip._id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
                   <td className="p-4 font-mono font-bold text-blue-600">{trip.tripId}</td>
                   <td className="p-4 text-slate-500 font-medium text-xs">
-                     <div>{trip.customerName ? <span className="font-bold text-emerald-700">{trip.customerName}</span> : '-'}</div>
-                     {(currentUser?.role === 'system_owner' || currentUser?.role === 'owner') && <div className="text-[10px] text-slate-400 mt-1">{trip.companyName}</div>}
+                    <div>{trip.customerName ? <span className="font-bold text-emerald-700">{trip.customerName}</span> : '-'}</div>
+                    {(currentUser?.role === 'system_owner' || currentUser?.role === 'owner') && <div className="text-[10px] text-slate-400 mt-1">{trip.companyName}</div>}
                   </td>
 
                   <td className="p-4">
@@ -386,12 +386,12 @@ export default function ManageTripsPage() {
                   </td>
                   <td className="p-4">
                     {(!trip.licensePlate && !trip.driverName) ? (
-                       <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-md text-[10px] font-bold">รอพนักงานรับงาน</span>
+                      <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-md text-[10px] font-bold">รอพนักงานรับงาน</span>
                     ) : (
-                       <div className="flex flex-col gap-1 text-[11px] font-bold text-slate-700">
-                         <span>{trip.licensePlate || '-'}</span>
-                         <span className="text-slate-500 font-medium">{trip.driverName || '-'}</span>
-                       </div>
+                      <div className="flex flex-col gap-1 text-[11px] font-bold text-slate-700">
+                        <span>{trip.licensePlate || '-'}</span>
+                        <span className="text-slate-500 font-medium">{trip.driverName || '-'}</span>
+                      </div>
                     )}
                   </td>
                   <td className="p-4">
