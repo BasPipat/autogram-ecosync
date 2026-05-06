@@ -108,10 +108,10 @@ export default function ManageTripsPage() {
   // 🟢 Effect: คำนวณคาร์บอนอัตโนมัติ (รวมจำนวนรถ)
   useEffect(() => {
     if (form.distance && form.weight) {
-      const carbonVal = (Number(form.distance) * Number(form.weight) * 0.062 * Number(form.vehicleCount)).toFixed(2);
+      const carbonVal = (Number(form.distance) * Number(form.weight) * 0.062).toFixed(2);
       setForm(prev => ({ ...prev, carbon: carbonVal }));
     }
-  }, [form.distance, form.weight, form.vehicleCount]);
+  }, [form.distance, form.weight]);
 
   const handleLocationChange = (type: 'origin' | 'destination', value: string) => {
     setForm(prev => ({ ...prev, [type]: value }));
