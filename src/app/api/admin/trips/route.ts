@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Trip } from '@/models/Trip';
-import { ObjectId } from 'mongodb';
+import mongoose from 'mongoose';
 import { getSessionToken, isInternalRole } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     if (!isInternalRole(token.role)) {
       if (token.companyId) {
         try {
-          query = { companyId: new ObjectId(token.companyId) };
+          query = { companyId: new mongoose.Types.ObjectId(token.companyId) };
         } catch {
           query = { companyName: token.companyName };
         }
@@ -48,12 +48,16 @@ export async function POST(req: NextRequest) {
     if (!data.tripId) {
       data.tripId = `TRP-${Math.floor(100000 + Math.random() * 900000)}`;
     }
-    if (!isInternalRole(token.role)) {
+
+    // Ensure companyId is set for the trip and for auto-save logic
+    if (!data.companyId && token.companyId) {
       try {
-        data.companyId = new ObjectId(token.companyId);
-      } catch {
-        return NextResponse.json({ error: 'Company ID ไม่ถูกต้อง' }, { status: 400 });
+        data.companyId = new mongoose.Types.ObjectId(token.companyId);
+      } catch (e) {
+        console.error("Invalid companyId in token", e);
       }
+    } else if (data.companyId && typeof data.companyId === 'string') {
+      data.companyId = new mongoose.Types.ObjectId(data.companyId);
     }
 
     const newTrip = await Trip.create(data);
