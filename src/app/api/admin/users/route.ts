@@ -79,12 +79,13 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { userId, newRole, name, companyName, phone, password, username } = await req.json();
+    const { userId, newRole, role, name, companyName, phone, password, username } = await req.json();
     await connectToDatabase();
 
     const updateData: Record<string, string> = {};
     if (username !== undefined) updateData.username = username;
-    if (newRole) updateData.role = newRole;
+    const targetRole = newRole || role;
+    if (targetRole) updateData.role = targetRole;
     if (name !== undefined) updateData.name = name;
     if (companyName !== undefined) updateData.companyName = companyName;
     if (phone !== undefined) updateData.phone = phone;

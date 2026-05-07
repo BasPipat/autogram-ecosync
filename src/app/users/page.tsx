@@ -167,7 +167,7 @@ export default function ManageUsersPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('users');
 
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ username: '', name: '', companyName: '', phone: '', password: '' });
+  const [editForm, setEditForm] = useState({ username: '', name: '', companyName: '', phone: '', password: '', role: '' });
 
   const [showInvite, setShowInvite] = useState(false);
   const [inviteForm, setInviteForm] = useState({ name: '', email: '', password: '', role: 'coordinator', companyName: '' });
@@ -315,7 +315,14 @@ export default function ManageUsersPage() {
 
   const handleEditClick = (user: IUser) => {
     setEditingUserId(user._id);
-    setEditForm({ username: user.username || '', name: user.name || '', companyName: user.companyName || '', phone: user.phone || '', password: '' });
+    setEditForm({ 
+      username: user.username || '', 
+      name: user.name || '', 
+      companyName: user.companyName || '', 
+      phone: user.phone || '', 
+      password: '',
+      role: user.role || ''
+    });
   };
 
   const handleSaveEdit = async (userId: string) => {
@@ -733,12 +740,12 @@ export default function ManageUsersPage() {
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase w-fit" style={{ background: meta.bg, color: meta.color }}>
                             {meta.label}
                           </span>
-                          {canManage && (
+                          {isEditing && canManage && (
                             <select
-                              className="p-1.5 text-[11px] outline-none cursor-pointer rounded-lg"
+                              className="p-1.5 text-[11px] outline-none cursor-pointer rounded-lg mt-1"
                               style={{ ...inputStyle, fontSize: '11px' }}
-                              value={user.role}
-                              onChange={e => handleRoleChange(user._id, e.target.value)}
+                              value={editForm.role}
+                              onChange={e => setEditForm({ ...editForm, role: e.target.value })}
                               disabled={user.email === session?.user?.email && isOwner(user.role)}
                             >
                               {isOwner(currentRole) && (
