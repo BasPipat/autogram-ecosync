@@ -31,6 +31,8 @@ const documentTypes: DriverDocumentType[] = [
   'bank_account',
   'pod_image',
   'delivery_documents_video',
+  'onboarding_media',
+  'onboarding_text',
 ];
 
 const DriverDocumentSchema = new Schema<IDriverDocument>({

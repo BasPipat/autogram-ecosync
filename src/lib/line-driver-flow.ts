@@ -13,6 +13,8 @@ export const DRIVER_DOCUMENT_LABELS: Record<DriverDocumentType, string> = {
   bank_account: 'บัญชีโอนเงิน',
   pod_image: 'รูปส่งงาน',
   delivery_documents_video: 'วิดีโอเอกสาร',
+  onboarding_media: 'เอกสารลงทะเบียน (รูป)',
+  onboarding_text: 'เอกสารลงทะเบียน (ข้อความ)',
 };
 
 export const ONBOARDING_DOCUMENT_TYPES: DriverDocumentType[] = [
@@ -26,6 +28,8 @@ export const ONBOARDING_DOCUMENT_TYPES: DriverDocumentType[] = [
   'cargo_insurance',
   'phone_number',
   'bank_account',
+  'onboarding_media',
+  'onboarding_text',
 ];
 
 export function getDocumentLabel(type?: DriverDocumentType) {

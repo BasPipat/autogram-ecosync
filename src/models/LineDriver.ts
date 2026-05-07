@@ -12,7 +12,9 @@ export type DriverDocumentType =
   | 'phone_number'
   | 'bank_account'
   | 'pod_image'
-  | 'delivery_documents_video';
+  | 'delivery_documents_video'
+  | 'onboarding_media'
+  | 'onboarding_text';
 
 export type LineDriverStatus = 'new' | 'awaiting_documents' | 'under_review' | 'approved' | 'rejected' | 'suspended';
 
@@ -40,6 +42,7 @@ export interface ILineDriver extends Document {
   gpsConsentStatus: 'pending' | 'granted' | 'denied';
   gpsConsentAt?: Date;
   lastLocation?: ILineLocation;
+  tempAnalysisResult?: any;
   reviewNote?: string;
   approvedAt?: Date;
   rejectedAt?: Date;
@@ -79,6 +82,8 @@ const LineDriverSchema = new Schema<ILineDriver>({
       'bank_account',
       'pod_image',
       'delivery_documents_video',
+      'onboarding_media',
+      'onboarding_text',
     ],
   },
   phone: { type: String, trim: true },
@@ -91,6 +96,7 @@ const LineDriverSchema = new Schema<ILineDriver>({
   gpsConsentStatus: { type: String, enum: ['pending', 'granted', 'denied'], default: 'pending' },
   gpsConsentAt: { type: Date },
   lastLocation: { type: LineLocationSchema },
+  tempAnalysisResult: { type: Schema.Types.Mixed },
   reviewNote: { type: String, trim: true },
   approvedAt: { type: Date },
   rejectedAt: { type: Date },

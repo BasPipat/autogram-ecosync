@@ -16,6 +16,7 @@ import { DriverDocumentType, ILineDriver, LineDriver } from '@/models/LineDriver
 import { JobOffer, IJobOffer } from '@/models/JobOffer';
 import { SharedTruck, ISharedTruck } from '@/models/SharedTruck';
 import { Trip } from '@/models/Trip';
+import { analyzeDriverDocuments } from '@/lib/gemini';
 
 const PAYMENT_NOTIFY_LINE_USER_ID = process.env.LINE_PAYMENT_NOTIFY_USER_ID || process.env.LINE_ADMIN_USER_ID || '';
 
@@ -82,19 +83,22 @@ async function markUnderReviewIfReady(driver: ILineDriver) {
 function onboardingMenuMessage(): TextMessage {
   return {
     type: 'text',
-    text: 'เลือกประเภทเอกสารที่ต้องการส่ง แล้วส่งรูป/ไฟล์เข้ามาได้เลยครับ',
+    text: [
+      'กรุณาส่งรูปเอกสารทั้งหมด (บัตรประชาชน, ใบขับขี่, ทะเบียนรถ, ประกัน, หน้าบัญชีธนาคาร) และเบอร์โทรศัพท์ เข้ามาได้เลยครับ',
+      '',
+      'เมื่อส่งครบแล้วให้กดปุ่ม "ตรวจสอบข้อมูล" ด้านล่างครับ',
+    ].join('\n'),
     quickReply: {
       items: [
-        ...ONBOARDING_DOCUMENT_TYPES.map(type => ({
-          type: 'action' as const,
+        {
+          type: 'action',
           action: {
-            type: 'postback' as const,
-            label: DRIVER_DOCUMENT_LABELS[type],
-            data: `action=set_doc_type&docType=${type}`,
-            displayText: `ส่ง${DRIVER_DOCUMENT_LABELS[type]}`,
+            type: 'postback',
+            label: 'ตรวจสอบข้อมูล',
+            data: 'action=analyze_onboarding',
+            displayText: 'ตรวจสอบข้อมูลที่ส่งมา',
           },
-        })),
-        // Removed GPS consent button as requested
+        },
       ],
     },
   };
@@ -404,13 +408,18 @@ async function handleTextMessage(lineUserId: string, text: string, replyToken: s
     return;
   }
 
+  if (normalized === 'ลงทะเบียน' || normalized === 'ส่งเอกสาร') {
+    await getLineClient().replyMessage(replyToken, onboardingMenuMessage());
+    return;
+  }
+
   if (normalized === 'สถานะ') {
     const progress = await onboardingProgress(lineUserId);
     await getLineClient().replyMessage(replyToken, {
       type: 'text',
       text: [
         `สถานะ: ${driver.status}`,
-        progress.missing.length ? `เอกสารที่ยังขาด: ${progress.missing.map(getDocumentLabel).join(', ')}` : 'เอกสารครบแล้ว',
+        progress.missing.length ? `เอกสารที่ส่งแล้ว: ${progress.uploaded.size} ชนิด` : 'เอกสารครบแล้ว',
       ].join('\n'),
     });
     return;
@@ -465,11 +474,12 @@ async function saveMediaDocument(
 
   const documentType = driver.pendingDocumentType ||
     (driver.activeTripId && mediaType === 'image' ? 'pod_image' : undefined) ||
-    (driver.activeTripId && mediaType === 'video' ? 'delivery_documents_video' : undefined);
+    (driver.activeTripId && mediaType === 'video' ? 'delivery_documents_video' : undefined) ||
+    ((driver.status === 'new' || driver.status === 'awaiting_documents') ? 'onboarding_media' : undefined);
 
   if (!documentType) {
     await getLineClient().replyMessage(replyToken, [
-      { type: 'text', text: 'ได้รับไฟล์แล้วครับ กรุณาเลือกประเภทเอกสารก่อนส่งครั้งถัดไป' },
+      { type: 'text', text: 'ได้รับไฟล์แล้วครับ กรุณาส่งเอกสารทั้งหมดแล้วกด "ตรวจสอบข้อมูล"' },
       onboardingMenuMessage(),
     ]);
     return;
@@ -573,9 +583,177 @@ async function handleLocation(lineUserId: string, latitude: number, longitude: n
   await getLineClient().replyMessage(replyToken, { type: 'text', text: 'รับพิกัดเรียบร้อยครับ' });
 }
 
+async function handleAnalyzeOnboarding(lineUserId: string, replyToken: string) {
+  await getLineClient().replyMessage(replyToken, { type: 'text', text: 'กำลังวิเคราะห์ข้อมูลจากเอกสารที่ส่งมา กรุณารอสักครู่ครับ...' });
+
+  try {
+    const documents = await DriverDocument.find({
+      lineUserId,
+      mediaType: 'image',
+      documentType: 'onboarding_media',
+    }).sort({ createdAt: -1 }).limit(10);
+
+    if (documents.length === 0) {
+      await getLineClient().pushMessage(lineUserId, { type: 'text', text: 'ยังไม่พบรูปเอกสารที่ส่งมาครับ กรุณาส่งรูปบัตรประชาชน ใบขับขี่ หรือทะเบียนรถเข้ามาก่อนครับ' });
+      return;
+    }
+
+    const images: { buffer: Buffer; mimeType: string }[] = [];
+    for (const doc of documents) {
+      if (!doc.lineMessageId) continue;
+      const content = await getLineClient().getMessageContent(doc.lineMessageId);
+      const chunks = [];
+      for await (const chunk of content) chunks.push(chunk);
+      images.push({ buffer: Buffer.concat(chunks), mimeType: doc.mimeType || 'image/jpeg' });
+    }
+
+    const result = await analyzeDriverDocuments(images);
+
+    // Save result to driver for later confirmation (to avoid postback data limit)
+    await LineDriver.findOneAndUpdate({ lineUserId }, { tempAnalysisResult: result });
+
+    // Show result in a Flex Message
+    await getLineClient().pushMessage(lineUserId, {
+      type: 'flex',
+      altText: 'ตรวจสอบข้อมูลการลงทะเบียน',
+      contents: {
+        type: 'bubble',
+        header: {
+          type: 'box',
+          layout: 'vertical',
+          backgroundColor: '#10B981',
+          contents: [{ type: 'text', text: 'ตรวจสอบข้อมูล', color: '#ffffff', weight: 'bold', size: 'lg' }],
+        },
+        body: {
+          type: 'box',
+          layout: 'vertical',
+          spacing: 'md',
+          contents: [
+            { type: 'text', text: 'กรุณาตรวจสอบความถูกต้องของข้อมูลที่ AI วิเคราะห์ได้', wrap: true, size: 'sm', color: '#64748B' },
+            { type: 'separator', margin: 'md' },
+            {
+              type: 'box',
+              layout: 'vertical',
+              margin: 'md',
+              spacing: 'sm',
+              contents: [
+                { type: 'box', layout: 'horizontal', contents: [{ type: 'text', text: 'ชื่อ-นามสกุล', size: 'xs', color: '#94A3B8', flex: 2 }, { type: 'text', text: `${result.driverFirstName} ${result.driverLastName}`, size: 'xs', flex: 3, wrap: true }] },
+                { type: 'box', layout: 'horizontal', contents: [{ type: 'text', text: 'ทะเบียนรถ', size: 'xs', color: '#94A3B8', flex: 2 }, { type: 'text', text: `${result.headPlateNumber} ${result.tailPlateNumber ? '/ ' + result.tailPlateNumber : ''}`, size: 'xs', flex: 3 }] },
+                { type: 'box', layout: 'horizontal', contents: [{ type: 'text', text: 'ประเภทใบขับขี่', size: 'xs', color: '#94A3B8', flex: 2 }, { type: 'text', text: result.driverLicenseType || '-', size: 'xs', flex: 3 }] },
+                { type: 'box', layout: 'horizontal', contents: [{ type: 'text', text: 'ธนาคาร', size: 'xs', color: '#94A3B8', flex: 2 }, { type: 'text', text: `${result.bankName} ${result.bankAccountNumber}`, size: 'xs', flex: 3 }] },
+              ],
+            },
+          ],
+        },
+        footer: {
+          type: 'box',
+          layout: 'vertical',
+          contents: [
+            {
+              type: 'button',
+              style: 'primary',
+              color: '#10B981',
+              action: {
+                type: 'postback',
+                label: 'ยืนยันข้อมูลถูกต้อง',
+                data: 'action=confirm_reg',
+              },
+            },
+            {
+              type: 'button',
+              style: 'link',
+              color: '#EF4444',
+              action: {
+                type: 'postback',
+                label: 'ข้อมูลไม่ถูกต้อง ส่งใหม่',
+                data: 'action=retry_onboarding',
+              },
+            },
+          ],
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Analysis error:', error);
+    await getLineClient().pushMessage(lineUserId, { type: 'text', text: 'ขออภัยครับ ระบบไม่สามารถวิเคราะห์เอกสารได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง หรือติดต่อเจ้าหน้าที่ครับ' });
+  }
+}
+
+async function handleConfirmRegistration(lineUserId: string, replyToken: string) {
+  try {
+    const driver = await getOrCreateDriver(lineUserId);
+    const data = driver.tempAnalysisResult;
+
+    if (!data) {
+      await getLineClient().replyMessage(replyToken, { type: 'text', text: 'ไม่พบข้อมูลที่ต้องยืนยัน กรุณากดปุ่มตรวจสอบข้อมูลใหม่อีกครั้งครับ' });
+      return;
+    }
+
+    // Create or update SharedTruck
+    let truck = await SharedTruck.findOne({ lineUserId });
+    const truckData = {
+      lineUserId,
+      driverFirstName: data.driverFirstName,
+      driverLastName: data.driverLastName,
+      driverPhone: data.driverPhone,
+      headPlateNumber: data.headPlateNumber,
+      tailPlateNumber: data.tailPlateNumber,
+      driverLicenseType: data.driverLicenseType,
+      bankName: data.bankName,
+      bankAccountNumber: data.bankAccountNumber,
+      bankAccountName: data.bankAccountName,
+      onboardingStatus: 'approved' as const,
+    };
+
+    if (!truck) {
+      truck = await SharedTruck.create(truckData);
+    } else {
+      truck = await SharedTruck.findByIdAndUpdate(truck._id, truckData, { new: true });
+    }
+
+    if (!truck) {
+      throw new Error('Failed to create or update truck data');
+    }
+
+    await LineDriver.findOneAndUpdate({ lineUserId }, {
+      status: 'approved',
+      phone: data.driverPhone,
+      bankName: data.bankName,
+      bankAccountNumber: data.bankAccountNumber,
+      bankAccountName: data.bankAccountName,
+      sharedTruckId: truck._id,
+      approvedAt: new Date(),
+      tempAnalysisResult: undefined, // Clear temp data
+    });
+
+    await getLineClient().replyMessage(replyToken, {
+      type: 'text',
+      text: 'ยินดีด้วยครับ! ข้อมูลของคุณได้รับการยืนยันและอนุมัติเรียบร้อยแล้ว พี่ยังสามารถเริ่มรับงานได้ทันทีครับ พิมพ์ "งาน" เพื่อดูงานปัจจุบัน',
+    });
+  } catch (error) {
+    console.error('Confirmation error:', error);
+    await getLineClient().replyMessage(replyToken, { type: 'text', text: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาติดต่อเจ้าหน้าที่ครับ' });
+  }
+}
+
 async function handlePostback(lineUserId: string, data: string, replyToken: string) {
   const params = new URLSearchParams(data);
   const action = params.get('action') || '';
+
+  if (action === 'analyze_onboarding') {
+    await handleAnalyzeOnboarding(lineUserId, replyToken);
+    return;
+  }
+
+  if (action === 'confirm_reg') {
+    await handleConfirmRegistration(lineUserId, replyToken);
+    return;
+  }
+
+  if (action === 'retry_onboarding') {
+    await getLineClient().replyMessage(replyToken, { type: 'text', text: 'ได้รับทราบครับ รบกวนพี่ส่งรูปเอกสารที่ชัดเจนเข้ามาใหม่อีกครั้งนะครับ' });
+    return;
+  }
 
   if (action === 'set_doc_type') {
     const docType = params.get('docType') || '';

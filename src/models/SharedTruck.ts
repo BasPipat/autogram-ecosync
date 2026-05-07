@@ -6,17 +6,17 @@ export interface ISharedTruck extends Document {
   gpsConsentStatus?: 'pending' | 'granted' | 'denied';
   gpsConsentAt?: Date;
   documentReviewNote?: string;
-  headPlateNumber: string;
-  tailPlateNumber: string;
-  compulsoryInsuranceExpiresAt: Date;
-  vehicleInsuranceType: string;
-  cargoInsuranceAmount: number;
-  driverFirstName: string;
-  driverLastName: string;
-  driverLicenseType: string;
-  driverPhone: string;
-  bankName: string;
-  bankAccountNumber: string;
+  headPlateNumber?: string;
+  tailPlateNumber?: string;
+  compulsoryInsuranceExpiresAt?: Date;
+  vehicleInsuranceType?: string;
+  cargoInsuranceAmount?: number;
+  driverFirstName?: string;
+  driverLastName?: string;
+  driverLicenseType?: string;
+  driverPhone?: string;
+  bankName?: string;
+  bankAccountNumber?: string;
   bankAccountName?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -36,21 +36,21 @@ const SharedTruckSchema = new Schema<ISharedTruck>({
   },
   gpsConsentAt: { type: Date },
   documentReviewNote: { type: String, trim: true },
-  headPlateNumber: { type: String, required: true, trim: true },
-  tailPlateNumber: { type: String, required: true, trim: true },
-  compulsoryInsuranceExpiresAt: { type: Date, required: true },
-  vehicleInsuranceType: { type: String, required: true, trim: true },
-  cargoInsuranceAmount: { type: Number, required: true, min: 0 },
-  driverFirstName: { type: String, required: true, trim: true },
-  driverLastName: { type: String, required: true, trim: true },
-  driverLicenseType: { type: String, required: true, trim: true },
-  driverPhone: { type: String, required: true, trim: true },
-  bankName: { type: String, required: true, trim: true },
-  bankAccountNumber: { type: String, required: true, trim: true },
+  headPlateNumber: { type: String, trim: true },
+  tailPlateNumber: { type: String, trim: true },
+  compulsoryInsuranceExpiresAt: { type: Date },
+  vehicleInsuranceType: { type: String, trim: true },
+  cargoInsuranceAmount: { type: Number, min: 0 },
+  driverFirstName: { type: String, trim: true },
+  driverLastName: { type: String, trim: true },
+  driverLicenseType: { type: String, trim: true },
+  driverPhone: { type: String, trim: true },
+  bankName: { type: String, trim: true },
+  bankAccountNumber: { type: String, trim: true },
   bankAccountName: { type: String, trim: true },
 }, { timestamps: true });
 
-SharedTruckSchema.index({ headPlateNumber: 1, tailPlateNumber: 1 }, { unique: true });
+SharedTruckSchema.index({ headPlateNumber: 1, tailPlateNumber: 1 });
 SharedTruckSchema.index({ compulsoryInsuranceExpiresAt: 1 });
 SharedTruckSchema.index({ driverFirstName: 1, driverLastName: 1 });
 
