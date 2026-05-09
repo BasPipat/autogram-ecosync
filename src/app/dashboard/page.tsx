@@ -363,7 +363,3 @@ export default function Dashboard() {
     </SidebarLayout>
   );
 }
-      </div>
-    </SidebarLayout>
-  );
-}
