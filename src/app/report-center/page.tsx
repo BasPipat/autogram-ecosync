@@ -1,35 +1,16 @@
-'use client';
-
-import { useEffect, useState, useMemo } from 'react';
-import SidebarLayout from '@/components/SidebarLayout';
-import { 
-  Download, FileText, Loader2, Table, FileBarChart, 
-  ShieldCheck, Leaf, LayoutDashboard, Calendar, BarChart3,
-  Truck, Route, Fuel, ChevronRight
-} from 'lucide-react';
-
-type FilterType = 'day' | 'month' | 'year';
-
-type Row = {
-  monthKey: string;
-  totalTrips: number;
-  totalDistanceKm: number;
-  totalFuelLitersForecast: number;
-  totalEmissionKgCo2e: number;
-  totalTonKm?: number;
-  totalWeightTon?: number;
-};
-
 type ActivityData = {
-  label: string;
+  label: string; // Date string
   tripId: string;
+  originName: string;
+  destinationName: string;
+  weightTon: number;
   distanceKm: number;
   fuelForecastLiters: number;
   emissionKgCo2e: number;
 };
 
-// ── Executive PDF Export ──
-async function downloadPdf(rows: Row[]) {
+// ── Dynamic PDF Export ──
+async function downloadPdf(filter: FilterType, activities: ActivityData[], rows: Row[]) {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF();
   
@@ -44,107 +25,121 @@ async function downloadPdf(rows: Row[]) {
 
   doc.setFillColor(...colors.slate);
   doc.rect(0, 0, 210, 45, 'F');
-  doc.setFontSize(22);
+  doc.setFontSize(20);
   doc.setTextColor(...colors.white);
-  doc.text('AUTOGRAM ECO-SYNC', 14, 20);
-  doc.setFontSize(12);
-  doc.setTextColor(200, 200, 200);
-  doc.text('EXECUTIVE SUSTAINABILITY PERFORMANCE REPORT', 14, 28);
-  const dateStr = new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+  doc.text('AUTOGRAM ECO-SYNC', 14, 18);
   doc.setFontSize(10);
-  doc.text(`Report Generated: ${dateStr}`, 14, 38);
-  
-  const totalTrips = rows.reduce((s, r) => s + r.totalTrips, 0);
-  const totalDist = rows.reduce((s, r) => s + r.totalDistanceKm, 0);
-  const totalEmission = rows.reduce((s, r) => s + r.totalEmissionKgCo2e, 0);
+  doc.setTextColor(200, 200, 200);
+  doc.text(`ESG SUSTAINABILITY REPORT - ${filter.toUpperCase()} VIEW`, 14, 26);
+  doc.text(`Generated At: ${new Date().toLocaleString('th-TH')}`, 14, 34);
 
-  const drawCard = (x: number, y: number, label: string, value: string, color: [number, number, number]) => {
-    doc.setFillColor(...colors.lightGray);
-    doc.roundedRect(x, y, 60, 25, 3, 3, 'F');
-    doc.setDrawColor(...color);
-    doc.setLineWidth(0.5);
-    doc.line(x, y + 25, x + 60, y + 25);
-    doc.setFontSize(9);
-    doc.setTextColor(100, 116, 139);
-    doc.text(label.toUpperCase(), x + 5, y + 8);
-    doc.setFontSize(14);
-    doc.setTextColor(...colors.slate);
-    doc.text(value, x + 5, y + 18);
-  };
+  // Determine report data based on filter
+  let reportRows: any[] = [];
+  let headers: string[] = [];
+  let colWidths: number[] = [];
 
-  drawCard(14, 55, 'Total Trips', totalTrips.toLocaleString(), colors.blue);
-  drawCard(79, 55, 'Total Distance', `${totalDist.toLocaleString()} km`, colors.emerald);
-  drawCard(144, 55, 'Carbon Emission', `${totalEmission.toFixed(2)} kgCO2e`, colors.orange);
+  if (filter === 'day') {
+    headers = ['Trip ID', 'Origin / Destination', 'Dist(km)', 'W(Ton)', 'Emission'];
+    reportRows = activities.map(a => ({
+      c1: a.tripId,
+      c2: `${a.originName} -> ${a.destinationName}`,
+      c3: a.distanceKm.toLocaleString(),
+      c4: a.weightTon.toLocaleString(),
+      c5: a.emissionKgCo2e.toFixed(2)
+    }));
+  } else if (filter === 'month') {
+    headers = ['Date', 'Total Trips', 'Distance(km)', 'Emission(kgCO2e)'];
+    // Group activities by date
+    const dailyMap: Record<string, any> = {};
+    activities.forEach(a => {
+      if (!dailyMap[a.label]) dailyMap[a.label] = { label: a.label, trips: 0, dist: 0, emission: 0 };
+      dailyMap[a.label].trips += 1;
+      dailyMap[a.label].dist += a.distanceKm;
+      dailyMap[a.label].emission += a.emissionKgCo2e;
+    });
+    reportRows = Object.values(dailyMap).sort((a, b) => a.label.localeCompare(b.label)).map(d => ({
+      c1: d.label,
+      c2: String(d.trips),
+      c3: d.dist.toLocaleString(),
+      c4: d.emission.toFixed(2)
+    }));
+  } else {
+    headers = ['Month', 'Trips', 'Distance(km)', 'Emission(kgCO2e)'];
+    reportRows = rows.map(r => ({
+      c1: r.monthKey,
+      c2: String(r.totalTrips),
+      c3: r.totalDistanceKm.toLocaleString(),
+      c4: r.totalEmissionKgCo2e.toFixed(2)
+    }));
+  }
 
-  // Chart
-  let y = 100;
-  doc.setFontSize(14);
+  // Summary Cards
+  const totalEmission = activities.reduce((s, a) => s + a.emissionKgCo2e, 0);
+  const totalTrips = activities.length;
+  doc.setFillColor(...colors.lightGray);
+  doc.roundedRect(14, 55, 182, 18, 2, 2, 'F');
+  doc.setFontSize(10);
   doc.setTextColor(...colors.slate);
-  doc.text('Carbon Emission Trend (kgCO2e)', 14, y);
-  const maxVal = Math.max(...rows.map(r => r.totalEmissionKgCo2e), 10);
-  const chartX = 20;
-  const chartY = 150;
-  const chartWidth = 170;
-  const chartHeight = 40;
-  doc.setDrawColor(200, 200, 200);
-  doc.line(chartX, chartY, chartX + chartWidth, chartY);
-  const barSpacing = chartWidth / Math.max(rows.length, 1);
-  const barWidth = barSpacing * 0.6;
-
-  rows.forEach((row, i) => {
-    const bHeight = (row.totalEmissionKgCo2e / maxVal) * chartHeight;
-    const bx = chartX + (i * barSpacing) + (barSpacing - barWidth) / 2;
-    doc.setFillColor(...colors.emerald);
-    doc.rect(bx, chartY - bHeight, barWidth, bHeight, 'F');
-    doc.setFontSize(7);
-    doc.setTextColor(100, 116, 139);
-    doc.text(row.monthKey, bx + (barWidth / 2), chartY + 5, { align: 'center' });
-  });
+  doc.text(`Summary Overview: ${totalTrips.toLocaleString()} Trips | ${totalEmission.toFixed(2)} kgCO2e Total Emission`, 18, 66);
 
   // Table
-  y = 170;
-  doc.setFontSize(14);
-  doc.setTextColor(...colors.slate);
-  doc.text('Monthly Sustainability Breakdown', 14, y);
-  y += 8;
+  let y = 85;
   doc.setFillColor(...colors.lightGray);
   doc.rect(14, y, 182, 8, 'F');
-  doc.setFontSize(9);
-  doc.text('Month', 18, y + 5);
-  doc.text('Trips', 60, y + 5);
-  doc.text('Distance (km)', 90, y + 5);
-  doc.text('Ton-KM', 130, y + 5);
-  doc.text('Emission (kgCO2e)', 160, y + 5);
+  doc.setFontSize(8);
+  doc.setTextColor(...colors.slate);
+  headers.forEach((h, i) => doc.text(h, 18 + (i * 40), y + 5));
+
   y += 8;
-  rows.forEach((row, i) => {
+  reportRows.forEach((row, i) => {
     if (i % 2 === 0) { doc.setFillColor(250, 250, 250); doc.rect(14, y, 182, 7, 'F'); }
-    doc.setFontSize(8);
-    doc.text(row.monthKey, 18, y + 5);
-    doc.text(String(row.totalTrips), 60, y + 5);
-    doc.text(row.totalDistanceKm.toLocaleString(), 90, y + 5);
-    doc.text(String(row.totalTonKm || 0), 130, y + 5);
-    doc.text(row.totalEmissionKgCo2e.toFixed(2), 160, y + 5);
+    doc.text(row.c1, 18, y + 5);
+    doc.text(row.c2, 58, y + 5, { maxWidth: 35 });
+    doc.text(row.c3, 98, y + 5);
+    doc.text(row.c4, 138, y + 5);
+    if (row.c5) doc.text(row.c5, 178, y + 5);
     y += 7;
-    if (y > 270) { doc.addPage(); y = 20; }
+    if (y > 275) { doc.addPage(); y = 20; }
   });
 
-  doc.save(`eco-sync-executive-report-${new Date().toISOString().slice(0, 10)}.pdf`);
+  doc.save(`eco-sync-${filter}-report-${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
-async function downloadExcel(rows: Row[]) {
+async function downloadExcel(filter: FilterType, activities: ActivityData[], rows: Row[]) {
   const XLSX = await import('xlsx');
-  const summaryData = rows.map(r => ({
-    'Month': r.monthKey,
-    'Trips': r.totalTrips,
-    'Distance (km)': r.totalDistanceKm,
-    'Weight (Ton)': r.totalWeightTon || 0,
-    'Ton-KM': r.totalTonKm || 0,
-    'Emission (kgCO2e)': r.totalEmissionKgCo2e,
-  }));
+  let data: any[] = [];
+
+  if (filter === 'day') {
+    data = activities.map(a => ({
+      'Trip ID': a.tripId,
+      'Origin': a.originName,
+      'Destination': a.destinationName,
+      'Weight (Ton)': a.weightTon,
+      'Distance (km)': a.distanceKm,
+      'Emission (kgCO2e)': a.emissionKgCo2e
+    }));
+  } else if (filter === 'month') {
+    const dailyMap: Record<string, any> = {};
+    activities.forEach(a => {
+      if (!dailyMap[a.label]) dailyMap[a.label] = { 'Date': a.label, 'Trips': 0, 'Distance': 0, 'Emission': 0 };
+      dailyMap[a.label]['Trips'] += 1;
+      dailyMap[a.label]['Distance'] += a.distanceKm;
+      dailyMap[a.label]['Emission'] += a.emissionKgCo2e;
+    });
+    data = Object.values(dailyMap).sort((a, b) => a.Date.localeCompare(b.Date));
+  } else {
+    data = rows.map(r => ({
+      'Month': r.monthKey,
+      'Trips': r.totalTrips,
+      'Distance (km)': r.totalDistanceKm,
+      'Emission (kgCO2e)': r.totalEmissionKgCo2e
+    }));
+  }
+
   const wb = XLSX.utils.book_new();
-  const ws1 = XLSX.utils.json_to_sheet(summaryData);
-  XLSX.utils.book_append_sheet(wb, ws1, 'Monthly Summary');
-  XLSX.writeFile(wb, `eco-sync-compliance-report-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  const ws = XLSX.utils.json_to_sheet(data);
+  XLSX.utils.book_append_sheet(wb, ws, 'Report');
+  XLSX.writeFile(wb, `eco-sync-${filter}-report.xlsx`);
 }
 
 function getDefaultValue(filter: FilterType) {
@@ -184,12 +179,13 @@ export default function CarbonIntelligencePage() {
   const onApplyFilter = () => fetchUnifiedData(filter, value);
 
   const totalStats = useMemo(() => {
+    const currentActivities = activities;
     return {
-      trips: rows.reduce((s, r) => s + r.totalTrips, 0),
-      distance: rows.reduce((s, r) => s + r.totalDistanceKm, 0),
-      emission: rows.reduce((s, r) => s + r.totalEmissionKgCo2e, 0),
+      trips: currentActivities.length,
+      distance: currentActivities.reduce((s, a) => s + a.distanceKm, 0),
+      emission: currentActivities.reduce((s, a) => s + a.emissionKgCo2e, 0),
     };
-  }, [rows]);
+  }, [activities]);
 
   const maxActivityEmission = useMemo(() => Math.max(...activities.map(a => a.emissionKgCo2e), 1), [activities]);
 
@@ -204,14 +200,14 @@ export default function CarbonIntelligencePage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Carbon Intelligence</h1>
-              <p className="text-[13px]" style={{ color: 'var(--text-tertiary)' }}>Unified Analytics & ESG Sustainability Reporting</p>
+              <p className="text-[13px]" style={{ color: 'var(--text-tertiary)' }}>Unified Analytics & Dynamic ESG Reporting</p>
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => downloadExcel(rows)} className="btn-secondary px-4 py-2 rounded-xl text-[13px] flex items-center gap-2">
+            <button onClick={() => downloadExcel(filter, activities, rows)} className="btn-secondary px-4 py-2 rounded-xl text-[13px] flex items-center gap-2">
               <Table size={14} /> Export Excel
             </button>
-            <button onClick={() => downloadPdf(rows)} className="btn-primary px-4 py-2 rounded-xl text-[13px] flex items-center gap-2">
+            <button onClick={() => downloadPdf(filter, activities, rows)} className="btn-primary px-4 py-2 rounded-xl text-[13px] flex items-center gap-2">
               <FileText size={14} /> Executive PDF
             </button>
           </div>
@@ -225,9 +221,9 @@ export default function CarbonIntelligencePage() {
           
           <div className="flex items-center gap-2 w-full md:w-auto">
             <select value={filter} onChange={(e) => { setFilter(e.target.value as FilterType); setValue(getDefaultValue(e.target.value as FilterType)); }} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[12px] outline-none">
-              <option value="day">Daily</option>
-              <option value="month">Monthly</option>
-              <option value="year">Yearly</option>
+              <option value="day">Daily View (Trip)</option>
+              <option value="month">Monthly View (Day)</option>
+              <option value="year">Yearly View (Month)</option>
             </select>
             <input type={filter === 'day' ? 'date' : filter === 'month' ? 'month' : 'number'} value={value} onChange={(e) => setValue(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[12px] outline-none" />
             <button onClick={onApplyFilter} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-[12px] font-bold">Apply</button>
@@ -236,9 +232,9 @@ export default function CarbonIntelligencePage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-fade-in">
           {[
-            { label: 'Total Trips', value: totalStats.trips.toLocaleString(), icon: Truck, color: '#3B82F6', bg: '#EFF6FF' },
-            { label: 'Total Distance', value: `${totalStats.distance.toLocaleString()} km`, icon: Route, color: '#10B981', bg: '#ECFDF5' },
-            { label: 'Total Emission', value: `${totalStats.emission.toFixed(2)} kgCO₂e`, icon: Leaf, color: '#F59E0B', bg: '#FFF7ED' },
+            { label: 'Selected Trips', value: totalStats.trips.toLocaleString(), icon: Truck, color: '#3B82F6', bg: '#EFF6FF' },
+            { label: 'Selected Distance', value: `${totalStats.distance.toFixed(2)} km`, icon: Route, color: '#10B981', bg: '#ECFDF5' },
+            { label: 'Selected Emission', value: `${totalStats.emission.toFixed(2)} kgCO₂e`, icon: Leaf, color: '#F59E0B', bg: '#FFF7ED' },
           ].map(card => (
             <div key={card.label} className="card p-5 flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ background: card.bg }}>
@@ -255,7 +251,7 @@ export default function CarbonIntelligencePage() {
         {loading ? (
           <div className="card flex items-center justify-center py-20">
             <Loader2 className="animate-spin text-emerald-500 mr-2" />
-            <span className="text-slate-400">Processing Analytics Data...</span>
+            <span className="text-slate-400">Compiling Report Data...</span>
           </div>
         ) : (
           <div className="animate-fade-in">
@@ -263,15 +259,15 @@ export default function CarbonIntelligencePage() {
               <div className="card p-6">
                 <div className="flex items-center gap-2 mb-6">
                   <BarChart3 size={18} className="text-emerald-500" />
-                  <span className="text-[15px] font-bold text-slate-800">Carbon Activity Tracking</span>
+                  <span className="text-[15px] font-bold text-slate-800">Visual Activity Breakdown</span>
                 </div>
                 {activities.length === 0 ? (
-                  <div className="text-center py-20 text-slate-400 italic">No data found for this period.</div>
+                  <div className="text-center py-20 text-slate-400 italic">No activity data found for selected criteria.</div>
                 ) : (
                   <div className="space-y-4">
                     {activities.map((item) => (
                       <div key={`${item.tripId}-${item.label}`} className="grid grid-cols-[120px_1fr_100px] items-center gap-4">
-                        <span className="text-[11px] font-bold text-slate-500 truncate">{item.label}</span>
+                        <span className="text-[11px] font-bold text-slate-500 truncate">{item.tripId || item.label}</span>
                         <div className="h-3 bg-slate-50 rounded-full overflow-hidden border border-slate-100">
                           <div className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-1000" style={{ width: `${(item.emissionKgCo2e / maxActivityEmission) * 100}%` }} />
                         </div>
@@ -280,28 +276,20 @@ export default function CarbonIntelligencePage() {
                     ))}
                   </div>
                 )}
-                {setting && (
-                  <div className="mt-8 p-4 bg-emerald-50 rounded-xl border border-emerald-100">
-                    <p className="text-[10px] text-emerald-700 leading-relaxed">
-                      <strong>Methodology:</strong> Calculated using <strong>{setting.standardReference}</strong> standard. 
-                      Formula: Distance / {setting.fuelEfficiencyKmPerLiterDefault} km/L × {setting.emissionFactorKgCo2PerLiter} kgCO₂e/L.
-                    </p>
-                  </div>
-                )}
               </div>
             ) : (
               <div className="card overflow-hidden">
-                <div className="px-6 py-4 bg-slate-50/50 border-b border-slate-100">
-                  <span className="text-[13px] font-bold text-slate-700 uppercase tracking-wider">Sustainability Ledger</span>
+                <div className="px-6 py-4 bg-slate-50/50 border-b border-slate-100 flex justify-between items-center">
+                  <span className="text-[13px] font-bold text-slate-700 uppercase tracking-wider">Historical Sustainability Ledger</span>
+                  <span className="text-[11px] px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 font-bold uppercase">Certified Method</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-[13px]">
                     <thead>
                       <tr className="bg-slate-50 text-slate-400 text-[10px] uppercase font-bold">
-                        <th className="p-4">Month</th>
-                        <th className="p-4">Trips</th>
+                        <th className="p-4">Period</th>
+                        <th className="p-4">Count</th>
                         <th className="p-4">Distance (km)</th>
-                        <th className="p-4">Fuel (L)</th>
                         <th className="p-4">Emission (kgCO₂e)</th>
                       </tr>
                     </thead>
@@ -311,7 +299,6 @@ export default function CarbonIntelligencePage() {
                           <td className="p-4 font-bold text-slate-700">{r.monthKey}</td>
                           <td className="p-4 text-slate-500">{r.totalTrips}</td>
                           <td className="p-4 text-slate-500">{r.totalDistanceKm.toLocaleString()}</td>
-                          <td className="p-4 text-slate-500">{r.totalFuelLitersForecast.toLocaleString()}</td>
                           <td className="p-4 font-bold text-emerald-600">{r.totalEmissionKgCo2e.toFixed(2)}</td>
                         </tr>
                       ))}
@@ -325,7 +312,7 @@ export default function CarbonIntelligencePage() {
 
         <div className="flex items-center gap-2 text-[11px] text-slate-400 italic">
           <ShieldCheck size={14} className="text-emerald-500" />
-          Data verified by GPS route tracking and TGO-certified emission factors.
+          ESG Reports generated based on activity-level precision.
         </div>
       </div>
     </SidebarLayout>
