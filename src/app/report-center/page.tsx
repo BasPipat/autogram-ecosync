@@ -92,8 +92,53 @@ async function downloadPdf(filter: FilterType, activities: ActivityData[], rows:
   drawCard(76, 40, 'Total Distance', `${totalDist.toFixed(2)} km`, colors.emerald, [236, 253, 245]);
   drawCard(138, 40, 'Carbon Emission', `${totalEmission.toFixed(2)} kgCO2e`, colors.orange, [255, 247, 237]);
 
+  // ── Visual Carbon Chart (Bar Chart) ──
+  let y = 72;
+  doc.setFontSize(10);
+  doc.setTextColor(...colors.slate);
+  doc.text('CARBON EMISSION PERFORMANCE TREND', 14, y);
+  
+  const chartX = 14;
+  const chartY = y + 35;
+  const chartWidth = 182;
+  const chartHeight = 25;
+  
+  // Draw Background Grid
+  doc.setDrawColor(241, 245, 249);
+  doc.setLineWidth(0.1);
+  for (let i = 0; i <= 4; i++) {
+    const gy = chartY - (i * (chartHeight / 4));
+    doc.line(chartX, gy, chartX + chartWidth, gy);
+  }
+
+  // Determine chart data (Limit to top 15 points for clarity if many)
+  const chartPoints = activities.slice(0, 15);
+  const maxEmission = Math.max(...chartPoints.map(p => p.emissionKgCo2e), 1);
+  const barWidth = (chartWidth / Math.max(chartPoints.length, 1)) * 0.7;
+  const spacing = (chartWidth / Math.max(chartPoints.length, 1));
+
+  chartPoints.forEach((p, i) => {
+    const bHeight = (p.emissionKgCo2e / maxEmission) * chartHeight;
+    const bx = chartX + (i * spacing) + (spacing - barWidth) / 2;
+    
+    // Bar
+    doc.setFillColor(...colors.emerald);
+    doc.rect(bx, chartY - bHeight, barWidth, bHeight, 'F');
+    
+    // X Label
+    doc.setFontSize(6);
+    doc.setTextColor(...colors.gray);
+    const label = filter === 'day' ? p.tripId.slice(-4) : p.label.slice(-5);
+    doc.text(label, bx + (barWidth / 2), chartY + 4, { align: 'center' });
+  });
+
+  // Base Line
+  doc.setDrawColor(...colors.slate);
+  doc.setLineWidth(0.2);
+  doc.line(chartX, chartY, chartX + chartWidth, chartY);
+
   // ── Main Content ──
-  let y = 75;
+  y = 120;
   doc.setFontSize(11);
   doc.setTextColor(...colors.slate);
   doc.text('Data Ledger Details', 14, y);
