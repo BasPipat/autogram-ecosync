@@ -35,10 +35,14 @@ export default function MasterSettingsPage() {
 
   const downloadStandardPdf = () => {
     const doc = new jsPDF();
-    const colors = { emerald: [16, 185, 129], slate: [30, 41, 59], gray: [148, 163, 184] };
+    const colors = { 
+      emerald: [16, 185, 129] as [number, number, number], 
+      slate: [30, 41, 59] as [number, number, number], 
+      gray: [148, 163, 184] as [number, number, number] 
+    };
     
     // Header
-    doc.setFillColor(...colors.emerald);
+    doc.setFillColor(colors.emerald[0], colors.emerald[1], colors.emerald[2]);
     doc.rect(0, 0, 210, 40, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(22);
@@ -48,13 +52,13 @@ export default function MasterSettingsPage() {
     
     // Body
     let y = 55;
-    doc.setTextColor(...colors.slate);
+    doc.setTextColor(colors.slate[0], colors.slate[1], colors.slate[2]);
     doc.setFontSize(14);
     doc.text('Operational Sustainability Standards', 14, y);
     
     y += 10;
     doc.setFontSize(10);
-    doc.setTextColor(...colors.gray);
+    doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2]);
     doc.text(`Reference Agency: ${form.standardReference}`, 14, y);
     doc.text(`Generated On: ${new Date().toLocaleString('th-TH')}`, 140, y);
 
@@ -62,7 +66,7 @@ export default function MasterSettingsPage() {
     y += 15;
     doc.setFillColor(248, 250, 252);
     doc.rect(14, y, 182, 10, 'F');
-    doc.setTextColor(...colors.slate);
+    doc.setTextColor(colors.slate[0], colors.slate[1], colors.slate[2]);
     doc.setFontSize(9);
     doc.text('Vehicle Category', 18, y + 6.5);
     doc.text('EF (kgCO2e/Ton-KM)', 80, y + 6.5);
@@ -84,12 +88,12 @@ export default function MasterSettingsPage() {
 
     // Verification
     y += 20;
-    doc.setDrawColor(...colors.emerald);
+    doc.setDrawColor(colors.emerald[0], colors.emerald[1], colors.emerald[2]);
     doc.setLineWidth(0.5);
     doc.line(14, y, 196, y);
     y += 10;
     doc.setFontSize(8);
-    doc.setTextColor(...colors.gray);
+    doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2]);
     doc.text('Verified by Eco-Sync Intelligence System. This document serves as an official reference for GHG audit compliance.', 14, y);
     
     doc.save(`Standard-Config-${form.version}.pdf`);
