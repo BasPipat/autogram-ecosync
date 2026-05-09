@@ -21,8 +21,39 @@ type NewsItem = {
   category: string;
   source: string;
   externalUrl?: string;
+  imageUrl?: string;
   publishedAt: string;
 };
+
+const FEATURED_NEWS: NewsItem[] = [
+  {
+    _id: 'f1',
+    title: 'เจาะลึกมาตรฐาน TGO Activity-based Approach สำหรับภาคขนส่งปี 2025',
+    summary: 'สรุปประเด็นสำคัญในการคำนวณคาร์บอนฟุตพริ้นท์สำหรับรถบรรทุกขนส่งสินค้า พร้อมตัวอย่างการคำนวณตามมาตรฐานใหม่ล่าสุด',
+    category: 'compliance',
+    source: 'TGO Official',
+    publishedAt: new Date().toISOString(),
+    imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=2070&auto=format&fit=crop'
+  },
+  {
+    _id: 'f2',
+    title: 'ทำไม ESG ถึงกลายเป็นหัวใจสำคัญของธุรกิจ Logistics ยุคใหม่',
+    summary: 'สำรวจแนวโน้มความต้องการของบริษัทข้ามชาติในการเลือกคู่ค้าขนส่งที่มีรายงานการปล่อยก๊าซเรือนกระจกที่โปร่งใส',
+    category: 'esg',
+    source: 'Logistics Insight',
+    publishedAt: new Date().toISOString(),
+    imageUrl: 'https://images.unsplash.com/photo-1473448912268-2022ce9509d8?q=80&w=2041&auto=format&fit=crop'
+  },
+  {
+    _id: 'f3',
+    title: 'Eco-Sync อัปเดตระบบ Carbon Ledger รองรับการเชื่อมต่อ API เต็มรูปแบบ',
+    summary: 'ช่วยให้บริษัทขนส่งสามารถเชื่อมต่อข้อมูลจากระบบ TMS หรือ GPS เข้าสู่ระบบ Eco-Sync ได้โดยตรงแบบ Real-time',
+    category: 'announcement',
+    source: 'Platform Update',
+    publishedAt: new Date().toISOString(),
+    imageUrl: 'https://images.unsplash.com/photo-1551288049-bbbda536339a?q=80&w=2070&auto=format&fit=crop'
+  }
+];
 
 const CATEGORY_COLORS: Record<string, { bg: string; color: string }> = {
   compliance: { bg: '#F3E8FF', color: '#7C3AED' },
@@ -42,7 +73,12 @@ export default function LandingPage() {
 
   useEffect(() => {
     fetch('/api/public/stats').then(r => r.json()).then(setStats).catch(() => {});
-    fetch('/api/public/news').then(r => r.json()).then(d => setNews(d.news || [])).catch(() => {});
+    fetch('/api/public/news').then(r => r.json()).then(d => {
+      const apiNews = d.news || [];
+      setNews(apiNews.length > 0 ? apiNews : FEATURED_NEWS);
+    }).catch(() => {
+      setNews(FEATURED_NEWS);
+    });
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -157,41 +193,72 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ══════════ NEWS HUB ══════════ */}
-      {news.length > 0 && (
-        <section className="mx-auto max-w-6xl px-6 pb-16">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#FFF7ED' }}>
-              <Newspaper size={16} style={{ color: '#C2410C' }} />
+      {/* ══════════ NEWS & INSIGHTS ══════════ */}
+      <section className="mx-auto max-w-6xl px-6 pb-20">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[12px] font-bold tracking-wider uppercase text-emerald-600">Update & Insights</span>
             </div>
-            <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>News & Knowledge Hub</h2>
+            <h2 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>News & Knowledge Hub</h2>
+            <p className="mt-2 text-[14px]" style={{ color: 'var(--text-secondary)' }}>ติดตามข่าวสารและบทความที่น่าสนใจเกี่ยวกับ Carbon Intelligence</p>
           </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            {news.slice(0, 3).map(item => {
-              const cat = CATEGORY_COLORS[item.category] || CATEGORY_COLORS.announcement;
-              return (
-                <article key={item._id} className="glass-card p-5 flex flex-col">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
+          <Link href="/news" className="inline-flex items-center gap-2 text-[13px] font-bold group" style={{ color: 'var(--accent)' }}>
+            ดูข่าวสารทั้งหมด <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+          </Link>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-3">
+          {news.slice(0, 3).map((item, idx) => {
+            const cat = CATEGORY_COLORS[item.category] || CATEGORY_COLORS.announcement;
+            return (
+              <article key={item._id} 
+                className="glass-card overflow-hidden flex flex-col group hover:border-emerald-500/30 transition-all duration-500"
+                style={{ animationDelay: `${idx * 0.1}s` }}>
+                
+                {/* Image Placeholder or Actual Image */}
+                <div className="aspect-[16/9] overflow-hidden relative">
+                  <img 
+                    src={item.imageUrl || `https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=2013&auto=format&fit=crop`} 
+                    alt={item.title}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute top-4 left-4">
+                    <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase shadow-sm"
                       style={{ background: cat.bg, color: cat.color }}>{item.category}</span>
-                    <span className="text-[10px]" style={{ color: 'var(--text-tertiary)' }}>
-                      {new Date(item.publishedAt).toLocaleDateString('th-TH')}
-                    </span>
                   </div>
-                  <h3 className="text-[14px] font-bold mb-2 line-clamp-2" style={{ color: 'var(--text-primary)' }}>{item.title}</h3>
-                  <p className="text-[12px] leading-relaxed flex-1 line-clamp-3" style={{ color: 'var(--text-secondary)' }}>{item.summary}</p>
-                  {item.externalUrl && (
-                    <a href={item.externalUrl} target="_blank" rel="noopener noreferrer"
-                      className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold" style={{ color: 'var(--accent)' }}>
-                      อ่านต่อ <ExternalLink size={11} />
+                </div>
+
+                <div className="p-6 flex flex-col flex-1">
+                  <div className="flex items-center gap-2 mb-3 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+                    <span>{new Date(item.publishedAt).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                    <span className="w-1 h-1 rounded-full bg-slate-300" />
+                    <span className="font-medium text-slate-500">{item.source}</span>
+                  </div>
+                  
+                  <h3 className="text-[17px] font-bold mb-3 line-clamp-2 leading-tight group-hover:text-emerald-600 transition-colors" 
+                    style={{ color: 'var(--text-primary)' }}>
+                    {item.title}
+                  </h3>
+                  
+                  <p className="text-[13px] leading-relaxed flex-1 line-clamp-3 mb-4" style={{ color: 'var(--text-secondary)' }}>
+                    {item.summary}
+                  </p>
+                  
+                  <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                    <a href={item.externalUrl || `/news/${item._id}`} target={item.externalUrl ? "_blank" : "_self"} rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-[12px] font-bold" style={{ color: 'var(--accent)' }}>
+                      อ่านต่อ <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                     </a>
-                  )}
-                </article>
-              );
-            })}
-          </div>
-        </section>
-      )}
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
 
       {/* ══════════ FEATURES ══════════ */}
       <section className="mx-auto max-w-6xl px-6 pb-16 grid gap-5 md:grid-cols-3">
