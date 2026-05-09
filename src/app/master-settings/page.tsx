@@ -6,7 +6,7 @@ import SidebarLayout from '@/components/SidebarLayout';
 import { 
   Loader2, Save, Plus, Trash2, Settings, Fuel, FlaskConical, 
   History, Leaf, MapPin, Users, ExternalLink, ShieldCheck, 
-  FileText, Globe, AlertCircle 
+  FileText, Globe, AlertCircle, Truck
 } from 'lucide-react';
 
 type VehicleTypeSetting = { typeName: string; minKmPerLiter: string; maxKmPerLiter: string };
