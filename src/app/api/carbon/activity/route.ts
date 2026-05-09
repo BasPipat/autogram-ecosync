@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     if (filter === 'custom') {
       start = new Date(url.searchParams.get('start') || defaultValue);
       end = new Date(url.searchParams.get('end') || defaultValue);
-      end.setHours(23, 59, 59, 999); // Include the entire end day
+      end.setHours(23, 59, 59, 999);
     } else {
       const range = getRangeFromFilter(filter as any, value);
       start = range.start;
@@ -48,10 +48,27 @@ export async function GET(req: NextRequest) {
     }
     const setting = await getActiveMasterSetting();
 
+    // Flexible Company Filter
+    let companyFilter: any = {};
+    if (!isInternalRole(token.role)) {
+      if (token.companyId) {
+        try {
+          companyFilter = { companyId: new ObjectId(token.companyId) };
+        } catch {
+          companyFilter = { companyName: token.companyName };
+        }
+      } else if (token.companyName) {
+        companyFilter = { companyName: token.companyName };
+      } else {
+        return NextResponse.json({ error: 'User has no company context' }, { status: 403 });
+      }
+    }
+
     const trips = await Trip.find({
-      ...(isInternalRole(token.role) ? {} : { companyId: new ObjectId(token.companyId) }),
+      ...companyFilter,
       createdAt: { $gte: start, $lt: end },
     }).sort({ createdAt: 1 }).lean();
+
     const points = trips.map((trip) => {
       const distance = asNumber(trip.distance, 0);
       const fuelForecast = distance / asNumber(setting.fuelEfficiencyKmPerLiterDefault, 1);
@@ -82,7 +99,6 @@ export async function GET(req: NextRequest) {
     
     let monthlyLedger;
     if (isInternalRole(token.role)) {
-      // Global aggregation for system_owner
       monthlyLedger = await MonthlyCarbonLedger.aggregate([
         { $match: { generatedAt: { $gte: from10Years } } },
         {
@@ -100,10 +116,9 @@ export async function GET(req: NextRequest) {
         { $sort: { year: 1, month: 1 } }
       ]);
     } else {
-      // Scoped view for specific company
       monthlyLedger = await MonthlyCarbonLedger.find({ 
         generatedAt: { $gte: from10Years },
-        companyId: new ObjectId(token.companyId)
+        ...companyFilter
       })
       .sort({ year: 1, month: 1 })
       .lean();
