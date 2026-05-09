@@ -11,8 +11,7 @@ import {
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/trips', label: 'Trip Management', icon: Truck },
-  { href: '/carbon-activity', label: 'Carbon Activity', icon: Leaf },
-  { href: '/report-center', label: 'Report Center', icon: FileBarChart },
+  { href: '/report-center', label: 'Carbon Intelligence', icon: Leaf },
   { href: '/master-settings', label: 'Master Settings', icon: Settings },
   { href: '/users', label: 'User Access', icon: Users },
 ];
@@ -261,7 +260,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           {[
             { href: '/dashboard', icon: LayoutDashboard, label: 'Home' },
             { href: '/admin/trips', icon: Truck, label: 'Trips' },
-            { href: '/carbon-activity', icon: Leaf, label: 'Carbon' },
+            { href: '/report-center', icon: Leaf, label: 'Carbon' },
             { href: '/master-settings', icon: Settings, label: 'Settings' },
           ].map((item) => {
             const active = isActive(item.href);
