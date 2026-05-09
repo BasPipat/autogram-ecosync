@@ -8,6 +8,7 @@ type NewsItem = {
   _id: string;
   title: string;
   summary: string;
+  content?: string;
   category: string;
   source: string;
   externalUrl?: string;
@@ -97,10 +98,10 @@ export default function NewsPage() {
                       {item.summary}
                     </p>
                     <div className="pt-4 border-t border-slate-50">
-                      <a href={item.externalUrl || `/news/${item._id}`} target={item.externalUrl ? "_blank" : "_self"} 
+                      <Link href={`/news/${item._id}`}
                         className="inline-flex items-center gap-1.5 text-[12px] font-bold text-emerald-600">
                         อ่านรายละเอียด <ExternalLink size={12} />
-                      </a>
+                      </Link>
                     </div>
                   </div>
                 </article>

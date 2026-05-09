@@ -18,6 +18,7 @@ type NewsItem = {
   _id: string;
   title: string;
   summary: string;
+  content?: string;
   category: string;
   source: string;
   externalUrl?: string;
