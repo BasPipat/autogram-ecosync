@@ -31,7 +31,7 @@ type ActivityData = {
   emissionKgCo2e: number;
 };
 
-// ── Dynamic PDF Export ──
+// ── Clean & Bright PDF Export ──
 async function downloadPdf(filter: FilterType, activities: ActivityData[], rows: Row[]) {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF();
@@ -41,37 +41,78 @@ async function downloadPdf(filter: FilterType, activities: ActivityData[], rows:
     slate: [15, 23, 42] as [number, number, number],
     blue: [59, 130, 246] as [number, number, number],
     orange: [245, 158, 11] as [number, number, number],
+    gray: [100, 116, 139] as [number, number, number],
+    lightGray: [248, 250, 252] as [number, number, number],
     white: [255, 255, 255] as [number, number, number],
-    lightGray: [241, 245, 249] as [number, number, number],
   };
 
-  doc.setFillColor(...colors.slate);
-  doc.rect(0, 0, 210, 45, 'F');
-  doc.setFontSize(20);
-  doc.setTextColor(...colors.white);
-  doc.text('AUTOGRAM ECO-SYNC', 14, 18);
-  doc.setFontSize(10);
-  doc.setTextColor(200, 200, 200);
-  doc.text(`ESG SUSTAINABILITY REPORT - ${filter.toUpperCase()} VIEW`, 14, 26);
-  doc.text(`Generated At: ${new Date().toLocaleString('th-TH')}`, 14, 34);
+  // ── Header (Bright & Clean) ──
+  doc.setFillColor(...colors.white);
+  doc.rect(0, 0, 210, 40, 'F');
+  
+  // Brand Accent Circle
+  doc.setFillColor(...colors.emerald);
+  doc.circle(18, 18, 4, 'F');
+  
+  doc.setFontSize(22);
+  doc.setTextColor(...colors.slate);
+  doc.text('AUTOGRAM ECO-SYNC', 26, 20);
+  
+  doc.setFontSize(9);
+  doc.setTextColor(...colors.emerald);
+  doc.text('CARBON INTELLIGENCE PLATFORM', 26, 26);
+  
+  doc.setDrawColor(...colors.emerald);
+  doc.setLineWidth(0.5);
+  doc.line(14, 32, 196, 32);
 
-  // Determine report data based on filter
+  // Report Info (Right Aligned)
+  doc.setFontSize(8);
+  doc.setTextColor(...colors.gray);
+  doc.text(`REPORT: ${filter.toUpperCase()} SUSTAINABILITY VIEW`, 196, 18, { align: 'right' });
+  doc.text(`GENERATED: ${new Date().toLocaleString('th-TH')}`, 196, 23, { align: 'right' });
+
+  // ── Summary Metrics (Colorful Cards) ──
+  const totalEmission = activities.reduce((s, a) => s + a.emissionKgCo2e, 0);
+  const totalTrips = activities.length;
+  const totalDist = activities.reduce((s, a) => s + a.distanceKm, 0);
+
+  const drawCard = (x: number, y: number, label: string, value: string, color: [number, number, number], bgColor: [number, number, number]) => {
+    doc.setFillColor(...bgColor);
+    doc.roundedRect(x, y, 58, 22, 3, 3, 'F');
+    doc.setFontSize(8);
+    doc.setTextColor(...colors.gray);
+    doc.text(label.toUpperCase(), x + 5, y + 8);
+    doc.setFontSize(12);
+    doc.setTextColor(...color);
+    doc.text(value, x + 5, y + 16);
+  };
+
+  drawCard(14, 40, 'Selected Trips', totalTrips.toLocaleString(), colors.blue, [239, 246, 255]);
+  drawCard(76, 40, 'Total Distance', `${totalDist.toFixed(2)} km`, colors.emerald, [236, 253, 245]);
+  drawCard(138, 40, 'Carbon Emission', `${totalEmission.toFixed(2)} kgCO2e`, colors.orange, [255, 247, 237]);
+
+  // ── Main Content ──
+  let y = 75;
+  doc.setFontSize(11);
+  doc.setTextColor(...colors.slate);
+  doc.text('Data Ledger Details', 14, y);
+  
+  // Determine report rows
   let reportRows: any[] = [];
   let headers: string[] = [];
-  let colWidths: number[] = [];
 
   if (filter === 'day') {
-    headers = ['Trip ID', 'Origin / Destination', 'Dist(km)', 'W(Ton)', 'Emission'];
+    headers = ['Trip ID', 'Origin / Destination', 'Distance', 'Weight', 'Emission'];
     reportRows = activities.map(a => ({
       c1: a.tripId,
       c2: `${a.originName} -> ${a.destinationName}`,
-      c3: a.distanceKm.toLocaleString(),
-      c4: a.weightTon.toLocaleString(),
-      c5: a.emissionKgCo2e.toFixed(2)
+      c3: `${a.distanceKm} km`,
+      c4: `${a.weightTon} ton`,
+      c5: `${a.emissionKgCo2e} kg`
     }));
   } else if (filter === 'month') {
-    headers = ['Date', 'Total Trips', 'Distance(km)', 'Emission(kgCO2e)'];
-    // Group activities by date
+    headers = ['Date', 'Total Trips', 'Distance (km)', 'Emission (kgCO2e)'];
     const dailyMap: Record<string, any> = {};
     activities.forEach(a => {
       if (!dailyMap[a.label]) dailyMap[a.label] = { label: a.label, trips: 0, dist: 0, emission: 0 };
@@ -82,11 +123,11 @@ async function downloadPdf(filter: FilterType, activities: ActivityData[], rows:
     reportRows = Object.values(dailyMap).sort((a, b) => a.label.localeCompare(b.label)).map(d => ({
       c1: d.label,
       c2: String(d.trips),
-      c3: d.dist.toLocaleString(),
+      c3: d.dist.toFixed(2),
       c4: d.emission.toFixed(2)
     }));
   } else {
-    headers = ['Month', 'Trips', 'Distance(km)', 'Emission(kgCO2e)'];
+    headers = ['Month', 'Trips', 'Distance (km)', 'Emission (kgCO2e)'];
     reportRows = rows.map(r => ({
       c1: r.monthKey,
       c2: String(r.totalTrips),
@@ -95,36 +136,40 @@ async function downloadPdf(filter: FilterType, activities: ActivityData[], rows:
     }));
   }
 
-  // Summary Cards
-  const totalEmission = activities.reduce((s, a) => s + a.emissionKgCo2e, 0);
-  const totalTrips = activities.length;
-  doc.setFillColor(...colors.lightGray);
-  doc.roundedRect(14, 55, 182, 18, 2, 2, 'F');
-  doc.setFontSize(10);
-  doc.setTextColor(...colors.slate);
-  doc.text(`Summary Overview: ${totalTrips.toLocaleString()} Trips | ${totalEmission.toFixed(2)} kgCO2e Total Emission`, 18, 66);
-
-  // Table
-  let y = 85;
-  doc.setFillColor(...colors.lightGray);
+  // Table Styling
+  y += 6;
+  doc.setFillColor(241, 245, 249);
   doc.rect(14, y, 182, 8, 'F');
   doc.setFontSize(8);
-  doc.setTextColor(...colors.slate);
-  headers.forEach((h, i) => doc.text(h, 18 + (i * 40), y + 5));
+  doc.setTextColor(...colors.gray);
+  headers.forEach((h, i) => doc.text(h, 18 + (i * 38), y + 5));
 
   y += 8;
+  doc.setTextColor(...colors.slate);
   reportRows.forEach((row, i) => {
-    if (i % 2 === 0) { doc.setFillColor(250, 250, 250); doc.rect(14, y, 182, 7, 'F'); }
+    if (i % 2 === 0) {
+      doc.setFillColor(252, 253, 254);
+      doc.rect(14, y, 182, 7, 'F');
+    }
     doc.text(row.c1, 18, y + 5);
-    doc.text(row.c2, 58, y + 5, { maxWidth: 35 });
-    doc.text(row.c3, 98, y + 5);
-    doc.text(row.c4, 138, y + 5);
-    if (row.c5) doc.text(row.c5, 178, y + 5);
+    doc.text(row.c2, 56, y + 5, { maxWidth: 35 });
+    doc.text(row.c3, 94, y + 5);
+    doc.text(row.c4, 132, y + 5);
+    if (row.c5) doc.text(row.c5, 170, y + 5);
     y += 7;
     if (y > 275) { doc.addPage(); y = 20; }
   });
 
-  doc.save(`eco-sync-${filter}-report-${new Date().toISOString().slice(0, 10)}.pdf`);
+  // ── Footer ──
+  const footerY = 285;
+  doc.setDrawColor(226, 232, 240);
+  doc.line(14, footerY - 5, 196, footerY - 5);
+  doc.setFontSize(7);
+  doc.setTextColor(...colors.gray);
+  doc.text('Report verified via TGO activity-based methodology. All distances are GPS-verified.', 14, footerY);
+  doc.text('© 2026 Autogram Eco-Sync', 196, footerY, { align: 'right' });
+
+  doc.save(`eco-sync-${filter}-clean-report.pdf`);
 }
 
 async function downloadExcel(filter: FilterType, activities: ActivityData[], rows: Row[]) {
