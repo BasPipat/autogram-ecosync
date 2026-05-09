@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     await generateMonthlyLedgers();
 
     const url = new URL(req.url);
-    const filter = (url.searchParams.get('filter') || 'month') as 'day' | 'month' | 'year';
+    const filter = (url.searchParams.get('filter') || 'month') as 'day' | 'month' | 'year' | 'custom';
 
     const now = new Date();
     const defaultValue =
@@ -33,7 +33,19 @@ export async function GET(req: NextRequest) {
           : String(now.getUTCFullYear());
 
     const value = url.searchParams.get('value') || defaultValue;
-    const { start, end } = getRangeFromFilter(filter, value);
+    
+    let start: Date;
+    let end: Date;
+
+    if (filter === 'custom') {
+      start = new Date(url.searchParams.get('start') || defaultValue);
+      end = new Date(url.searchParams.get('end') || defaultValue);
+      end.setHours(23, 59, 59, 999); // Include the entire end day
+    } else {
+      const range = getRangeFromFilter(filter as any, value);
+      start = range.start;
+      end = range.end;
+    }
     const setting = await getActiveMasterSetting();
 
     const trips = await Trip.find({

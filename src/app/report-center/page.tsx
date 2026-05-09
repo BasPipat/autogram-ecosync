@@ -173,21 +173,32 @@ function getDefaultValue(filter: FilterType) {
 
 export default function CarbonIntelligencePage() {
   const [activeTab, setActiveTab] = useState<'analytics' | 'ledger'>('analytics');
-  const [filter, setFilter] = useState<FilterType>('month');
-  const [value, setValue] = useState(getDefaultValue('month'));
+  const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Row[]>([]);
   const [activities, setActivities] = useState<ActivityData[]>([]);
   const [setting, setSetting] = useState<any>(null);
 
-  const fetchUnifiedData = async (f: FilterType, v: string) => {
+  const fetchUnifiedData = async (start: string, end: string) => {
     setLoading(true);
     try {
-      const actRes = await fetch(`/api/carbon/activity?filter=${encodeURIComponent(f)}&value=${encodeURIComponent(v)}`, { cache: 'no-store' });
+      // Logic for view mode based on range
+      const s = new Date(start);
+      const e = new Date(end);
+      const diffDays = Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
+      
+      let filter: FilterType = 'day';
+      if (diffDays > 31) filter = 'month';
+      if (diffDays > 366) filter = 'year';
+
+      // Use a custom query for range
+      const actRes = await fetch(`/api/carbon/activity?filter=custom&start=${start}&end=${end}`, { cache: 'no-store' });
       const actJson = await actRes.json();
       setActivities(actJson.chart || []);
       setSetting(actJson.setting);
       
+      // We can reuse the monthly ledger for the table if needed, or group activities
       const repRes = await fetch('/api/report-center/monthly', { cache: 'no-store' });
       const repJson = await repRes.json();
       setRows(repJson.rows || []);
@@ -195,10 +206,20 @@ export default function CarbonIntelligencePage() {
   };
 
   useEffect(() => {
-    fetchUnifiedData(filter, value);
+    fetchUnifiedData(startDate, endDate);
   }, []);
 
-  const onApplyFilter = () => fetchUnifiedData(filter, value);
+  const onApplyFilter = () => fetchUnifiedData(startDate, endDate);
+
+  // Determine current filter for exports
+  const currentFilter = useMemo(() => {
+    const s = new Date(startDate);
+    const e = new Date(endDate);
+    const diffDays = Math.ceil((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays > 366) return 'year';
+    if (diffDays > 31) return 'month';
+    return 'day';
+  }, [startDate, endDate]);
 
   const totalStats = useMemo(() => {
     const currentActivities = activities;
@@ -226,10 +247,10 @@ export default function CarbonIntelligencePage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => downloadExcel(filter, activities, rows)} className="btn-secondary px-4 py-2 rounded-xl text-[13px] flex items-center gap-2">
+            <button onClick={() => downloadExcel(currentFilter, activities, rows)} className="btn-secondary px-4 py-2 rounded-xl text-[13px] flex items-center gap-2">
               <Table size={14} /> Export Excel
             </button>
-            <button onClick={() => downloadPdf(filter, activities, rows)} className="btn-primary px-4 py-2 rounded-xl text-[13px] flex items-center gap-2">
+            <button onClick={() => downloadPdf(currentFilter, activities, rows)} className="btn-primary px-4 py-2 rounded-xl text-[13px] flex items-center gap-2">
               <FileText size={14} /> Executive PDF
             </button>
           </div>
@@ -241,14 +262,21 @@ export default function CarbonIntelligencePage() {
             <button onClick={() => setActiveTab('ledger')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-[13px] font-bold transition-all ${activeTab === 'ledger' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400'}`}>Monthly Ledger</button>
           </div>
           
-          <div className="flex items-center gap-2 w-full md:w-auto">
-            <select value={filter} onChange={(e) => { setFilter(e.target.value as FilterType); setValue(getDefaultValue(e.target.value as FilterType)); }} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[12px] outline-none">
-              <option value="day">Daily View (Trip)</option>
-              <option value="month">Monthly View (Day)</option>
-              <option value="year">Yearly View (Month)</option>
-            </select>
-            <input type={filter === 'day' ? 'date' : filter === 'month' ? 'month' : 'number'} value={value} onChange={(e) => setValue(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[12px] outline-none" />
-            <button onClick={onApplyFilter} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-[12px] font-bold">Apply</button>
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <input 
+              type="date" 
+              value={startDate} 
+              onChange={(e) => setStartDate(e.target.value)} 
+              className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] outline-none shadow-sm focus:ring-2 focus:ring-emerald-500/10 transition-all" 
+            />
+            <span className="text-[13px] font-medium text-slate-500">ถึง</span>
+            <input 
+              type="date" 
+              value={endDate} 
+              onChange={(e) => setEndDate(e.target.value)} 
+              className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-[13px] outline-none shadow-sm focus:ring-2 focus:ring-emerald-500/10 transition-all" 
+            />
+            <button onClick={onApplyFilter} className="bg-slate-800 text-white px-5 py-2.5 rounded-xl text-[13px] font-bold hover:bg-slate-700 transition-all shadow-md active:scale-95">ค้นหา</button>
           </div>
         </div>
 
