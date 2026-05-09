@@ -33,7 +33,8 @@ const FEATURED_NEWS: NewsItem[] = [
     category: 'compliance',
     source: 'TGO Official',
     publishedAt: new Date().toISOString(),
-    imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=2070&auto=format&fit=crop'
+    imageUrl: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=2070&auto=format&fit=crop',
+    externalUrl: 'https://thaicarbonlabel.tgo.or.th/'
   },
   {
     _id: 'f2',
@@ -42,7 +43,8 @@ const FEATURED_NEWS: NewsItem[] = [
     category: 'esg',
     source: 'Logistics Insight',
     publishedAt: new Date().toISOString(),
-    imageUrl: 'https://images.unsplash.com/photo-1473448912268-2022ce9509d8?q=80&w=2041&auto=format&fit=crop'
+    imageUrl: 'https://images.unsplash.com/photo-1473448912268-2022ce9509d8?q=80&w=2041&auto=format&fit=crop',
+    externalUrl: 'https://www.set.or.th/th/esg/overview'
   },
   {
     _id: 'f3',
@@ -255,9 +257,10 @@ export default function LandingPage() {
                   </p>
                   
                   <div className="pt-4 border-t border-slate-100/60 flex items-center justify-between">
-                    <span className="text-[12px] font-bold flex items-center gap-1" style={{ color: 'var(--accent)' }}>
-                      อ่านต่อ <ExternalLink size={12} className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                    </span>
+                    <Link href={item.externalUrl || `/news/${item._id}`} target={item.externalUrl ? "_blank" : "_self"}
+                      className="text-[12px] font-bold flex items-center gap-1 group/link" style={{ color: 'var(--accent)' }}>
+                      อ่านต่อ <ExternalLink size={12} className="opacity-0 -translate-x-1 group-hover/link:opacity-100 group-hover/link:translate-x-0 transition-all" />
+                    </Link>
                   </div>
                 </div>
               </article>
