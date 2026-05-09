@@ -12,9 +12,10 @@ export interface IMonthlyCarbonLedger extends Document {
 }
 
 const MonthlyCarbonLedgerSchema = new Schema<IMonthlyCarbonLedger>({
+  companyId: { type: Schema.Types.ObjectId, ref: 'Company', index: true },
   year: { type: Number, required: true, index: true },
   month: { type: Number, required: true, index: true },
-  monthKey: { type: String, required: true, unique: true },
+  monthKey: { type: String, required: true },
   totalTrips: { type: Number, required: true, default: 0 },
   totalDistanceKm: { type: Number, required: true, default: 0 },
   totalFuelLitersForecast: { type: Number, required: true, default: 0 },
@@ -22,7 +23,8 @@ const MonthlyCarbonLedgerSchema = new Schema<IMonthlyCarbonLedger>({
   generatedAt: { type: Date, required: true, default: Date.now },
 }, { timestamps: true });
 
-MonthlyCarbonLedgerSchema.index({ year: 1, month: 1 }, { unique: true });
+MonthlyCarbonLedgerSchema.index({ companyId: 1, year: 1, month: 1 }, { unique: true });
+MonthlyCarbonLedgerSchema.index({ monthKey: 1, companyId: 1 });
 
 export const MonthlyCarbonLedger =
   mongoose.models.MonthlyCarbonLedger ||

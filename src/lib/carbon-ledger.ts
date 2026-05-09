@@ -30,7 +30,11 @@ export async function generateMonthlyLedgers() {
     { $match: { createdAt: { $gte: from } } },
     {
       $group: {
-        _id: { y: { $year: '$createdAt' }, m: { $month: '$createdAt' } },
+        _id: { 
+          y: { $year: '$createdAt' }, 
+          m: { $month: '$createdAt' },
+          companyId: '$companyId'
+        },
         totalTrips: { $sum: 1 },
         totalDistanceKm: { $sum: { $ifNull: ['$distance', 0] } },
       },
@@ -41,17 +45,22 @@ export async function generateMonthlyLedgers() {
   const writes = monthly.map((item) => {
     const year = item._id.y;
     const month = item._id.m;
+    const companyId = item._id.companyId;
     const distance = Number(item.totalDistanceKm || 0);
     const fuelForecast = distance / Number(setting.fuelEfficiencyKmPerLiterDefault || 1);
     const emission = fuelForecast * Number(setting.emissionFactorKgCo2PerLiter || 0);
     return {
       updateOne: {
-        filter: { monthKey: monthKey(year, month) },
+        filter: { 
+          monthKey: monthKey(year, month),
+          companyId: companyId 
+        },
         update: {
           $set: {
             year,
             month,
             monthKey: monthKey(year, month),
+            companyId,
             totalTrips: Number(item.totalTrips || 0),
             totalDistanceKm: to2(distance),
             totalFuelLitersForecast: to2(fuelForecast),

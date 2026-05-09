@@ -79,9 +79,35 @@ export async function GET(req: NextRequest) {
     );
 
     const from10Years = new Date(now.getUTCFullYear() - 10, now.getUTCMonth(), 1);
-    const monthlyLedger = await MonthlyCarbonLedger.find({ generatedAt: { $gte: from10Years } })
+    
+    let monthlyLedger;
+    if (isInternalRole(token.role)) {
+      // Global aggregation for system_owner
+      monthlyLedger = await MonthlyCarbonLedger.aggregate([
+        { $match: { generatedAt: { $gte: from10Years } } },
+        {
+          $group: {
+            _id: '$monthKey',
+            monthKey: { $first: '$monthKey' },
+            year: { $first: '$year' },
+            month: { $first: '$month' },
+            totalTrips: { $sum: '$totalTrips' },
+            totalDistanceKm: { $sum: '$totalDistanceKm' },
+            totalFuelLitersForecast: { $sum: '$totalFuelLitersForecast' },
+            totalEmissionKgCo2e: { $sum: '$totalEmissionKgCo2e' },
+          }
+        },
+        { $sort: { year: 1, month: 1 } }
+      ]);
+    } else {
+      // Scoped view for specific company
+      monthlyLedger = await MonthlyCarbonLedger.find({ 
+        generatedAt: { $gte: from10Years },
+        companyId: new ObjectId(token.companyId)
+      })
       .sort({ year: 1, month: 1 })
       .lean();
+    }
 
     return NextResponse.json({
       filter,
@@ -98,7 +124,7 @@ export async function GET(req: NextRequest) {
         totalEmissionKgCo2e: Number(totals.totalEmissionKgCo2e.toFixed(2)),
       },
       chart: points,
-      monthlyLedger: monthlyLedger.map((m) => ({
+      monthlyLedger: monthlyLedger.map((m: any) => ({
         monthKey: m.monthKey,
         totalTrips: m.totalTrips,
         totalDistanceKm: m.totalDistanceKm,
