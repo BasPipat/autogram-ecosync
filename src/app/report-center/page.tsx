@@ -1,3 +1,25 @@
+'use client';
+
+import { useEffect, useState, useMemo } from 'react';
+import SidebarLayout from '@/components/SidebarLayout';
+import { 
+  Download, FileText, Loader2, Table, FileBarChart, 
+  ShieldCheck, Leaf, LayoutDashboard, Calendar, BarChart3,
+  Truck, Route, Fuel, ChevronRight
+} from 'lucide-react';
+
+type FilterType = 'day' | 'month' | 'year';
+
+type Row = {
+  monthKey: string;
+  totalTrips: number;
+  totalDistanceKm: number;
+  totalFuelLitersForecast: number;
+  totalEmissionKgCo2e: number;
+  totalTonKm?: number;
+  totalWeightTon?: number;
+};
+
 type ActivityData = {
   label: string; // Date string
   tripId: string;
