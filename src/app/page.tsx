@@ -294,13 +294,10 @@ export default function LandingPage() {
             <p className="text-emerald-50 mb-8 max-w-xl mx-auto text-lg opacity-90">
               ช่วยให้บริษัทของคุณเป็นผู้นำด้านความยั่งยืน และพร้อมรับมือกับมาตรการ ESG ระดับสากล
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/register" className="px-8 py-3.5 rounded-full bg-white font-bold text-emerald-700 shadow-xl hover:scale-105 transition-transform">
+            <div className="flex justify-center">
+              <Link href="/register" className="px-10 py-4 rounded-full bg-white font-bold text-emerald-700 shadow-xl hover:scale-105 transition-transform">
                 ลงทะเบียนขอสาธิตระบบ
               </Link>
-              <button className="px-8 py-3.5 rounded-full border border-white/30 font-bold text-white hover:bg-white/10 transition-colors">
-                ติดต่อเจ้าหน้าที่
-              </button>
             </div>
           </div>
         </div>
