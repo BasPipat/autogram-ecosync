@@ -88,6 +88,36 @@ export default function ManageTripsPage() {
     }
   };
 
+  const generateTripId = (user: any, allTrips: any[]) => {
+    if (!user?.companyName) return '';
+    
+    // Get 3-letter abbreviation from company name
+    const cleanName = user.companyName.replace('บริษัท', '').trim();
+    const abbr = cleanName.substring(0, 3).toUpperCase();
+    
+    // Get date in DDMMYYYY format
+    const now = new Date();
+    const d = String(now.getDate()).padStart(2, '0');
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const y = now.getFullYear();
+    const dateStr = `${d}${m}${y}`;
+    
+    // Filter trips for today to find sequence (using Trip ID pattern matching)
+    const pattern = `${abbr}${dateStr}`;
+    const todayTrips = allTrips.filter(t => t.tripId && t.tripId.startsWith(pattern));
+    
+    let nextNum = 1;
+    if (todayTrips.length > 0) {
+      const lastTripId = todayTrips[todayTrips.length - 1].tripId;
+      const lastNumStr = lastTripId.replace(pattern, '').split('-')[0]; // Handle cases with suffix
+      const lastNum = parseInt(lastNumStr);
+      if (!isNaN(lastNum)) nextNum = lastNum + 1;
+    }
+    
+    const seq = String(nextNum).padStart(3, '0');
+    return `${abbr}${dateStr}${seq}`;
+  };
+
   useEffect(() => {
     if (status === 'loading') return;
     if (status === 'unauthenticated' || !session) {
@@ -97,6 +127,16 @@ export default function ManageTripsPage() {
 
     fetchInitialData(session);
   }, [status, session, router]);
+
+  // 🟢 Effect: Auto-generate Trip ID when creating a new trip
+  useEffect(() => {
+    if (!editTripId && currentUser && trips.length >= 0 && !form.tripId) {
+      const newId = generateTripId(currentUser, trips);
+      if (newId) {
+        setForm(prev => ({ ...prev, tripId: newId }));
+      }
+    }
+  }, [currentUser, trips, editTripId]);
 
   // 🟢 Effect: คำนวณระยะทางอัตโนมัติ
   useEffect(() => {
