@@ -116,9 +116,9 @@ export default function LandingPage() {
                 <Leaf size={13} /> Carbon Intelligence for Thai Logistics
               </p>
 
-              <h1 className="mt-6 text-4xl md:text-5xl font-bold leading-tight tracking-tight" style={{ color: 'var(--text-primary)' }}>
+              <h1 className="mt-6 text-4xl md:text-6xl font-bold leading-tight tracking-tight" style={{ color: 'var(--text-primary)' }}>
                 ระบบบริหารคาร์บอน
-                <span className="block" style={{ color: 'var(--accent)' }}>มาตรฐาน TGO</span>
+                <span className="block text-gradient-emerald">มาตรฐาน TGO</span>
               </h1>
 
               <p className="mt-5 max-w-xl text-[15px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
@@ -193,19 +193,26 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ══════════ NEWS & INSIGHTS ══════════ */}
-      <section className="mx-auto max-w-6xl px-6 pb-20">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+        {/* ══════════ NEWS & INSIGHTS ══════════ */}
+      <section className="mx-auto max-w-6xl px-6 pb-24 relative animate-fade-in">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full pointer-events-none opacity-40"
+          style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.08), transparent 70%)', filter: 'blur(100px)' }} />
+
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 relative z-10">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[12px] font-bold tracking-wider uppercase text-emerald-600">Update & Insights</span>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse" />
+              <span className="text-[11px] font-bold tracking-[0.2em] uppercase text-emerald-600/80">Updates & Insights</span>
             </div>
-            <h2 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>News & Knowledge Hub</h2>
-            <p className="mt-2 text-[14px]" style={{ color: 'var(--text-secondary)' }}>ติดตามข่าวสารและบทความที่น่าสนใจเกี่ยวกับ Carbon Intelligence</p>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+              News & Knowledge Hub
+            </h2>
+            <p className="mt-3 text-[15px] max-w-xl leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              อัปเดตข่าวสาร มาตรฐานการคำนวณ และบทความเจาะลึกเทรนด์ความยั่งยืนสำหรับภาคอุตสาหกรรม
+            </p>
           </div>
-          <Link href="/news" className="inline-flex items-center gap-2 text-[13px] font-bold group" style={{ color: 'var(--accent)' }}>
-            ดูข่าวสารทั้งหมด <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+          <Link href="/news" className="inline-flex items-center gap-2 text-[14px] font-bold group px-5 py-2.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 transition-all shadow-sm" style={{ color: 'var(--accent)' }}>
+            ดูข่าวสารทั้งหมด <ArrowRight size={15} className="transition-transform group-hover:translate-x-1" />
           </Link>
         </div>
 
@@ -238,20 +245,19 @@ export default function LandingPage() {
                     <span className="font-medium text-slate-500">{item.source}</span>
                   </div>
                   
-                  <h3 className="text-[17px] font-bold mb-3 line-clamp-2 leading-tight group-hover:text-emerald-600 transition-colors" 
+                  <h3 className="text-[18px] font-bold mb-3 line-clamp-2 leading-tight group-hover:text-emerald-600 transition-colors" 
                     style={{ color: 'var(--text-primary)' }}>
                     {item.title}
                   </h3>
                   
-                  <p className="text-[13px] leading-relaxed flex-1 line-clamp-3 mb-4" style={{ color: 'var(--text-secondary)' }}>
+                  <p className="text-[14px] leading-relaxed flex-1 line-clamp-3 mb-6" style={{ color: 'var(--text-secondary)' }}>
                     {item.summary}
                   </p>
                   
-                  <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                    <a href={item.externalUrl || `/news/${item._id}`} target={item.externalUrl ? "_blank" : "_self"} rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-[12px] font-bold" style={{ color: 'var(--accent)' }}>
-                      อ่านต่อ <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </a>
+                  <div className="pt-4 border-t border-slate-100/60 flex items-center justify-between">
+                    <span className="text-[12px] font-bold flex items-center gap-1" style={{ color: 'var(--accent)' }}>
+                      อ่านต่อ <ExternalLink size={12} className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                    </span>
                   </div>
                 </div>
               </article>
@@ -261,7 +267,7 @@ export default function LandingPage() {
       </section>
 
       {/* ══════════ FEATURES ══════════ */}
-      <section className="mx-auto max-w-6xl px-6 pb-16 grid gap-5 md:grid-cols-3">
+      <section className="mx-auto max-w-6xl px-6 pb-24 grid gap-8 md:grid-cols-3">
         {[
           { icon: ShieldCheck, title: 'TGO Compliance', desc: 'คำนวณ Emission ตาม Activity-based Approach พร้อม Audit Trail ทุกเที่ยววิ่ง', gradient: 'linear-gradient(135deg, #ECFDF5, #D1FAE5)', iconColor: '#10B981' },
           { icon: Gauge, title: 'Pre-Computed Data', desc: 'Emission คำนวณสำเร็จ ณ วันที่จบงาน — รายงานดึงข้อมูลสำเร็จรูป โหลดไว 10x', gradient: 'linear-gradient(135deg, #EFF6FF, #DBEAFE)', iconColor: '#3B82F6' },
@@ -269,45 +275,118 @@ export default function LandingPage() {
         ].map(feature => {
           const Icon = feature.icon;
           return (
-            <article key={feature.title} className="glass-card p-6">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-4" style={{ background: feature.gradient }}>
-                <Icon size={20} style={{ color: feature.iconColor }} />
+            <article key={feature.title} className="glass-card p-8 group">
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 group-hover:rotate-3 shadow-sm" style={{ background: feature.gradient }}>
+                <Icon size={24} style={{ color: feature.iconColor }} />
               </div>
-              <h2 className="text-[16px] font-bold mb-2" style={{ color: 'var(--text-primary)' }}>{feature.title}</h2>
-              <p className="text-[13px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{feature.desc}</p>
+              <h2 className="text-[18px] font-bold mb-3" style={{ color: 'var(--text-primary)' }}>{feature.title}</h2>
+              <p className="text-[14px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{feature.desc}</p>
             </article>
           );
         })}
       </section>
 
       {/* ══════════ TGO FORMULA ══════════ */}
-      <section className="mx-auto max-w-6xl px-6 pb-16">
-        <div className="card p-8 text-center" style={{ border: '2px solid var(--accent-light)', background: 'linear-gradient(135deg, #FFFFFF, #F0FDF4)' }}>
-          <Leaf className="mx-auto mb-4" size={28} style={{ color: 'var(--accent)' }} />
-          <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>วิธีคำนวณ Carbon Emission</h2>
-          <div className="flex flex-col md:flex-row items-center justify-center gap-3 text-[14px] font-mono"
-            style={{ color: 'var(--text-secondary)' }}>
-            <span className="px-3 py-1 rounded-lg" style={{ background: 'var(--accent-light)', color: 'var(--accent)' }}>
-              น้ำหนัก (Ton) × ระยะทาง (KM)
-            </span>
-            <span className="font-bold text-lg">=</span>
-            <span className="font-bold" style={{ color: 'var(--accent)' }}>Ton-KM</span>
-            <span className="font-bold text-lg">×</span>
-            <span className="px-3 py-1 rounded-lg" style={{ background: '#EFF6FF', color: '#3B82F6' }}>EF (kgCO₂e/ton-km)</span>
-            <span className="font-bold text-lg">=</span>
-            <span className="px-3 py-1 rounded-lg font-bold" style={{ background: '#FFF7ED', color: '#C2410C' }}>Emission (kgCO₂e)</span>
+      <section className="mx-auto max-w-6xl px-6 pb-24 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+        <div className="glass-card p-10 text-center relative overflow-hidden" 
+          style={{ background: 'linear-gradient(135deg, #FFFFFF, #F0FDF4)', border: '1px solid var(--accent-light)' }}>
+          <div className="absolute top-0 right-0 w-32 h-32 opacity-10 pointer-events-none">
+            <Leaf size={128} className="text-emerald-500 translate-x-10 -translate-y-10" />
           </div>
-          <p className="mt-4 text-[12px]" style={{ color: 'var(--text-tertiary)' }}>
-            Based on TGO Standard — Activity-based Approach for Freight Transport
+          
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100/50 mb-6 text-emerald-600">
+            <Leaf size={24} />
+          </div>
+          
+          <h2 className="text-2xl font-bold mb-8" style={{ color: 'var(--text-primary)' }}>วิธีคำนวณ Carbon Emission</h2>
+          
+          <div className="flex flex-col lg:flex-row items-center justify-center gap-5">
+            <div className="px-5 py-3 rounded-2xl bg-white border border-emerald-100 shadow-sm">
+              <span className="text-[13px] font-bold text-slate-500 block mb-1">Activity Data</span>
+              <span className="text-lg font-bold text-emerald-600">น้ำหนัก (Ton) × ระยะทาง (KM)</span>
+            </div>
+            
+            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-400">=</div>
+            
+            <div className="px-5 py-3 rounded-2xl bg-emerald-50 border border-emerald-100 shadow-sm">
+              <span className="text-[13px] font-bold text-slate-500 block mb-1">Performance Metric</span>
+              <span className="text-lg font-bold text-emerald-700">Ton-KM</span>
+            </div>
+            
+            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-400">×</div>
+            
+            <div className="px-5 py-3 rounded-2xl bg-blue-50 border border-blue-100 shadow-sm">
+              <span className="text-[13px] font-bold text-slate-500 block mb-1">Emission Factor</span>
+              <span className="text-lg font-bold text-blue-600">EF (kgCO₂e/ton-km)</span>
+            </div>
+            
+            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-400">=</div>
+            
+            <div className="px-5 py-3 rounded-2xl bg-orange-50 border border-orange-100 shadow-sm ring-2 ring-orange-200/20">
+              <span className="text-[13px] font-bold text-slate-500 block mb-1">Total Carbon</span>
+              <span className="text-lg font-bold text-orange-600">Emission (kgCO₂e)</span>
+            </div>
+          </div>
+          
+          <p className="mt-8 text-[12px] font-medium tracking-wide" style={{ color: 'var(--text-tertiary)' }}>
+            <ShieldCheck size={12} className="inline mr-1" /> Based on TGO Standard — Activity-based Approach for Freight Transport
           </p>
         </div>
       </section>
 
+      {/* ══════════ PARTNERS & TRUST ══════════ */}
+      <section className="pb-24 overflow-hidden opacity-60 grayscale hover:grayscale-0 transition-all duration-700">
+        <div className="mx-auto max-w-6xl px-6">
+          <p className="text-center text-[11px] font-bold tracking-[0.2em] uppercase mb-8" style={{ color: 'var(--text-tertiary)' }}>
+            Trusted by organizations across Thailand
+          </p>
+          <div className="flex flex-wrap justify-center items-center gap-12 md:gap-20">
+            {/* Using text-based logos for demo, usually these would be SVG images */}
+            <div className="text-xl font-black text-slate-400">TGO</div>
+            <div className="text-xl font-black text-slate-400">Ministry of Transport</div>
+            <div className="text-xl font-black text-slate-400">ESG Network</div>
+            <div className="text-xl font-black text-slate-400">Logistics Association</div>
+            <div className="text-xl font-black text-slate-400">Green Logistics</div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════ CALL TO ACTION ══════════ */}
+      <section className="mx-auto max-w-6xl px-6 pb-24">
+        <div className="glass-card p-12 text-center relative overflow-hidden bg-glow"
+          style={{ background: 'linear-gradient(135deg, #10B981, #059669)', border: 'none' }}>
+          <div className="relative z-10">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">เริ่มต้นจัดการคาร์บอนกับ Eco-Sync วันนี้</h2>
+            <p className="text-emerald-50 mb-8 max-w-xl mx-auto text-lg opacity-90">
+              ช่วยให้บริษัทของคุณเป็นผู้นำด้านความยั่งยืน และพร้อมรับมือกับมาตรการ ESG ระดับสากล
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link href="/register" className="px-8 py-3.5 rounded-full bg-white font-bold text-emerald-700 shadow-xl hover:scale-105 transition-transform">
+                ลงทะเบียนขอสาธิตระบบ
+              </Link>
+              <button className="px-8 py-3.5 rounded-full border border-white/30 font-bold text-white hover:bg-white/10 transition-colors">
+                ติดต่อเจ้าหน้าที่
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ══════════ FOOTER ══════════ */}
-      <footer className="py-8 text-center" style={{ borderTop: '1px solid var(--border-light)' }}>
-        <p className="text-[12px]" style={{ color: 'var(--text-tertiary)' }}>
-          © 2026 Autogram Eco-Sync — Carbon Intelligence Platform
-        </p>
+      <footer className="py-12 border-t border-slate-100">
+        <div className="mx-auto max-w-6xl px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-2">
+            <Leaf size={20} className="text-emerald-500" />
+            <span className="font-bold text-[16px]">Autogram Eco-Sync</span>
+          </div>
+          <p className="text-[13px]" style={{ color: 'var(--text-tertiary)' }}>
+            © 2026 Autogram Eco-Sync — Carbon Intelligence Platform
+          </p>
+          <div className="flex gap-6 text-[13px] font-medium" style={{ color: 'var(--text-secondary)' }}>
+            <Link href="/privacy" className="hover:text-emerald-600">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-emerald-600">Terms of Service</Link>
+          </div>
+        </div>
       </footer>
     </main>
   );
