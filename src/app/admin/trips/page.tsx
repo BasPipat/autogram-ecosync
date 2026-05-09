@@ -524,9 +524,11 @@ export default function ManageTripsPage() {
                       <button type="button" onClick={() => handleEditClick(trip)} className="text-slate-400 hover:text-blue-600 transition-colors" title="แก้ไขงาน">
                         <Edit2 size={16} />
                       </button>
-                      <button type="button" onClick={() => handleSendToSharedTrucks(trip)} className="text-slate-400 hover:text-emerald-600 transition-colors" title="ส่งงานให้รถร่วม">
-                        <Truck size={16} />
-                      </button>
+                      {currentUser?.role === 'system_owner' && (
+                        <button type="button" onClick={() => handleSendToSharedTrucks(trip)} className="text-slate-400 hover:text-emerald-600 transition-colors" title="ส่งงานให้รถร่วม">
+                          <Truck size={16} />
+                        </button>
+                      )}
                       <button type="button" onClick={() => handleDeleteTrip(trip._id)} className="text-slate-400 hover:text-red-500 transition-colors" title="ลบงาน">
                         <Trash2 size={16} />
                       </button>
