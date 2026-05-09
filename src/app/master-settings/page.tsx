@@ -3,7 +3,11 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import SidebarLayout from '@/components/SidebarLayout';
-import { Loader2, Save, Plus, Trash2, Settings, Fuel, FlaskConical, History, Leaf, MapPin, Users } from 'lucide-react';
+import { 
+  Loader2, Save, Plus, Trash2, Settings, Fuel, FlaskConical, 
+  History, Leaf, MapPin, Users, ExternalLink, ShieldCheck, 
+  FileText, Globe, AlertCircle 
+} from 'lucide-react';
 
 type VehicleTypeSetting = { typeName: string; minKmPerLiter: string; maxKmPerLiter: string };
 type EFSetting = { vehicleType: string; efTonKm: string; fuelType: string; tgoRef: string };
@@ -23,8 +27,8 @@ export default function MasterSettingsPage() {
   ]);
   const [form, setForm] = useState({
     emissionFactorKgCo2PerLiter: '2.68',
-    standardReference: 'TGO',
-    version: 'TGO-2024',
+    standardReference: 'TGO (Thailand Greenhouse Gas Management Organization)',
+    version: 'TGO-2024-V1',
   });
   const [history, setHistory] = useState<VersionEntry[]>([]);
 
@@ -37,8 +41,8 @@ export default function MasterSettingsPage() {
         if (data?.setting) {
           setForm({
             emissionFactorKgCo2PerLiter: String(data.setting.emissionFactorKgCo2PerLiter || '2.68'),
-            standardReference: data.setting.standardReference || 'TGO',
-            version: data.setting.version || 'TGO-2024',
+            standardReference: data.setting.standardReference || 'TGO (Thailand Greenhouse Gas Management Organization)',
+            version: data.setting.version || 'TGO-2024-V1',
           });
           if (Array.isArray(data.setting.fuelEfficiencyByVehicleType) && data.setting.fuelEfficiencyByVehicleType.length) {
             setVehicleTypes(data.setting.fuelEfficiencyByVehicleType.map((item: any) => ({
@@ -58,12 +62,10 @@ export default function MasterSettingsPage() {
     run();
   }, []);
 
-  // ── Vehicle Type handlers ──
   const handleAddVehicleType = () => setVehicleTypes(prev => [...prev, { typeName: '', minKmPerLiter: '', maxKmPerLiter: '' }]);
   const handleUpdateVehicleType = (i: number, key: keyof VehicleTypeSetting, value: string) => setVehicleTypes(prev => prev.map((item, idx) => idx === i ? { ...item, [key]: value } : item));
   const handleRemoveVehicleType = (i: number) => setVehicleTypes(prev => prev.filter((_, idx) => idx !== i));
 
-  // ── EF handlers ──
   const handleAddEF = () => setEfSettings(prev => [...prev, { vehicleType: '', efTonKm: '', fuelType: 'Diesel B7', tgoRef: 'TGO Standard' }]);
   const handleUpdateEF = (i: number, key: keyof EFSetting, value: string) => setEfSettings(prev => prev.map((item, idx) => idx === i ? { ...item, [key]: value } : item));
   const handleRemoveEF = (i: number) => setEfSettings(prev => prev.filter((_, idx) => idx !== i));
@@ -89,7 +91,6 @@ export default function MasterSettingsPage() {
       const data = await res.json();
       if (!res.ok) { alert(data.error || 'บันทึกไม่สำเร็จ'); return; }
       alert('บันทึก Master Settings สำเร็จ (สร้าง Version ใหม่แล้ว)');
-      // Refresh history
       const refreshRes = await fetch('/api/settings/master', { cache: 'no-store' });
       const refreshData = await refreshRes.json();
       if (Array.isArray(refreshData?.history)) setHistory(refreshData.history);
@@ -110,7 +111,7 @@ export default function MasterSettingsPage() {
         <div className="min-h-screen p-6" style={{ background: 'var(--bg-base)' }}>
           <div className="max-w-5xl mx-auto py-24 text-center rounded-3xl border border-slate-200 bg-white shadow-sm">
             <Loader2 className="mx-auto mb-4 h-6 w-6 animate-spin text-slate-500" />
-            <p className="text-slate-600">กำลังโหลดข้อมูล...</p>
+            <p className="text-slate-600">กำลังโหลดข้อมูลมาตรฐาน...</p>
           </div>
         </div>
       </SidebarLayout>
@@ -120,213 +121,218 @@ export default function MasterSettingsPage() {
   return (
     <SidebarLayout>
       <div className="min-h-screen p-6" style={{ background: 'var(--bg-base)' }}>
-        <div className="max-w-5xl animate-fade-in">
-          {/* Header */}
-          <div className="mb-6">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #ECFDF5, #D1FAE5)' }}>
-                <Settings size={20} style={{ color: 'var(--accent)' }} />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Master Settings</h1>
-                <p className="text-sm" style={{ color: 'var(--text-tertiary)' }}>
-                  Emission Factor, Fuel Efficiency & TGO Compliance Configuration
-                </p>
-              </div>
+        <div className="max-w-5xl mx-auto animate-fade-in pb-20">
+          
+          {/* ── Compliance Hub Header ── */}
+          <div className="mb-8 p-8 rounded-[32px] bg-white border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-[0.05]">
+              <ShieldCheck size={120} className="text-emerald-500" />
             </div>
-            <div className="flex items-center gap-2 mb-6">
-              <Link href="/master-settings/location-master" className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700">
-                <MapPin size={16} /> Location Master
-              </Link>
-              <Link href="/master-settings/customer-master" className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700">
-                <Users size={16} /> Customer Master
-              </Link>
+            
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest border border-emerald-100">
+                  Compliance Status: Active
+                </div>
+                <div className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest border border-blue-100">
+                  Standard: {form.version}
+                </div>
+              </div>
+              
+              <h1 className="text-3xl font-black text-slate-800 tracking-tight">Master Configuration Hub</h1>
+              <p className="text-slate-500 text-sm mt-2 max-w-2xl font-medium leading-relaxed">
+                ศูนย์กลางการจัดการค่ามาตรฐานสำหรับการคำนวณก๊าซเรือนกระจก (GHG) 
+                อ้างอิงตามมาตรฐาน <span className="text-emerald-600 font-bold">องค์การบริหารจัดการก๊าซเรือนกระจก (TGO)</span> 
+                เพื่อให้รายงานของคุณมีความน่าเชื่อถือสูงสุด
+              </p>
+              
+              <div className="flex flex-wrap items-center gap-3 mt-6 pt-6 border-t border-slate-50">
+                <Link href="/master-settings/location-master" className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-slate-900 text-white text-[13px] font-bold transition hover:bg-slate-800 shadow-lg shadow-slate-200">
+                  <MapPin size={16} /> Location Master
+                </Link>
+                <Link href="/master-settings/customer-master" className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white border border-slate-200 text-slate-600 text-[13px] font-bold transition hover:bg-slate-50">
+                  <Users size={16} /> Customer Master
+                </Link>
+                <a href="https://www.tgo.or.th" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-emerald-50 text-emerald-700 text-[13px] font-bold transition hover:bg-emerald-100 ml-auto border border-emerald-100">
+                  <Globe size={16} /> Official TGO Portal <ExternalLink size={14} />
+                </a>
+              </div>
             </div>
           </div>
 
-          <div className="space-y-6">
-
-              {/* ════════════════════════════════════════════ */}
-              {/* Section 1: EF per Ton-KM (TGO Standard) — PRIMARY */}
-              {/* ════════════════════════════════════════════ */}
-              <div className="card p-6" style={{ border: '2px solid var(--accent-light)' }}>
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Left Column: Settings */}
+            <div className="lg:col-span-2 space-y-6">
+              
+              {/* Section 1: EF by Vehicle */}
+              <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm relative">
+                <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#ECFDF5' }}>
-                      <Leaf size={16} style={{ color: 'var(--accent)' }} />
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-500">
+                      <Leaf size={20} />
                     </div>
                     <div>
-                      <h2 className="text-[15px] font-bold" style={{ color: 'var(--text-primary)' }}>
-                        Emission Factor by Vehicle Type (kgCO₂e / Ton-KM)
-                      </h2>
-                      <p className="text-[12px]" style={{ color: 'var(--text-tertiary)' }}>
-                        ค่าสัมประสิทธิ์ตาม TGO Standard — ใช้สำหรับคำนวณคาร์บอนรายเที่ยว
-                      </p>
+                      <h2 className="text-lg font-black text-slate-800">Emission Factors (Ton-KM)</h2>
+                      <p className="text-[12px] font-medium text-slate-400">อ้างอิงตามประเภทรถบรรทุกและน้ำหนักบรรทุก</p>
                     </div>
                   </div>
-                  <button type="button" onClick={handleAddEF}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold"
-                    style={{ background: 'var(--accent)', color: '#fff' }}>
-                    <Plus size={15} /> เพิ่มประเภท
+                  <button onClick={handleAddEF} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-white text-[12px] font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100">
+                    <Plus size={14} /> เพิ่มประเภท
                   </button>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {efSettings.map((item, index) => (
-                    <div key={index} className="grid gap-3 p-4 rounded-xl md:grid-cols-[1.5fr_0.8fr_0.8fr_1fr_auto]"
-                      style={{ background: 'var(--bg-base)', border: '1px solid var(--border-light)' }}>
-                      <div>
-                        <label className="block text-[11px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: 'var(--text-tertiary)' }}>ประเภทรถ</label>
-                        <input value={item.vehicleType} onChange={e => handleUpdateEF(index, 'vehicleType', e.target.value)}
-                          className="w-full px-3 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20" style={inputStyle} />
+                    <div key={index} className="group p-5 rounded-2xl border border-slate-50 bg-slate-50/30 hover:bg-white hover:border-emerald-100 transition-all">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <div className="col-span-2">
+                          <label className="text-[10px] font-black text-slate-400 uppercase mb-1.5 flex items-center gap-1.5">
+                            <Truck size={10} /> ประเภทรถบรรทุก
+                          </label>
+                          <input value={item.vehicleType} onChange={e => handleUpdateEF(index, 'vehicleType', e.target.value)}
+                            className="w-full bg-white border border-slate-100 px-4 py-2.5 rounded-xl text-[13px] font-bold outline-none focus:ring-2 focus:ring-emerald-500/10" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-emerald-500 uppercase mb-1.5 flex items-center gap-1.5">
+                            <ShieldCheck size={10} /> ค่า EF (kgCO₂e)
+                          </label>
+                          <input type="number" step="0.0001" value={item.efTonKm} onChange={e => handleUpdateEF(index, 'efTonKm', e.target.value)}
+                            className="w-full bg-white border border-slate-100 px-4 py-2.5 rounded-xl text-[13px] font-bold text-emerald-600 outline-none focus:ring-2 focus:ring-emerald-500/10" />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-slate-400 uppercase mb-1.5">เชื้อเพลิง</label>
+                          <input value={item.fuelType} onChange={e => handleUpdateEF(index, 'fuelType', e.target.value)}
+                            className="w-full bg-white border border-slate-100 px-4 py-2.5 rounded-xl text-[13px] font-bold outline-none focus:ring-2 focus:ring-emerald-500/10" />
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-[11px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: 'var(--text-tertiary)' }}>EF (kgCO₂e/ton-km)</label>
-                        <input type="number" step="0.0001" value={item.efTonKm} onChange={e => handleUpdateEF(index, 'efTonKm', e.target.value)}
-                          className="w-full px-3 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20" style={inputStyle} />
+                      <div className="flex items-center justify-between pt-4 border-t border-slate-100/50">
+                        <div className="flex items-center gap-2">
+                          <FileText size={12} className="text-slate-300" />
+                          <span className="text-[11px] font-bold text-slate-400">Reference:</span>
+                          <input value={item.tgoRef} onChange={e => handleUpdateEF(index, 'tgoRef', e.target.value)}
+                            className="bg-transparent border-none p-0 text-[11px] font-black text-slate-500 focus:ring-0 w-40" />
+                        </div>
+                        <button onClick={() => handleRemoveEF(index)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                          <Trash2 size={14} />
+                        </button>
                       </div>
-                      <div>
-                        <label className="block text-[11px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Fuel Type</label>
-                        <input value={item.fuelType} onChange={e => handleUpdateEF(index, 'fuelType', e.target.value)}
-                          className="w-full px-3 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20" style={inputStyle} />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: 'var(--text-tertiary)' }}>TGO Reference</label>
-                        <input value={item.tgoRef} onChange={e => handleUpdateEF(index, 'tgoRef', e.target.value)}
-                          className="w-full px-3 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20" style={inputStyle} />
-                      </div>
-                      <button type="button" onClick={() => handleRemoveEF(index)}
-                        className="mt-6 w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
-                        style={{ background: '#FEF2F2', color: '#EF4444' }}>
-                        <Trash2 size={16} />
-                      </button>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* ════════════════════════════════════════════ */}
-              {/* Section 2: Fuel Efficiency (Legacy) */}
-              {/* ════════════════════════════════════════════ */}
-              <div className="card p-6">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
+              {/* Section 2: Fuel Efficiency */}
+              <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm">
+                <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#EFF6FF' }}>
-                      <Fuel size={16} style={{ color: '#3B82F6' }} />
+                    <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-500">
+                      <Fuel size={20} />
                     </div>
                     <div>
-                      <h2 className="text-[15px] font-bold" style={{ color: 'var(--text-primary)' }}>Fuel Efficiency by Vehicle Type</h2>
-                      <p className="text-[12px]" style={{ color: 'var(--text-tertiary)' }}>อัตราสิ้นเปลืองน้ำมัน (สำหรับ Fuel Forecast)</p>
+                      <h2 className="text-lg font-black text-slate-800">Performance Metrics</h2>
+                      <p className="text-[12px] font-medium text-slate-400">อัตราการใช้พลังงานเพื่อการวิเคราะห์ทางบัญชี</p>
                     </div>
                   </div>
-                  <button type="button" onClick={handleAddVehicleType}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold"
-                    style={{ background: 'var(--accent)', color: '#fff' }}>
-                    <Plus size={15} /> เพิ่มประเภทรถ
+                  <button onClick={handleAddVehicleType} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 text-white text-[12px] font-bold hover:bg-blue-600 transition-all shadow-lg shadow-blue-100">
+                    <Plus size={14} /> เพิ่มประเภท
                   </button>
                 </div>
+                
                 <div className="space-y-3">
                   {vehicleTypes.map((item, index) => (
-                    <div key={index} className="grid gap-3 p-4 rounded-xl md:grid-cols-[1.7fr_1fr_1fr_auto]"
-                      style={{ background: 'var(--bg-base)', border: '1px solid var(--border-light)' }}>
-                      <div>
-                        <label className="block text-[11px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: 'var(--text-tertiary)' }}>ประเภทรถ</label>
-                        <input value={item.typeName} onChange={e => handleUpdateVehicleType(index, 'typeName', e.target.value)}
-                          className="w-full px-3 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20" style={inputStyle} />
+                    <div key={index} className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr_1fr_auto] gap-4 p-4 rounded-2xl bg-slate-50/30 border border-slate-50">
+                      <input value={item.typeName} onChange={e => handleUpdateVehicleType(index, 'typeName', e.target.value)}
+                        placeholder="Vehicle Class" className="bg-white border border-slate-100 px-4 py-2.5 rounded-xl text-[13px] font-bold outline-none" />
+                      <div className="flex items-center gap-2 bg-white px-4 py-2.5 rounded-xl border border-slate-100">
+                        <span className="text-[10px] font-black text-slate-300 uppercase">Min</span>
+                        <input type="number" step="0.1" value={item.minKmPerLiter} onChange={e => handleUpdateVehicleType(index, 'minKmPerLiter', e.target.value)}
+                          className="w-full text-[13px] font-black border-none focus:ring-0 p-0" />
                       </div>
-                      <div>
-                        <label className="block text-[11px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Min km/L</label>
-                        <input type="number" step="0.01" value={item.minKmPerLiter} onChange={e => handleUpdateVehicleType(index, 'minKmPerLiter', e.target.value)}
-                          className="w-full px-3 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20" style={inputStyle} />
+                      <div className="flex items-center gap-2 bg-white px-4 py-2.5 rounded-xl border border-slate-100">
+                        <span className="text-[10px] font-black text-slate-300 uppercase">Max</span>
+                        <input type="number" step="0.1" value={item.maxKmPerLiter} onChange={e => handleUpdateVehicleType(index, 'maxKmPerLiter', e.target.value)}
+                          className="w-full text-[13px] font-black border-none focus:ring-0 p-0" />
                       </div>
-                      <div>
-                        <label className="block text-[11px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: 'var(--text-tertiary)' }}>Max km/L</label>
-                        <input type="number" step="0.01" value={item.maxKmPerLiter} onChange={e => handleUpdateVehicleType(index, 'maxKmPerLiter', e.target.value)}
-                          className="w-full px-3 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20" style={inputStyle} />
-                      </div>
-                      <button type="button" onClick={() => handleRemoveVehicleType(index)}
-                        className="mt-6 w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
-                        style={{ background: '#FEF2F2', color: '#EF4444' }}>
+                      <button onClick={() => handleRemoveVehicleType(index)} className="p-2 text-slate-300 hover:text-red-500">
                         <Trash2 size={16} />
                       </button>
                     </div>
                   ))}
                 </div>
               </div>
-
-              {/* ════════════════════════════════════════════ */}
-              {/* Section 3: Global EF + Version */}
-              {/* ════════════════════════════════════════════ */}
-              <div className="card p-6">
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#F0FDF4' }}>
-                    <FlaskConical size={16} style={{ color: 'var(--accent)' }} />
-                  </div>
-                  <h2 className="text-[15px] font-bold" style={{ color: 'var(--text-primary)' }}>Global Settings & Version</h2>
-                </div>
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div>
-                    <label className="block text-[12px] font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>EF (kgCO₂/Litre) — Legacy</label>
-                    <input type="number" step="0.0001" value={form.emissionFactorKgCo2PerLiter}
-                      onChange={e => setForm(v => ({ ...v, emissionFactorKgCo2PerLiter: e.target.value }))}
-                      className="w-full px-3 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20" style={inputStyle} />
-                  </div>
-                  <div>
-                    <label className="block text-[12px] font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>Standard Reference</label>
-                    <input value={form.standardReference} onChange={e => setForm(v => ({ ...v, standardReference: e.target.value }))}
-                      className="w-full px-3 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20" style={inputStyle} />
-                  </div>
-                  <div>
-                    <label className="block text-[12px] font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>Version</label>
-                    <input value={form.version} onChange={e => setForm(v => ({ ...v, version: e.target.value }))}
-                      placeholder="e.g. TGO-2024"
-                      className="w-full px-3 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20" style={inputStyle} />
-                  </div>
-                </div>
-              </div>
-
-              {/* ════════════════════════════════════════════ */}
-              {/* Section 4: Version History */}
-              {/* ════════════════════════════════════════════ */}
-              {history.length > 0 && (
-                <div className="card p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#F3E8FF' }}>
-                      <History size={16} style={{ color: '#7C3AED' }} />
-                    </div>
-                    <h2 className="text-[15px] font-bold" style={{ color: 'var(--text-primary)' }}>Version History</h2>
-                  </div>
-                  <div className="space-y-2">
-                    {history.map((v, i) => (
-                      <div key={i} className="flex items-center justify-between p-3 rounded-xl text-[13px]"
-                        style={{ background: v.isActive ? '#ECFDF5' : 'var(--bg-base)', border: `1px solid ${v.isActive ? 'var(--accent-light)' : 'var(--border-light)'}` }}>
-                        <div className="flex items-center gap-3">
-                          <span className="font-bold" style={{ color: v.isActive ? 'var(--accent)' : 'var(--text-primary)' }}>
-                            {v.version}
-                          </span>
-                          {v.isActive && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase" style={{ background: 'var(--accent)', color: '#fff' }}>Active</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-4 text-[12px]" style={{ color: 'var(--text-tertiary)' }}>
-                          <span>{v.publishedBy || '—'}</span>
-                          <span>{new Date(v.effectiveFrom).toLocaleString('th-TH')}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Save */}
-              <div className="flex justify-end">
-                <button onClick={onSave} disabled={saving}
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-[13px] font-semibold transition-all disabled:opacity-60"
-                  style={{ background: 'var(--accent)', color: '#fff', boxShadow: '0 4px 12px rgba(16,185,129,0.2)' }}>
-                  <Save size={15} /> {saving ? 'กำลังบันทึก...' : 'บันทึก (สร้าง Version ใหม่)'}
-                </button>
-              </div>
             </div>
+
+            {/* Right Column: Reference & History */}
+            <div className="space-y-6">
+              
+              {/* Compliance Info */}
+              <div className="bg-slate-900 rounded-[32px] p-8 text-white shadow-xl relative overflow-hidden">
+                <div className="absolute bottom-0 right-0 p-4 opacity-10">
+                  <Globe size={100} />
+                </div>
+                <h3 className="text-lg font-black mb-6 flex items-center gap-2">
+                  <ShieldCheck size={20} className="text-emerald-400" />
+                  Audit & Compliance
+                </h3>
+                
+                <div className="space-y-6">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Official Reference</label>
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-[13px] font-bold leading-relaxed">
+                      {form.standardReference}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Standard Version</label>
+                    <input value={form.version} onChange={e => setForm(v => ({ ...v, version: e.target.value }))}
+                      className="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-2xl text-[14px] font-black outline-none focus:ring-2 focus:ring-emerald-500/30" />
+                  </div>
+
+                  <div className="pt-4 space-y-3">
+                    <p className="text-[11px] font-medium text-slate-400 italic flex items-start gap-2">
+                      <AlertCircle size={14} className="shrink-0" />
+                      ข้อมูล EF อ้างอิงตามค่าความร้อนสุทธิ (Net Calorific Value) ของเชื้อเพลิงในไทย
+                    </p>
+                    <button className="w-full py-3 rounded-2xl bg-emerald-500 text-white font-black text-[12px] shadow-lg shadow-emerald-500/20 hover:bg-emerald-400 transition-all">
+                      Download PDF Guide
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Version History */}
+              <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm">
+                <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
+                  <History size={20} className="text-purple-500" />
+                  Audit Trail
+                </h3>
+                <div className="space-y-4">
+                  {history.map((v, i) => (
+                    <div key={i} className={`p-4 rounded-2xl border ${v.isActive ? 'border-emerald-100 bg-emerald-50/20' : 'border-slate-50 bg-slate-50/50'}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`text-[12px] font-black ${v.isActive ? 'text-emerald-600' : 'text-slate-500'}`}>{v.version}</span>
+                        {v.isActive && <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-emerald-500 text-white uppercase">Active</span>}
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] font-bold text-slate-400">
+                        <span>{v.publishedBy || 'System Admin'}</span>
+                        <span>{new Date(v.effectiveFrom).toLocaleDateString('th-TH')}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Save Button */}
+              <button onClick={onSave} disabled={saving}
+                className="w-full py-5 rounded-[24px] bg-emerald-500 text-white font-black text-[15px] shadow-2xl shadow-emerald-500/20 hover:bg-emerald-600 transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50">
+                {saving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
+                {saving ? 'กำลังอัปเดตข้อมูล...' : 'Update Standards'}
+              </button>
+
+            </div>
+          </div>
         </div>
       </div>
     </SidebarLayout>
