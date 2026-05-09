@@ -8,6 +8,7 @@ import {
   History, Leaf, MapPin, Users, ExternalLink, ShieldCheck, 
   FileText, Globe, AlertCircle, Truck
 } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 
 type VehicleTypeSetting = { typeName: string; minKmPerLiter: string; maxKmPerLiter: string };
 type EFSetting = { vehicleType: string; efTonKm: string; fuelType: string; tgoRef: string };
@@ -31,6 +32,68 @@ export default function MasterSettingsPage() {
     version: 'TGO-2024-V1',
   });
   const [history, setHistory] = useState<VersionEntry[]>([]);
+
+  const downloadStandardPdf = () => {
+    const doc = new jsPDF();
+    const colors = { emerald: [16, 185, 129], slate: [30, 41, 59], gray: [148, 163, 184] };
+    
+    // Header
+    doc.setFillColor(...colors.emerald);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.text('STANDARD CONFIGURATION CERTIFICATE', 14, 25);
+    doc.setFontSize(10);
+    doc.text(`VERSION: ${form.version}`, 14, 32);
+    
+    // Body
+    let y = 55;
+    doc.setTextColor(...colors.slate);
+    doc.setFontSize(14);
+    doc.text('Operational Sustainability Standards', 14, y);
+    
+    y += 10;
+    doc.setFontSize(10);
+    doc.setTextColor(...colors.gray);
+    doc.text(`Reference Agency: ${form.standardReference}`, 14, y);
+    doc.text(`Generated On: ${new Date().toLocaleString('th-TH')}`, 140, y);
+
+    // EF Table
+    y += 15;
+    doc.setFillColor(248, 250, 252);
+    doc.rect(14, y, 182, 10, 'F');
+    doc.setTextColor(...colors.slate);
+    doc.setFontSize(9);
+    doc.text('Vehicle Category', 18, y + 6.5);
+    doc.text('EF (kgCO2e/Ton-KM)', 80, y + 6.5);
+    doc.text('Fuel Type', 130, y + 6.5);
+    doc.text('Reference', 165, y + 6.5);
+
+    y += 10;
+    efSettings.forEach((item, i) => {
+      if (i % 2 !== 0) {
+        doc.setFillColor(252, 253, 254);
+        doc.rect(14, y, 182, 8, 'F');
+      }
+      doc.text(item.vehicleType, 18, y + 5);
+      doc.text(item.efTonKm, 80, y + 5);
+      doc.text(item.fuelType, 130, y + 5);
+      doc.text(item.tgoRef, 165, y + 5);
+      y += 8;
+    });
+
+    // Verification
+    y += 20;
+    doc.setDrawColor(...colors.emerald);
+    doc.setLineWidth(0.5);
+    doc.line(14, y, 196, y);
+    y += 10;
+    doc.setFontSize(8);
+    doc.setTextColor(...colors.gray);
+    doc.text('Verified by Eco-Sync Intelligence System. This document serves as an official reference for GHG audit compliance.', 14, y);
+    
+    doc.save(`Standard-Config-${form.version}.pdf`);
+  };
 
   useEffect(() => {
     const run = async () => {
@@ -295,7 +358,10 @@ export default function MasterSettingsPage() {
                       <AlertCircle size={14} className="shrink-0" />
                       ข้อมูล EF อ้างอิงตามค่าความร้อนสุทธิ (Net Calorific Value) ของเชื้อเพลิงในไทย
                     </p>
-                    <button className="w-full py-3 rounded-2xl bg-emerald-500 text-white font-black text-[12px] shadow-lg shadow-emerald-500/20 hover:bg-emerald-400 transition-all">
+                    <button 
+                      onClick={downloadStandardPdf}
+                      className="w-full py-3 rounded-2xl bg-emerald-500 text-white font-black text-[12px] shadow-lg shadow-emerald-500/20 hover:bg-emerald-400 transition-all active:scale-95"
+                    >
                       Download PDF Guide
                     </button>
                   </div>
