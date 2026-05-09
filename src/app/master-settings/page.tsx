@@ -220,8 +220,8 @@ export default function MasterSettingsPage() {
                 <Link href="/master-settings/customer-master" className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-white border border-slate-200 text-slate-600 text-[13px] font-bold transition hover:bg-slate-50">
                   <Users size={16} /> Customer Master
                 </Link>
-                <a href="https://www.tgo.or.th" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-emerald-50 text-emerald-700 text-[13px] font-bold transition hover:bg-emerald-100 ml-auto border border-emerald-100">
-                  <Globe size={16} /> Official TGO Portal <ExternalLink size={14} />
+                <a href="http://thaicarbonlabel.tgo.or.th/index.php?lang=TH&mod=Y0hKdlpYUmxiblJmZFc1cGREST0" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-emerald-50 text-emerald-700 text-[13px] font-bold transition hover:bg-emerald-100 ml-auto border border-emerald-100">
+                  <Globe size={16} /> Official TGO Standards <ExternalLink size={14} />
                 </a>
               </div>
             </div>
