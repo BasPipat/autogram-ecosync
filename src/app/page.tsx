@@ -30,6 +30,7 @@ const FEATURED_NEWS: NewsItem[] = [
     _id: 'f1',
     title: 'เจาะลึกมาตรฐาน TGO Activity-based Approach สำหรับภาคขนส่งปี 2025',
     summary: 'สรุปประเด็นสำคัญในการคำนวณคาร์บอนฟุตพริ้นท์สำหรับรถบรรทุกขนส่งสินค้า พร้อมตัวอย่างการคำนวณตามมาตรฐานใหม่ล่าสุด',
+    content: 'ในการก้าวสู่สังคมคาร์บอนต่ำ มาตรฐาน TGO สำหรับภาคขนส่งปี 2025 เน้นการคำนวณแบบรายเที่ยววิ่ง (Activity-based) เพื่อให้เกิดความแม่นยำสูงสุด...',
     category: 'compliance',
     source: 'TGO Official',
     publishedAt: new Date().toISOString(),
@@ -40,6 +41,7 @@ const FEATURED_NEWS: NewsItem[] = [
     _id: 'f2',
     title: 'ทำไม ESG ถึงกลายเป็นหัวใจสำคัญของธุรกิจ Logistics ยุคใหม่',
     summary: 'สำรวจแนวโน้มความต้องการของบริษัทข้ามชาติในการเลือกคู่ค้าขนส่งที่มีรายงานการปล่อยก๊าซเรือนกระจกที่โปร่งใส',
+    content: 'ปัจจุบันบริษัทระดับโลกให้ความสำคัญกับ Supply Chain Emission เป็นอย่างมาก การมีข้อมูลคาร์บอนที่ตรวจสอบได้จึงเป็นกุญแจสำคัญ...',
     category: 'esg',
     source: 'Logistics Insight',
     publishedAt: new Date().toISOString(),
@@ -50,6 +52,7 @@ const FEATURED_NEWS: NewsItem[] = [
     _id: 'f3',
     title: 'Eco-Sync อัปเดตระบบ Carbon Ledger รองรับการเชื่อมต่อ API เต็มรูปแบบ',
     summary: 'ช่วยให้บริษัทขนส่งสามารถเชื่อมต่อข้อมูลจากระบบ TMS หรือ GPS เข้าสู่ระบบ Eco-Sync ได้โดยตรงแบบ Real-time',
+    content: 'เราได้พัฒนา API ชุดใหม่ที่ช่วยให้การส่งข้อมูลจากระบบดั้งเดิมเข้าสู่แพลตฟอร์ม Eco-Sync ทำได้โดยอัตโนมัติ ลดข้อผิดพลาดจากมนุษย์...',
     category: 'announcement',
     source: 'Platform Update',
     publishedAt: new Date().toISOString(),
@@ -257,7 +260,7 @@ export default function LandingPage() {
                   </p>
                   
                   <div className="pt-4 border-t border-slate-100/60 flex items-center justify-between">
-                    <Link href={item.externalUrl || `/news/${item._id}`} target={item.externalUrl ? "_blank" : "_self"}
+                    <Link href={`/news/${item._id}`}
                       className="text-[12px] font-bold flex items-center gap-1 group/link" style={{ color: 'var(--accent)' }}>
                       อ่านต่อ <ExternalLink size={12} className="opacity-0 -translate-x-1 group-hover/link:opacity-100 group-hover/link:translate-x-0 transition-all" />
                     </Link>
