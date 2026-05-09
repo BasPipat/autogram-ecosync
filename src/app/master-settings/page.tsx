@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import SidebarLayout from '@/components/SidebarLayout';
 import { 
   Loader2, Save, Plus, Trash2, Settings, Fuel, FlaskConical, 
   History, Leaf, MapPin, Users, ExternalLink, ShieldCheck, 
-  FileText, Globe, AlertCircle, Truck
+  FileText, Globe, AlertCircle, Truck, Lock
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 
@@ -15,6 +16,7 @@ type EFSetting = { vehicleType: string; efTonKm: string; fuelType: string; tgoRe
 type VersionEntry = { version: string; publishedBy?: string; effectiveFrom: string; isActive: boolean };
 
 export default function MasterSettingsPage() {
+  const { data: session } = useSession();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [vehicleTypes, setVehicleTypes] = useState<VehicleTypeSetting[]>([
@@ -32,6 +34,10 @@ export default function MasterSettingsPage() {
     version: 'TGO-2024-V1',
   });
   const [history, setHistory] = useState<VersionEntry[]>([]);
+
+  // Role Check
+  const sessionRole = (session?.user as { role?: string } | undefined)?.role;
+  const isSystemOwner = sessionRole === 'system_owner';
 
   const downloadStandardPdf = () => {
     const doc = new jsPDF();
@@ -138,6 +144,10 @@ export default function MasterSettingsPage() {
   const handleRemoveEF = (i: number) => setEfSettings(prev => prev.filter((_, idx) => idx !== i));
 
   const onSave = async () => {
+    if (!isSystemOwner) {
+      alert('คุณไม่มีสิทธิ์ในการบันทึกข้อมูลระดับ Master');
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch('/api/settings/master', {
@@ -204,6 +214,11 @@ export default function MasterSettingsPage() {
                 <div className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest border border-blue-100">
                   Standard: {form.version}
                 </div>
+                {!isSystemOwner && (
+                  <div className="px-3 py-1 rounded-full bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-widest border border-slate-200 flex items-center gap-1.5">
+                    <Lock size={10} /> Read Only Mode
+                  </div>
+                )}
               </div>
               
               <h1 className="text-3xl font-black text-slate-800 tracking-tight">Master Configuration Hub</h1>
@@ -233,20 +248,25 @@ export default function MasterSettingsPage() {
             <div className="lg:col-span-2 space-y-6">
               
               {/* Section 1: EF by Vehicle */}
-              <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm relative">
+              <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm relative overflow-hidden">
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-500">
                       <Leaf size={20} />
                     </div>
                     <div>
-                      <h2 className="text-lg font-black text-slate-800">Emission Factors (Ton-KM)</h2>
+                      <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                        Emission Factors (Ton-KM)
+                        {!isSystemOwner && <Lock size={14} className="text-slate-300" />}
+                      </h2>
                       <p className="text-[12px] font-medium text-slate-400">อ้างอิงตามประเภทรถบรรทุกและน้ำหนักบรรทุก</p>
                     </div>
                   </div>
-                  <button onClick={handleAddEF} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-white text-[12px] font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100">
-                    <Plus size={14} /> เพิ่มประเภท
-                  </button>
+                  {isSystemOwner && (
+                    <button onClick={handleAddEF} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500 text-white text-[12px] font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100">
+                      <Plus size={14} /> เพิ่มประเภท
+                    </button>
+                  )}
                 </div>
 
                 <div className="space-y-4">
@@ -257,32 +277,42 @@ export default function MasterSettingsPage() {
                           <label className="text-[10px] font-black text-slate-400 uppercase mb-1.5 flex items-center gap-1.5">
                             <Truck size={10} /> ประเภทรถบรรทุก
                           </label>
-                          <input value={item.vehicleType} onChange={e => handleUpdateEF(index, 'vehicleType', e.target.value)}
-                            className="w-full bg-white border border-slate-100 px-4 py-2.5 rounded-xl text-[13px] font-bold outline-none focus:ring-2 focus:ring-emerald-500/10" />
+                          <input 
+                            disabled={!isSystemOwner}
+                            value={item.vehicleType} onChange={e => handleUpdateEF(index, 'vehicleType', e.target.value)}
+                            className="w-full bg-white border border-slate-100 px-4 py-2.5 rounded-xl text-[13px] font-bold outline-none focus:ring-2 focus:ring-emerald-500/10 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed" />
                         </div>
                         <div>
                           <label className="text-[10px] font-black text-emerald-500 uppercase mb-1.5 flex items-center gap-1.5">
                             <ShieldCheck size={10} /> ค่า EF (kgCO₂e)
                           </label>
-                          <input type="number" step="0.0001" value={item.efTonKm} onChange={e => handleUpdateEF(index, 'efTonKm', e.target.value)}
-                            className="w-full bg-white border border-slate-100 px-4 py-2.5 rounded-xl text-[13px] font-bold text-emerald-600 outline-none focus:ring-2 focus:ring-emerald-500/10" />
+                          <input 
+                            disabled={!isSystemOwner}
+                            type="number" step="0.0001" value={item.efTonKm} onChange={e => handleUpdateEF(index, 'efTonKm', e.target.value)}
+                            className="w-full bg-white border border-slate-100 px-4 py-2.5 rounded-xl text-[13px] font-bold text-emerald-600 outline-none focus:ring-2 focus:ring-emerald-500/10 disabled:bg-slate-50 disabled:text-emerald-500/50 disabled:cursor-not-allowed" />
                         </div>
                         <div>
                           <label className="text-[10px] font-black text-slate-400 uppercase mb-1.5">เชื้อเพลิง</label>
-                          <input value={item.fuelType} onChange={e => handleUpdateEF(index, 'fuelType', e.target.value)}
-                            className="w-full bg-white border border-slate-100 px-4 py-2.5 rounded-xl text-[13px] font-bold outline-none focus:ring-2 focus:ring-emerald-500/10" />
+                          <input 
+                            disabled={!isSystemOwner}
+                            value={item.fuelType} onChange={e => handleUpdateEF(index, 'fuelType', e.target.value)}
+                            className="w-full bg-white border border-slate-100 px-4 py-2.5 rounded-xl text-[13px] font-bold outline-none focus:ring-2 focus:ring-emerald-500/10 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed" />
                         </div>
                       </div>
                       <div className="flex items-center justify-between pt-4 border-t border-slate-100/50">
                         <div className="flex items-center gap-2">
                           <FileText size={12} className="text-slate-300" />
                           <span className="text-[11px] font-bold text-slate-400">Reference:</span>
-                          <input value={item.tgoRef} onChange={e => handleUpdateEF(index, 'tgoRef', e.target.value)}
-                            className="bg-transparent border-none p-0 text-[11px] font-black text-slate-500 focus:ring-0 w-40" />
+                          <input 
+                            disabled={!isSystemOwner}
+                            value={item.tgoRef} onChange={e => handleUpdateEF(index, 'tgoRef', e.target.value)}
+                            className="bg-transparent border-none p-0 text-[11px] font-black text-slate-500 focus:ring-0 w-40 disabled:cursor-not-allowed" />
                         </div>
-                        <button onClick={() => handleRemoveEF(index)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
-                          <Trash2 size={14} />
-                        </button>
+                        {isSystemOwner && (
+                          <button onClick={() => handleRemoveEF(index)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -290,40 +320,53 @@ export default function MasterSettingsPage() {
               </div>
 
               {/* Section 2: Fuel Efficiency */}
-              <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm">
+              <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm overflow-hidden">
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-500">
                       <Fuel size={20} />
                     </div>
                     <div>
-                      <h2 className="text-lg font-black text-slate-800">Performance Metrics</h2>
+                      <h2 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                        Performance Metrics
+                        {!isSystemOwner && <Lock size={14} className="text-slate-300" />}
+                      </h2>
                       <p className="text-[12px] font-medium text-slate-400">อัตราการใช้พลังงานเพื่อการวิเคราะห์ทางบัญชี</p>
                     </div>
                   </div>
-                  <button onClick={handleAddVehicleType} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 text-white text-[12px] font-bold hover:bg-blue-600 transition-all shadow-lg shadow-blue-100">
-                    <Plus size={14} /> เพิ่มประเภท
-                  </button>
+                  {isSystemOwner && (
+                    <button onClick={handleAddVehicleType} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 text-white text-[12px] font-bold hover:bg-blue-600 transition-all shadow-lg shadow-blue-100">
+                      <Plus size={14} /> เพิ่มประเภท
+                    </button>
+                  )}
                 </div>
                 
                 <div className="space-y-3">
                   {vehicleTypes.map((item, index) => (
                     <div key={index} className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr_1fr_auto] gap-4 p-4 rounded-2xl bg-slate-50/30 border border-slate-50">
-                      <input value={item.typeName} onChange={e => handleUpdateVehicleType(index, 'typeName', e.target.value)}
-                        placeholder="Vehicle Class" className="bg-white border border-slate-100 px-4 py-2.5 rounded-xl text-[13px] font-bold outline-none" />
-                      <div className="flex items-center gap-2 bg-white px-4 py-2.5 rounded-xl border border-slate-100">
+                      <input 
+                        disabled={!isSystemOwner}
+                        value={item.typeName} onChange={e => handleUpdateVehicleType(index, 'typeName', e.target.value)}
+                        placeholder="Vehicle Class" className="bg-white border border-slate-100 px-4 py-2.5 rounded-xl text-[13px] font-bold outline-none disabled:bg-slate-50 disabled:text-slate-500" />
+                      <div className="flex items-center gap-2 bg-white px-4 py-2.5 rounded-xl border border-slate-100 opacity-100 disabled:bg-slate-50">
                         <span className="text-[10px] font-black text-slate-300 uppercase">Min</span>
-                        <input type="number" step="0.1" value={item.minKmPerLiter} onChange={e => handleUpdateVehicleType(index, 'minKmPerLiter', e.target.value)}
-                          className="w-full text-[13px] font-black border-none focus:ring-0 p-0" />
+                        <input 
+                          disabled={!isSystemOwner}
+                          type="number" step="0.1" value={item.minKmPerLiter} onChange={e => handleUpdateVehicleType(index, 'minKmPerLiter', e.target.value)}
+                          className="w-full text-[13px] font-black border-none focus:ring-0 p-0 disabled:text-slate-500" />
                       </div>
-                      <div className="flex items-center gap-2 bg-white px-4 py-2.5 rounded-xl border border-slate-100">
+                      <div className="flex items-center gap-2 bg-white px-4 py-2.5 rounded-xl border border-slate-100 opacity-100 disabled:bg-slate-50">
                         <span className="text-[10px] font-black text-slate-300 uppercase">Max</span>
-                        <input type="number" step="0.1" value={item.maxKmPerLiter} onChange={e => handleUpdateVehicleType(index, 'maxKmPerLiter', e.target.value)}
-                          className="w-full text-[13px] font-black border-none focus:ring-0 p-0" />
+                        <input 
+                          disabled={!isSystemOwner}
+                          type="number" step="0.1" value={item.maxKmPerLiter} onChange={e => handleUpdateVehicleType(index, 'maxKmPerLiter', e.target.value)}
+                          className="w-full text-[13px] font-black border-none focus:ring-0 p-0 disabled:text-slate-500" />
                       </div>
-                      <button onClick={() => handleRemoveVehicleType(index)} className="p-2 text-slate-300 hover:text-red-500">
-                        <Trash2 size={16} />
-                      </button>
+                      {isSystemOwner && (
+                        <button onClick={() => handleRemoveVehicleType(index)} className="p-2 text-slate-300 hover:text-red-500">
+                          <Trash2 size={16} />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -353,8 +396,10 @@ export default function MasterSettingsPage() {
                   
                   <div>
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Standard Version</label>
-                    <input value={form.version} onChange={e => setForm(v => ({ ...v, version: e.target.value }))}
-                      className="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-2xl text-[14px] font-black outline-none focus:ring-2 focus:ring-emerald-500/30" />
+                    <input 
+                      disabled={!isSystemOwner}
+                      value={form.version} onChange={e => setForm(v => ({ ...v, version: e.target.value }))}
+                      className="w-full bg-white/5 border border-white/10 px-4 py-3 rounded-2xl text-[14px] font-black outline-none focus:ring-2 focus:ring-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed" />
                   </div>
 
                   <div className="pt-4 space-y-3">
@@ -395,11 +440,13 @@ export default function MasterSettingsPage() {
               </div>
 
               {/* Save Button */}
-              <button onClick={onSave} disabled={saving}
-                className="w-full py-5 rounded-[24px] bg-emerald-500 text-white font-black text-[15px] shadow-2xl shadow-emerald-500/20 hover:bg-emerald-600 transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50">
-                {saving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-                {saving ? 'กำลังอัปเดตข้อมูล...' : 'Update Standards'}
-              </button>
+              {isSystemOwner && (
+                <button onClick={onSave} disabled={saving}
+                  className="w-full py-5 rounded-[24px] bg-emerald-500 text-white font-black text-[15px] shadow-2xl shadow-emerald-500/20 hover:bg-emerald-600 transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50">
+                  {saving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
+                  {saving ? 'กำลังอัปเดตข้อมูล...' : 'Update Standards'}
+                </button>
+              )}
 
             </div>
           </div>
