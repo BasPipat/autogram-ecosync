@@ -1,6 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IMonthlyCarbonLedger extends Document {
+  companyId?: mongoose.Types.ObjectId;
   year: number;
   month: number;
   monthKey: string;
