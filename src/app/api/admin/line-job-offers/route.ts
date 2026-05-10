@@ -65,6 +65,10 @@ function serializeOffer(offer: IJobOffer) {
 }
 
 function jobOfferFlex(offer: IJobOffer): FlexMessage {
+  // Ensure we have valid Google Maps URLs or fallback
+  const originUrl = offer.originMapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(offer.origin)}`;
+  const destUrl = offer.destinationMapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(offer.destination)}`;
+
   return {
     type: 'flex',
     altText: `มีงานใหม่ ${offer.origin} ไป ${offer.destination}`,
@@ -85,7 +89,34 @@ function jobOfferFlex(offer: IJobOffer): FlexMessage {
         spacing: 'md',
         contents: [
           { type: 'text', text: `${offer.origin} → ${offer.destination}`, weight: 'bold', size: 'md', wrap: true },
-          { type: 'text', text: `ราคาเสนอหลังหัก 1%: ${formatCurrency(offer.driverPrice)}`, color: '#059669', weight: 'bold', size: 'sm' },
+          
+          // Location Map Section
+          {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'sm',
+            margin: 'md',
+            contents: [
+              {
+                type: 'button',
+                action: { type: 'uri', label: '📍 แผนที่จุดรับสินค้า (Origin)', uri: originUrl },
+                style: 'secondary',
+                height: 'sm',
+                color: '#3B82F6'
+              },
+              {
+                type: 'button',
+                action: { type: 'uri', label: '🏁 แผนที่จุดส่งสินค้า (Dest)', uri: destUrl },
+                style: 'secondary',
+                height: 'sm',
+                color: '#10B981'
+              }
+            ]
+          },
+
+          { type: 'separator', margin: 'lg' },
+
+          { type: 'text', text: `ราคาเสนอหลังหัก 1%: ${formatCurrency(offer.driverPrice)}`, color: '#059669', weight: 'bold', size: 'sm', margin: 'md' },
           { type: 'text', text: `ราคาตั้งต้น: ${formatCurrency(offer.basePrice)}`, color: '#94A3B8', size: 'xs' },
         ],
       },
