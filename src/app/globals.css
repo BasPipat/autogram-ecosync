@@ -29,9 +29,34 @@
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
 
-  --color-background: var(--bg-base);
-  --color-foreground: var(--text-primary);
+:root {
+  --bg-base: var(--color-bg-base);
+  --bg-card: var(--color-bg-card);
+  --bg-sidebar: var(--color-bg-sidebar);
+  --bg-elevated: var(--color-bg-elevated);
+
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-tertiary: var(--color-text-tertiary);
+
+  --accent: var(--color-accent);
+  --accent-light: var(--color-accent-light);
+  --accent-glow: var(--color-accent-glow);
+
+  --border: var(--color-border);
+  --border-light: var(--color-border-light);
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-glow: var(--shadow-glow);
+
+  --radius-sm: 0.625rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.125rem;
+  --radius-xl: 1.5rem;
 }
 
 /* ── Base ── */
