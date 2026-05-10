@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Trip } from '@/models/Trip';
+import { CarbonLedger } from '@/models/CarbonLedger';
 import { Setting } from '@/models/Setting';
 import { getSessionToken } from '@/lib/access';
 
@@ -56,6 +57,17 @@ export async function POST(req: NextRequest) {
       settingSnapshotId: setting._id,
       vehicleType, // ensure it's saved
     });
+
+    // Sync with CarbonLedger (for Audit & Dashboard)
+    await CarbonLedger.findOneAndUpdate(
+      { tripId },
+      { 
+        emissionsKgCO2: emissionKgCo2e,
+        calculationMethod: `TGO-Snapshot (${setting.version || 'TGO-2024'})`,
+        calculatedAt: new Date()
+      },
+      { upsert: true }
+    );
 
     return NextResponse.json({
       message: 'Emission calculated and saved',

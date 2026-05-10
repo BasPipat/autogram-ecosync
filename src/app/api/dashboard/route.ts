@@ -13,15 +13,24 @@ export async function GET() {
     await connectToDatabase();
 
     // 1. Fetch Stats in parallel
-    const [totalTrips, carbonData, verifiedPODsCount] = await Promise.all([
+    const [totalTrips, ledgerTotal, tripTotal, verifiedPODsCount] = await Promise.all([
       Trip.countDocuments(),
       CarbonLedger.aggregate([{ $group: { _id: null, total: { $sum: "$emissionsKgCO2" } } }]),
+      Trip.aggregate([{ $group: { _id: null, total: { $sum: "$carbon" } } }]),
       IntegrityVault.countDocuments({ isVerified: true })
     ]);
 
-    const totalCarbon = carbonData.length > 0
-      ? carbonData[0].total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      : "0.00";
+    // Calculate total carbon with fallback to legacy 'carbon' field if ledger is partially empty
+    // To be most accurate, we use the MAX of the two or prefer ledger. 
+    // Given the migration, ledger should eventually be > trip.carbon.
+    const ledgerSum = ledgerTotal.length > 0 ? ledgerTotal[0].total : 0;
+    const tripSum = tripTotal.length > 0 ? tripTotal[0].total : 0;
+    const finalTotal = Math.max(ledgerSum, tripSum);
+
+    const totalCarbon = finalTotal.toLocaleString('en-US', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    });
 
     // BUG-03: Calculate percentage for the UI
     const podComplianceRate = totalTrips > 0
@@ -43,15 +52,20 @@ export async function GET() {
     const vaultMap = new Map(vaultRecords.map(r => [r.tripId, r]));
 
     const tripsWithDetails = recentTrips.map((trip) => {
-      const carbon = carbonMap.get(trip.tripId);
+      const ledgerEntry = carbonMap.get(trip.tripId);
       const vault = vaultMap.get(trip.tripId);
       const status = vault ? (vault.isVerified ? 'Verified' : 'Pending') : 'No POD';
       
+      // Fallback: If ledgerEntry is missing, use trip.carbon (legacy) or trip.emissionKgCo2e
+      const carbonVal = ledgerEntry 
+        ? ledgerEntry.emissionsKgCO2 
+        : (trip.emissionKgCo2e || trip.carbon || 0);
+
       return {
         id: trip.tripId,
         origin: trip.origin,
         dest: trip.destination,
-        carbon: carbon ? carbon.emissionsKgCO2.toFixed(2) : '0.00',
+        carbon: carbonVal.toFixed(2),
         status,
       };
     });
