@@ -4,6 +4,10 @@ import SidebarLayout from '@/components/SidebarLayout';
 import React, { useEffect, useState, useCallback } from 'react';
 import { Leaf, Truck, CheckCircle, Loader2, UploadCloud, AlertCircle } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
+import {
+  PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+} from 'recharts';
 
 interface TripData {
   id: string;
@@ -19,11 +23,25 @@ interface DashboardStats {
   verifiedPODs: number; // This is now a percentage from API
 }
 
+interface StatusBreakdown {
+  name: string;
+  value: number;
+  color: string;
+}
+
+interface CarbonChartPoint {
+  name: string;
+  carbon: number;
+  status: string;
+}
+
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({ totalTrips: 0, totalCarbon: "0.00", verifiedPODs: 0 });
   const [trips, setTrips] = useState<TripData[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
+  const [statusBreakdown, setStatusBreakdown] = useState<StatusBreakdown[]>([]);
+  const [carbonChart, setCarbonChart] = useState<CarbonChartPoint[]>([]);
 
   // Modal states
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -46,6 +64,8 @@ export default function Dashboard() {
       if (!data.error) {
         setStats(data.stats);
         setTrips(data.recentTrips || []);
+        setStatusBreakdown(data.statusBreakdown || []);
+        setCarbonChart(data.carbonChart || []);
         setFetchError(false);
       } else {
         setFetchError(true);
@@ -233,6 +253,93 @@ export default function Dashboard() {
             );
           })}
         </div>
+
+        {/* Charts Section */}
+        {(statusBreakdown.length > 0 || carbonChart.length > 0) && (
+          <div className="px-8 mt-6 grid md:grid-cols-2 gap-6 animate-fade-in">
+
+            {/* Pie Chart — POD Status Breakdown */}
+            <div className="bg-white rounded-[32px] p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
+              <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mb-1">POD Status</p>
+              <p className="text-[11px] text-slate-300 mb-4">Proof of Delivery Breakdown</p>
+              {statusBreakdown.length > 0 ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie
+                      data={statusBreakdown}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={52}
+                      outerRadius={78}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {statusBreakdown.map((entry, index) => (
+                        <Cell key={index} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value) => [`${value} trips`, '']}
+                      contentStyle={{ borderRadius: '12px', border: '1px solid #F1F5F9', fontSize: '12px', fontWeight: 700 }}
+                    />
+                    <Legend
+                      iconType="circle"
+                      iconSize={8}
+                      formatter={(value) => (
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748B' }}>{value}</span>
+                      )}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[200px] flex items-center justify-center text-slate-300 text-sm font-bold">No POD data yet</div>
+              )}
+            </div>
+
+            {/* Bar Chart — Carbon per Trip */}
+            <div className="bg-white rounded-[32px] p-7 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
+              <p className="text-[12px] font-bold text-slate-400 uppercase tracking-widest mb-1">Carbon per Trip</p>
+              <p className="text-[11px] text-slate-300 mb-4">kgCO₂e — 5 Latest Trips</p>
+              {carbonChart.length > 0 ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={carbonChart} margin={{ top: 5, right: 8, left: -24, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 700 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 10, fill: '#94A3B8' }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      formatter={(value) => [`${value} kgCO₂e`, 'Carbon']}
+                      contentStyle={{ borderRadius: '12px', border: '1px solid #F1F5F9', fontSize: '12px', fontWeight: 700 }}
+                      cursor={{ fill: 'rgba(241,245,249,0.6)' }}
+                    />
+                    <Bar dataKey="carbon" radius={[6, 6, 0, 0]} maxBarSize={40}>
+                      {carbonChart.map((entry, index) => (
+                        <Cell
+                          key={index}
+                          fill={
+                            entry.status === 'Verified' ? '#10B981' :
+                            entry.status === 'Pending' ? '#F59E0B' :
+                            '#94A3B8'
+                          }
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[200px] flex items-center justify-center text-slate-300 text-sm font-bold">No trip data yet</div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Recent Activity Feed */}
         <div className="px-8 mt-8 animate-fade-in">

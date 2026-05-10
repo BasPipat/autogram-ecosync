@@ -19,13 +19,13 @@ export async function GET() {
       IntegrityVault.countDocuments({ isVerified: true })
     ]);
 
-    const totalCarbon = carbonData.length > 0 
-      ? carbonData[0].total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) 
+    const totalCarbon = carbonData.length > 0
+      ? carbonData[0].total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       : "0.00";
 
     // BUG-03: Calculate percentage for the UI
-    const podComplianceRate = totalTrips > 0 
-      ? Math.round((verifiedPODsCount / totalTrips) * 100) 
+    const podComplianceRate = totalTrips > 0
+      ? Math.round((verifiedPODsCount / totalTrips) * 100)
       : 0;
 
     // 2. Fetch Recent Trips
@@ -45,23 +45,44 @@ export async function GET() {
     const tripsWithDetails = recentTrips.map((trip) => {
       const carbon = carbonMap.get(trip.tripId);
       const vault = vaultMap.get(trip.tripId);
+      const status = vault ? (vault.isVerified ? 'Verified' : 'Pending') : 'No POD';
       
       return {
         id: trip.tripId,
         origin: trip.origin,
         dest: trip.destination,
         carbon: carbon ? carbon.emissionsKgCO2.toFixed(2) : '0.00',
-        status: vault ? (vault.isVerified ? 'Verified' : 'Pending') : 'No POD'
+        status,
       };
     });
 
+    // Chart data: POD status breakdown for Pie Chart
+    const verifiedCount = vaultRecords.filter(v => v.isVerified).length;
+    const pendingCount = vaultRecords.filter(v => !v.isVerified).length;
+    const noPodCount = Math.max(0, recentTrips.length - vaultRecords.length);
+
+    const statusBreakdown = [
+      { name: 'Verified', value: verifiedCount, color: '#10B981' },
+      { name: 'Pending', value: pendingCount, color: '#F59E0B' },
+      { name: 'No POD', value: noPodCount, color: '#94A3B8' },
+    ].filter(s => s.value > 0); // hide zero-value slices
+
+    // Chart data: Carbon per trip for Bar Chart
+    const carbonChart = tripsWithDetails.map(t => ({
+      name: t.id ? t.id.slice(-6) : '—',
+      carbon: parseFloat(t.carbon) || 0,
+      status: t.status,
+    }));
+
     return NextResponse.json({
-      stats: { 
-        totalTrips, 
-        totalCarbon, 
-        verifiedPODs: podComplianceRate // Return percentage instead of raw count
+      stats: {
+        totalTrips,
+        totalCarbon,
+        verifiedPODs: podComplianceRate,
       },
-      recentTrips: tripsWithDetails
+      recentTrips: tripsWithDetails,
+      statusBreakdown,
+      carbonChart,
     }, { status: 200 });
 
   } catch (error: unknown) {

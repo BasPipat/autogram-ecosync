@@ -219,7 +219,7 @@ async function downloadPdf(filter: FilterType, activities: ActivityData[], rows:
 
 async function downloadExcel(filter: FilterType, activities: ActivityData[], rows: Row[]) {
   const XLSX = await import('xlsx');
-  let data: any[] = [];
+  let data: Record<string, string | number>[] = [];
 
   if (filter === 'day') {
     data = activities.map(a => ({
@@ -227,30 +227,52 @@ async function downloadExcel(filter: FilterType, activities: ActivityData[], row
       'Origin': a.originName,
       'Destination': a.destinationName,
       'Weight (Ton)': a.weightTon,
-      'Distance (km)': a.distanceKm,
-      'Emission (kgCO2e)': a.emissionKgCo2e
+      'Distance (km)': parseFloat(a.distanceKm.toFixed(2)),
+      'Fuel Forecast (L)': parseFloat(a.fuelForecastLiters.toFixed(2)),
+      'Emission (kgCO2e)': parseFloat(a.emissionKgCo2e.toFixed(2)),
     }));
   } else if (filter === 'month') {
-    const dailyMap: Record<string, any> = {};
+    // Accumulate per-day totals with proper precision
+    const dailyMap: Record<string, { Date: string; Trips: number; 'Distance (km)': number; 'Fuel Forecast (L)': number; 'Emission (kgCO2e)': number }> = {};
     activities.forEach(a => {
-      if (!dailyMap[a.label]) dailyMap[a.label] = { 'Date': a.label, 'Trips': 0, 'Distance': 0, 'Emission': 0 };
+      if (!dailyMap[a.label]) {
+        dailyMap[a.label] = { 'Date': a.label, 'Trips': 0, 'Distance (km)': 0, 'Fuel Forecast (L)': 0, 'Emission (kgCO2e)': 0 };
+      }
       dailyMap[a.label]['Trips'] += 1;
-      dailyMap[a.label]['Distance'] += a.distanceKm;
-      dailyMap[a.label]['Emission'] += a.emissionKgCo2e;
+      dailyMap[a.label]['Distance (km)'] += a.distanceKm;
+      dailyMap[a.label]['Fuel Forecast (L)'] += a.fuelForecastLiters;
+      dailyMap[a.label]['Emission (kgCO2e)'] += a.emissionKgCo2e;
     });
-    data = Object.values(dailyMap).sort((a, b) => a.Date.localeCompare(b.Date));
+    // Round accumulated values to 2 decimal places
+    data = Object.values(dailyMap)
+      .sort((a, b) => a.Date.localeCompare(b.Date))
+      .map(d => ({
+        'Date': d.Date,
+        'Trips': d.Trips,
+        'Distance (km)': parseFloat(d['Distance (km)'].toFixed(2)),
+        'Fuel Forecast (L)': parseFloat(d['Fuel Forecast (L)'].toFixed(2)),
+        'Emission (kgCO2e)': parseFloat(d['Emission (kgCO2e)'].toFixed(2)),
+      }));
   } else {
+    // year filter — include Fuel Forecast column
     data = rows.map(r => ({
       'Month': r.monthKey,
       'Trips': r.totalTrips,
       'Distance (km)': r.totalDistanceKm,
-      'Emission (kgCO2e)': r.totalEmissionKgCo2e
+      'Fuel Forecast (L)': parseFloat((r.totalFuelLitersForecast || 0).toFixed(2)),
+      'Emission (kgCO2e)': parseFloat(r.totalEmissionKgCo2e.toFixed(2)),
     }));
   }
 
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.json_to_sheet(data);
-  XLSX.utils.book_append_sheet(wb, ws, 'Report');
+
+  // Auto column width based on header length
+  if (data.length > 0) {
+    ws['!cols'] = Object.keys(data[0]).map(k => ({ wch: Math.max(k.length + 2, 14) }));
+  }
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Carbon Report');
   XLSX.writeFile(wb, `eco-sync-${filter}-report.xlsx`);
 }
 
@@ -269,6 +291,12 @@ export default function CarbonIntelligencePage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [activities, setActivities] = useState<ActivityData[]>([]);
   const [setting, setSetting] = useState<any>(null);
+
+  // PDF Date Picker Modal state
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [pdfStartDate, setPdfStartDate] = useState(startDate);
+  const [pdfEndDate, setPdfEndDate] = useState(endDate);
+  const [isPdfLoading, setIsPdfLoading] = useState(false);
 
   const fetchUnifiedData = async (start: string, end: string) => {
     setLoading(true);
@@ -340,7 +368,14 @@ export default function CarbonIntelligencePage() {
             <button onClick={() => downloadExcel(currentFilter, activities, rows)} className="btn-secondary px-4 py-2 rounded-xl text-[13px] flex items-center gap-2">
               <Table size={14} /> Export Excel
             </button>
-            <button onClick={() => downloadPdf(currentFilter, activities, rows)} className="btn-primary px-4 py-2 rounded-xl text-[13px] flex items-center gap-2">
+            <button
+              onClick={() => {
+                setPdfStartDate(startDate);
+                setPdfEndDate(endDate);
+                setIsPdfModalOpen(true);
+              }}
+              className="btn-primary px-4 py-2 rounded-xl text-[13px] flex items-center gap-2"
+            >
               <FileText size={14} /> Executive PDF
             </button>
           </div>
@@ -455,6 +490,89 @@ export default function CarbonIntelligencePage() {
           ESG Reports generated based on activity-level precision.
         </div>
       </div>
+
+      {/* PDF Date Range Picker Modal */}
+      {isPdfModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-[32px] p-8 w-full max-w-md shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-emerald-50">
+                <FileText size={18} className="text-emerald-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-800 tracking-tight">เลือกช่วงเวลา Report</h3>
+                <p className="text-[12px] text-slate-400">PDF จะครอบคลุมข้อมูลในช่วงที่เลือก</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                  วันเริ่มต้น
+                </label>
+                <input
+                  type="date"
+                  value={pdfStartDate}
+                  onChange={e => setPdfStartDate(e.target.value)}
+                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-[14px] outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                  วันสิ้นสุด
+                </label>
+                <input
+                  type="date"
+                  value={pdfEndDate}
+                  min={pdfStartDate}
+                  onChange={e => setPdfEndDate(e.target.value)}
+                  className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-[14px] outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setIsPdfModalOpen(false)}
+                className="flex-1 py-3 rounded-2xl text-[14px] font-bold text-slate-400 bg-slate-50 hover:bg-slate-100 transition-all"
+              >
+                ยกเลิก
+              </button>
+              <button
+                disabled={isPdfLoading || !pdfStartDate || !pdfEndDate}
+                onClick={async () => {
+                  setIsPdfLoading(true);
+                  try {
+                    // Fetch data for the selected PDF date range
+                    const res = await fetch(
+                      `/api/carbon/activity?filter=custom&start=${pdfStartDate}&end=${pdfEndDate}`,
+                      { cache: 'no-store' }
+                    );
+                    const json = await res.json();
+                    const pdfActivities: ActivityData[] = json.chart || [];
+                    // Determine filter granularity for PDF layout
+                    const diffDays = Math.ceil(
+                      (new Date(pdfEndDate).getTime() - new Date(pdfStartDate).getTime()) / (1000 * 60 * 60 * 24)
+                    );
+                    const pdfFilter: FilterType = diffDays > 366 ? 'year' : diffDays > 31 ? 'month' : 'day';
+                    await downloadPdf(pdfFilter, pdfActivities, rows);
+                    setIsPdfModalOpen(false);
+                  } finally {
+                    setIsPdfLoading(false);
+                  }
+                }}
+                className="flex-1 py-3 rounded-2xl text-[14px] font-black text-white bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-200 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+              >
+                {isPdfLoading ? (
+                  <><Loader2 size={16} className="animate-spin" /> กำลังสร้าง...</>
+                ) : (
+                  <><FileText size={16} /> Download PDF</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </SidebarLayout>
   );
 }
