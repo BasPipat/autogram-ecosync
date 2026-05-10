@@ -936,19 +936,31 @@ export default function ManageUsersPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleLineDriverStatus(driver.lineUserId, 'approved')}
-                        className="py-1.5 px-3 rounded-lg text-[11px] font-bold"
-                        style={{ background: '#ECFDF5', color: '#059669' }}
-                      >
-                        อนุมัติ
-                      </button>
+                      {lineDriverTruckLinks[driver.lineUserId] ? (
+                        <button
+                          type="button"
+                          onClick={() => handleLineDriverStatus(driver.lineUserId, 'approved')}
+                          className="py-1.5 px-3 rounded-lg text-[11px] font-bold shadow-sm hover:shadow-md transition-all"
+                          style={{ background: '#10B981', color: '#ffffff' }}
+                        >
+                          อนุมัติ
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleLineDriverStatus(driver.lineUserId, 'approved')}
+                          className="py-1.5 px-3 rounded-lg text-[11px] font-bold shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-1.5"
+                          style={{ background: '#F59E0B', color: '#ffffff' }}
+                          title="อนุมัติทันทีและสร้างข้อมูลรถสำรองให้อัตโนมัติ"
+                        >
+                          อนุมัติด่วน
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleLineDriverStatus(driver.lineUserId, 'rejected')}
-                        className="py-1.5 px-3 rounded-lg text-[11px] font-bold"
-                        style={{ background: '#FEF2F2', color: '#DC2626' }}
+                        className="py-1.5 px-3 rounded-lg text-[11px] font-bold hover:bg-rose-100 transition-colors"
+                        style={{ color: '#DC2626', border: '1px solid #FECACA' }}
                       >
                         ไม่ผ่าน
                       </button>

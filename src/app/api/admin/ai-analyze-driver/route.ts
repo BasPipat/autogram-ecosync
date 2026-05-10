@@ -41,21 +41,37 @@ export async function POST(req: NextRequest) {
     const lineClient = getLineClient();
 
     for (const doc of documents) {
-      if (!doc.lineMessageId) continue;
       try {
-        const lineContent = await lineClient.getMessageContent(doc.lineMessageId);
-        // Convert stream to Buffer
-        const chunks = [];
-        for await (const chunk of lineContent) {
-          chunks.push(chunk);
+        let buffer: Buffer | undefined;
+
+        // 1. Try to get from MongoDB first (Persistent storage)
+        if (doc.content) {
+          buffer = doc.content;
+        } 
+        // 2. Fallback to LINE if not in DB
+        else if (doc.lineMessageId) {
+          const lineContent = await lineClient.getMessageContent(doc.lineMessageId);
+          const chunks = [];
+          for await (const chunk of lineContent) {
+            chunks.push(chunk);
+          }
+          buffer = Buffer.concat(chunks);
+          
+          // Auto-save to DB for next time
+          await DriverDocument.findByIdAndUpdate(doc._id, {
+            content: buffer,
+            size: buffer.length
+          });
         }
-        const buffer = Buffer.concat(chunks);
-        images.push({
-          buffer,
-          mimeType: doc.mimeType || 'image/jpeg'
-        });
+
+        if (buffer) {
+          images.push({
+            buffer,
+            mimeType: doc.mimeType || 'image/jpeg'
+          });
+        }
       } catch (e) {
-        console.error(`Failed to fetch LINE content for message ${doc.lineMessageId}:`, e);
+        console.error(`Failed to fetch content for doc ${doc._id}:`, e);
       }
     }
 
