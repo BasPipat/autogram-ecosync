@@ -37,19 +37,14 @@ export default function ModelingPage() {
   const [trips, setTrips] = useState<any[]>([]);
   const [selectedTrip, setSelectedTrip] = useState<string>('');
 
-  // 1. Auto-calculate Driver Profit based on Distance (D)
+  // 1. Auto-calculate Driver Profit based on Distance (D) - Fixed Steps
   const calculateDriverProfit = useCallback((d: number) => {
     if (d <= 250) {
-      // 0-250 km: 2,500 - 3,500 (Scale 4 THB per km)
-      return Math.round(2500 + (Math.min(d, 250) / 250) * 1000);
+      return 2500; // ระยะสั้น
     } else if (d <= 450) {
-      // 250-450 km: 4,000 - 5,000 (Scale 5 THB per km from 250 base)
-      return Math.round(4000 + ((d - 250) / 200) * 1000);
+      return 4000; // ระยะกลาง
     } else {
-      // 500+ km: 5,500 - 7,000 (Scale up to 1000km)
-      const base = d >= 500 ? 5500 : 5000 + ((d - 450) / 50) * 500;
-      const extra = d > 500 ? Math.min((d - 500) / 500 * 1500, 1500) : 0;
-      return Math.round(base + extra);
+      return 5500; // ระยะไกล
     }
   }, []);
 
@@ -118,9 +113,9 @@ export default function ModelingPage() {
   const driverCommission = targetPriceP * 0.1;
 
   const getRecommendedProfit = (d: number) => {
-    if (d <= 250) return { range: '2,500 - 3,500', label: 'ระยะสั้น (Short)', color: 'text-emerald-600' };
-    if (d <= 450) return { range: '4,000 - 5,000', label: 'ระยะกลาง (Medium)', color: 'text-blue-600' };
-    return { range: '5,500 - 7,000', label: 'ระยะไกล (Long)', color: 'text-orange-600' };
+    if (d <= 250) return { range: '2,500', label: 'ระยะสั้น (Short)', color: 'text-emerald-600' };
+    if (d <= 450) return { range: '4,000', label: 'ระยะกลาง (Medium)', color: 'text-blue-600' };
+    return { range: '5,500', label: 'ระยะไกล (Long)', color: 'text-orange-600' };
   };
 
   const recommendation = getRecommendedProfit(distance);
