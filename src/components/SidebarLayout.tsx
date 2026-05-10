@@ -5,13 +5,14 @@ import { signOut, useSession } from 'next-auth/react';
 import { useState } from 'react';
 import {
   Menu, X, LayoutDashboard, Truck, Leaf, FileBarChart,
-  Settings, Users, LogOut, ChevronRight
+  Settings, Users, LogOut, ChevronRight, Calculator
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/trips', label: 'Trip Management', icon: Truck },
   { href: '/report-center', label: 'Carbon Intelligence', icon: Leaf },
+  { href: '/system-owner/modeling', label: 'Financial Modeling', icon: Calculator, role: 'system_owner' },
   { href: '/master-settings', label: 'Master Settings', icon: Settings },
   { href: '/users', label: 'User Access', icon: Users },
 ];
@@ -64,7 +65,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV_ITEMS.map((item) => {
+          {NAV_ITEMS.filter(item => !item.role || session?.user?.role === item.role).map((item) => {
             const active = isActive(item.href);
             const Icon = item.icon;
             return (
@@ -169,7 +170,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             </div>
 
             <nav className="flex-1 px-3 py-4 space-y-1">
-              {NAV_ITEMS.map((item) => {
+              {NAV_ITEMS.filter(item => !item.role || session?.user?.role === item.role).map((item) => {
                 const active = isActive(item.href);
                 const Icon = item.icon;
                 return (
