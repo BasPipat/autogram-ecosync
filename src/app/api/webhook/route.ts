@@ -615,99 +615,69 @@ async function handleLocation(lineUserId: string, latitude: number, longitude: n
 }
 
 async function handleAnalyzeOnboarding(lineUserId: string, replyToken: string) {
-  await getLineClient().replyMessage(replyToken, { type: 'text', text: 'กำลังวิเคราะห์ข้อมูลจากเอกสารที่ส่งมา กรุณารอสักครู่ครับ...' });
+  const lineClient = getLineClient();
+  await lineClient.replyMessage(replyToken, { type: 'text', text: 'กำลังวิเคราะห์ข้อมูลจากเอกสารที่ส่งมา กรุณารอสักครู่ครับ...' });
 
   try {
     const documents = await DriverDocument.find({
       lineUserId,
       mediaType: 'image',
-      // Look for any onboarding related documents, not just 'onboarding_media'
       documentType: { $in: ['onboarding_media', 'national_id', 'driving_license', 'head_registration', 'tail_registration', 'vehicle_insurance', 'phone_number', 'bank_account'] },
     }).sort({ createdAt: -1 }).limit(10);
 
     if (documents.length === 0) {
-      await getLineClient().pushMessage(lineUserId, { type: 'text', text: 'ยังไม่พบรูปเอกสารที่ส่งมาครับ กรุณาส่งรูปบัตรประชาชน ใบขับขี่ หรือทะเบียนรถเข้ามาก่อนครับ' });
+      await lineClient.pushMessage(lineUserId, { type: 'text', text: 'ยังไม่พบรูปเอกสารที่ส่งมาครับ กรุณาส่งรูปบัตรประชาชน ใบขับขี่ หรือทะเบียนรถเข้ามาก่อนครับ' });
       return;
     }
 
     const images: { buffer: Buffer; mimeType: string }[] = [];
     for (const doc of documents) {
       if (!doc.lineMessageId) continue;
-      const content = await getLineClient().getMessageContent(doc.lineMessageId);
-      const chunks = [];
-      for await (const chunk of content) chunks.push(chunk);
-      images.push({ buffer: Buffer.concat(chunks), mimeType: doc.mimeType || 'image/jpeg' });
+      try {
+        const content = await lineClient.getMessageContent(doc.lineMessageId);
+        const chunks = [];
+        for await (const chunk of content) chunks.push(chunk);
+        images.push({ buffer: Buffer.concat(chunks), mimeType: doc.mimeType || 'image/jpeg' });
+      } catch (e) {
+        console.error(`Failed to fetch content for message ${doc.lineMessageId}:`, e);
+      }
     }
 
-    const result = await analyzeDriverDocuments(images);
+    if (images.length === 0) {
+      await lineClient.pushMessage(lineUserId, { type: 'text', text: 'ไม่สามารถดึงรูปภาพจาก LINE มาวิเคราะห์ได้ในขณะนี้ แต่ระบบได้รับเอกสารของคุณแล้วครับ' });
+      await LineDriver.findOneAndUpdate({ lineUserId }, { status: 'under_review' });
+      return;
+    }
 
-    // Save result to driver for later confirmation (to avoid postback data limit)
-    await LineDriver.findOneAndUpdate({ lineUserId }, { tempAnalysisResult: result });
+    try {
+      const result = await analyzeDriverDocuments(images);
+      
+      // Update driver with analyzed data and set status to under_review
+      await LineDriver.findOneAndUpdate(
+        { lineUserId },
+        { 
+          status: 'under_review',
+          phone: result.data?.phone,
+          bankName: result.data?.bankName,
+          bankAccountNumber: result.data?.bankAccountNumber,
+          bankAccountName: result.data?.bankAccountName,
+        }
+      );
 
-    // Show result in a Flex Message
-    await getLineClient().pushMessage(lineUserId, {
-      type: 'flex',
-      altText: 'ตรวจสอบข้อมูลการลงทะเบียน',
-      contents: {
-        type: 'bubble',
-        header: {
-          type: 'box',
-          layout: 'vertical',
-          backgroundColor: '#10B981',
-          contents: [{ type: 'text', text: 'ตรวจสอบข้อมูล', color: '#ffffff', weight: 'bold', size: 'lg' }],
-        },
-        body: {
-          type: 'box',
-          layout: 'vertical',
-          spacing: 'md',
-          contents: [
-            { type: 'text', text: 'กรุณาตรวจสอบความถูกต้องของข้อมูลที่ AI วิเคราะห์ได้', wrap: true, size: 'sm', color: '#64748B' },
-            { type: 'separator', margin: 'md' },
-            {
-              type: 'box',
-              layout: 'vertical',
-              margin: 'md',
-              spacing: 'sm',
-              contents: [
-                { type: 'box', layout: 'horizontal', contents: [{ type: 'text', text: 'ชื่อ-นามสกุล', size: 'xs', color: '#94A3B8', flex: 2 }, { type: 'text', text: `${result.driverFirstName} ${result.driverLastName}`, size: 'xs', flex: 3, wrap: true }] },
-                { type: 'box', layout: 'horizontal', contents: [{ type: 'text', text: 'ทะเบียนรถ', size: 'xs', color: '#94A3B8', flex: 2 }, { type: 'text', text: `${result.headPlateNumber} ${result.tailPlateNumber ? '/ ' + result.tailPlateNumber : ''}`, size: 'xs', flex: 3 }] },
-                { type: 'box', layout: 'horizontal', contents: [{ type: 'text', text: 'ประเภทใบขับขี่', size: 'xs', color: '#94A3B8', flex: 2 }, { type: 'text', text: result.driverLicenseType || '-', size: 'xs', flex: 3 }] },
-                { type: 'box', layout: 'horizontal', contents: [{ type: 'text', text: 'ธนาคาร', size: 'xs', color: '#94A3B8', flex: 2 }, { type: 'text', text: `${result.bankName} ${result.bankAccountNumber}`, size: 'xs', flex: 3 }] },
-              ],
-            },
-          ],
-        },
-        footer: {
-          type: 'box',
-          layout: 'vertical',
-          contents: [
-            {
-              type: 'button',
-              style: 'primary',
-              color: '#10B981',
-              action: {
-                type: 'postback',
-                label: 'ยืนยันข้อมูลถูกต้อง',
-                data: 'action=confirm_reg',
-              },
-            },
-            {
-              type: 'button',
-              style: 'link',
-              color: '#EF4444',
-              action: {
-                type: 'postback',
-                label: 'ข้อมูลไม่ถูกต้อง ส่งใหม่',
-                data: 'action=retry_onboarding',
-              },
-            },
-          ],
-        },
-      },
-    });
+      await lineClient.pushMessage(lineUserId, { 
+        type: 'text', 
+        text: 'วิเคราะห์ข้อมูลเบื้องต้นเสร็จสิ้น! ระบบได้รับเอกสารของคุณเรียบร้อยแล้วครับ\n\nขณะนี้อยู่ระหว่าง "รอการอนุมัติ" จากเจ้าหน้าที่ กรุณารอการแจ้งเตือนผ่านช่องทางนี้ครับ' 
+      });
+    } catch (e) {
+      console.error('Gemini Analysis Error:', e);
+      await LineDriver.findOneAndUpdate({ lineUserId }, { status: 'under_review' });
+      await lineClient.pushMessage(lineUserId, { 
+        type: 'text', 
+        text: 'ระบบได้รับเอกสารของคุณแล้วครับ! ขณะนี้อยู่ระหว่างการรอ "อนุมัติ" จากเจ้าหน้าที่ กรุณารอการแจ้งเตือนผ่านช่องทางนี้ครับ' 
+      });
+    }
   } catch (error) {
-    console.error('Analysis error:', error);
-    await getLineClient().pushMessage(lineUserId, { type: 'text', text: 'ขออภัยครับ ระบบไม่สามารถวิเคราะห์เอกสารได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง หรือติดต่อเจ้าหน้าที่ครับ' });
+    console.error('Handle analyze onboarding error:', error);
   }
 }
 
