@@ -28,13 +28,35 @@ export default function ModelingPage() {
   const [fuelEfficiency, setFuelEfficiency] = useState<number>(4.0);
   const [fuelPrice, setFuelPrice] = useState<number>(39.94);
   const [expenses, setExpenses] = useState<number>(0);
-  const [profitTarget, setProfitTarget] = useState<number>(5000);
+  const [profitTarget, setProfitTarget] = useState<number>(3500);
+  const [ownerMargin, setOwnerMargin] = useState<number>(25); // 25% default
   const [containerFee, setContainerFee] = useState<number>(3000);
   
   const [loading, setLoading] = useState(true);
   const [isFuelPriceManual, setIsFuelPriceManual] = useState(false);
   const [trips, setTrips] = useState<any[]>([]);
   const [selectedTrip, setSelectedTrip] = useState<string>('');
+
+  // 1. Auto-calculate Driver Profit based on Distance (D)
+  const calculateDriverProfit = useCallback((d: number) => {
+    if (d <= 250) {
+      // 0-250 km: 2,500 - 3,500 (Scale 4 THB per km)
+      return Math.round(2500 + (Math.min(d, 250) / 250) * 1000);
+    } else if (d <= 450) {
+      // 250-450 km: 4,000 - 5,000 (Scale 5 THB per km from 250 base)
+      return Math.round(4000 + ((d - 250) / 200) * 1000);
+    } else {
+      // 500+ km: 5,500 - 7,000 (Scale up to 1000km)
+      const base = d >= 500 ? 5500 : 5000 + ((d - 450) / 50) * 500;
+      const extra = d > 500 ? Math.min((d - 500) / 500 * 1500, 1500) : 0;
+      return Math.round(base + extra);
+    }
+  }, []);
+
+  // Update Profit whenever Distance changes
+  useEffect(() => {
+    setProfitTarget(calculateDriverProfit(distance));
+  }, [distance, calculateDriverProfit]);
 
   const fetchFuelPrice = useCallback(async () => {
     try {
@@ -91,7 +113,7 @@ export default function ModelingPage() {
   const fuelCost = (distance / fuelEfficiency) * fuelPrice;
   const targetPriceP = (fuelCost + expenses + profitTarget) / 0.9;
   const truckRunningCost = targetPriceP + containerFee;
-  const myRevenue = (targetPriceP * 1.25) + containerFee;
+  const myRevenue = (targetPriceP * (1 + ownerMargin/100)) + containerFee;
   const grossMargin = myRevenue - truckRunningCost;
   const driverCommission = targetPriceP * 0.1;
 
@@ -167,10 +189,15 @@ export default function ModelingPage() {
           {/* Left: Inputs */}
           <div className="space-y-6">
             <section className="glass-card p-8">
-              <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                <Truck size={20} className="text-slate-400" />
-                ข้อมูลการขนส่ง (Inputs)
-              </h3>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                  <Truck size={20} className="text-slate-400" />
+                  ข้อมูลการขนส่ง (Inputs)
+                </h3>
+                <div className="flex items-center gap-2 px-3 py-1 bg-emerald-100/50 rounded-full">
+                  <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Auto Driver Profit Enabled</span>
+                </div>
+              </div>
               
               <div className="grid md:grid-cols-2 gap-6">
                 <div className="space-y-2">
@@ -200,8 +227,53 @@ export default function ModelingPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">กำไรสุทธิที่ต้องการ (Profit - บาท)</label>
-                  <input type="number" value={profitTarget} onChange={e => setProfitTarget(Number(e.target.value))} className={`${inputStyle} text-emerald-700 bg-emerald-50/50`} />
+                  <label className="text-[11px] font-black text-emerald-600 uppercase tracking-widest ml-1">กำไรสุทธิคนขับ (Auto-calculated)</label>
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      value={profitTarget} 
+                      readOnly
+                      className={`${inputStyle} bg-emerald-50/30 text-emerald-700 border-emerald-100 cursor-default`} 
+                    />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-2 py-1 bg-emerald-500 rounded-lg text-[9px] font-black text-white">
+                      <ShieldCheck size={10} />
+                      FIXED BY D
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Owner Adjustment */}
+            <section className="glass-card p-8 border-t-4 border-t-blue-500">
+              <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                <DollarSign size={20} className="text-blue-500" />
+                Owner Profit Adjustment (Margin)
+              </h3>
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest">My Profit Margin (%)</label>
+                  <span className="text-2xl font-black text-blue-600">{ownerMargin}%</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="100" 
+                  step="1" 
+                  value={ownerMargin} 
+                  onChange={e => setOwnerMargin(Number(e.target.value))}
+                  className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600" 
+                />
+                <div className="grid grid-cols-3 gap-4">
+                  {[15, 25, 35].map(m => (
+                    <button 
+                      key={m}
+                      onClick={() => setOwnerMargin(m)}
+                      className={`py-2 rounded-xl text-xs font-bold transition-all ${ownerMargin === m ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+                    >
+                      {m}% {m === 25 ? '(Default)' : ''}
+                    </button>
+                  ))}
                 </div>
               </div>
             </section>
@@ -216,14 +288,14 @@ export default function ModelingPage() {
                   <p className="text-[10px] text-slate-400 mt-1 font-medium">{(distance/fuelEfficiency).toFixed(1)} ลิตร</p>
                 </div>
                 <div className="p-5 bg-emerald-50 rounded-2xl border border-emerald-100">
-                  <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">กำไรเป้าหมาย</p>
+                  <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">กำไรคนขับ (สุทธิ)</p>
                   <p className="text-xl font-black text-emerald-700">{profitTarget.toLocaleString()}</p>
-                  <p className="text-[10px] text-emerald-500 mt-1 font-medium">Net Profit</p>
+                  <p className="text-[10px] text-emerald-500 mt-1 font-medium">Net for Driver</p>
                 </div>
                 <div className="p-5 bg-orange-50 rounded-2xl border border-orange-100">
                   <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-2">ส่วนแบ่งคนขับ (10%)</p>
                   <p className="text-xl font-black text-orange-700">{driverCommission.toLocaleString(undefined, {maximumFractionDigits: 2})}</p>
-                  <p className="text-[10px] text-orange-400 mt-1 font-medium">Included in P</p>
+                  <p className="text-[10px] text-orange-400 mt-1 font-medium">Extra Management Fee</p>
                 </div>
               </div>
             </section>
@@ -257,13 +329,13 @@ export default function ModelingPage() {
                     </div>
                   </div>
 
-                  <div className="p-6 bg-emerald-600 rounded-[32px] shadow-2xl shadow-emerald-500/20 transform transition-transform hover:scale-[1.02]">
+                  <div className="p-6 bg-blue-600 rounded-[32px] shadow-2xl shadow-blue-500/20 transform transition-transform hover:scale-[1.02]">
                     <div className="flex justify-between items-center mb-1">
-                      <p className="text-[11px] font-black text-emerald-950 uppercase tracking-widest">รายได้ของผม</p>
+                      <p className="text-[11px] font-black text-blue-950 uppercase tracking-widest">รายได้ของผม (รวม Margin {ownerMargin}%)</p>
                       <p className="text-3xl font-black text-white">{myRevenue.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
                     </div>
                     <div className="flex justify-between items-center opacity-80">
-                      <p className="text-[10px] text-emerald-100 font-bold">(P * 1.25) + 3,000</p>
+                      <p className="text-[10px] text-blue-100 font-bold">(P * {(1 + ownerMargin/100).toFixed(2)}) + 3,000</p>
                       <div className="flex items-center gap-1 text-[12px] font-black text-white">
                         <TrendingUp size={14} />
                         +{grossMargin.toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -273,7 +345,7 @@ export default function ModelingPage() {
 
                   <div className="flex justify-between items-center px-2 py-3 border border-white/5 rounded-2xl bg-white/5">
                     <p className="text-[13px] font-bold text-slate-400">กำไรส่วนต่าง (Margin)</p>
-                    <p className="text-xl font-black text-emerald-400">+{grossMargin.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span className="text-[10px] ml-1">THB</span></p>
+                    <p className="text-xl font-black text-blue-400">+{grossMargin.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span className="text-[10px] ml-1">THB</span></p>
                   </div>
                 </div>
               </div>
