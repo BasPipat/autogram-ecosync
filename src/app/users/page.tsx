@@ -250,9 +250,10 @@ export default function ManageUsersPage() {
     }
 
     const sessionRole = (session.user as { role?: string } | undefined)?.role;
+    const canViewTrucks = isOwner(sessionRole) || sessionRole === 'admin';
     const timer = window.setTimeout(() => {
       fetchUsers();
-      if (isOwner(sessionRole)) {
+      if (canViewTrucks) {
         fetchSharedTrucks();
         fetchLineDrivers();
       }
@@ -265,8 +266,9 @@ export default function ManageUsersPage() {
   const sessionRole = (session?.user as { role?: string } | undefined)?.role;
   const currentRole = currentUser?.role || sessionRole;
   const isCurrentOwner = isOwner(currentRole);
+  const canViewTrucks = isCurrentOwner || currentRole === 'admin';
   const canManage = !!currentRole && (isOwner(currentRole) || currentRole === 'admin');
-  const visibleActiveTab = !isCurrentOwner && activeTab === 'sharedTrucks' ? 'users' : activeTab;
+  const visibleActiveTab = !canViewTrucks && activeTab === 'sharedTrucks' ? 'users' : activeTab;
 
   const displayedUsers = allUsers.filter(user => {
     if (!currentUser) return false;
@@ -875,31 +877,40 @@ export default function ManageUsersPage() {
 
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1.5 max-w-[360px]">
-                      {driver.documents.slice(0, 12).map(document => {
-                        const label = DRIVER_DOCUMENT_LABELS[document.documentType] || document.documentType;
-                        return (
-                          <div key={document._id} className="flex items-center">
-                            <a
-                              href={document.mediaType === 'text' ? undefined : `/api/admin/line-driver-documents/${document._id}/content`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-l-lg text-[11px] font-semibold border-r border-slate-200"
-                              style={{ background: 'var(--border-light)', color: 'var(--text-secondary)' }}
-                            >
-                              {label}
-                              {document.mediaType !== 'text' && <ExternalLink size={11} />}
-                            </a>
-                            <button
-                              onClick={() => handleDeleteDocument(document._id, label)}
-                              className="px-1.5 py-1 rounded-r-lg hover:bg-rose-100 hover:text-rose-600 transition-colors"
-                              style={{ background: 'var(--border-light)', color: 'var(--text-tertiary)' }}
-                              title="ลบเอกสาร"
-                            >
-                              <X size={12} />
-                            </button>
-                          </div>
-                        );
-                      })}
+                      {(() => {
+                        let onboardingDocCount = 0;
+                        return driver.documents.slice(0, 15).map(document => {
+                          const isGeneral = document.documentType === 'onboarding_media';
+                          if (isGeneral) onboardingDocCount++;
+                          
+                          const label = isGeneral 
+                            ? `เอกสาร ${onboardingDocCount}` 
+                            : (DRIVER_DOCUMENT_LABELS[document.documentType] || document.documentType);
+                          
+                          return (
+                            <div key={document._id} className="flex items-center">
+                              <a
+                                href={document.mediaType === 'text' ? undefined : `/api/admin/line-driver-documents/${document._id}/content`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded-l-lg text-[11px] font-semibold border-r border-slate-200"
+                                style={{ background: 'var(--border-light)', color: 'var(--text-secondary)' }}
+                              >
+                                {label}
+                                {document.mediaType !== 'text' && <ExternalLink size={11} />}
+                              </a>
+                              <button
+                                onClick={() => handleDeleteDocument(document._id, label)}
+                                className="px-1.5 py-1 rounded-r-lg hover:bg-rose-100 hover:text-rose-600 transition-colors"
+                                style={{ background: 'var(--border-light)', color: 'var(--text-tertiary)' }}
+                                title="ลบเอกสาร"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          );
+                        });
+                      })()}
                     </div>
                   </td>
                   <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>
@@ -1307,11 +1318,11 @@ export default function ManageUsersPage() {
 
         <div className="flex flex-wrap gap-2 mb-6 animate-fade-in">
           {renderTabButton('users', 'ผู้ใช้งาน', Shield)}
-          {isCurrentOwner && renderTabButton('sharedTrucks', 'รถร่วม', Truck)}
+          {canViewTrucks && renderTabButton('sharedTrucks', 'รถร่วม', Truck)}
         </div>
 
         {visibleActiveTab === 'users' && renderUsersSection()}
-        {visibleActiveTab === 'sharedTrucks' && isCurrentOwner && renderSharedTrucksSection()}
+        {visibleActiveTab === 'sharedTrucks' && canViewTrucks && renderSharedTrucksSection()}
       </div>
     </SidebarLayout>
   );

@@ -127,8 +127,10 @@ async function requireOwner(req: NextRequest) {
     return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
   }
 
-  if (!isOwner(token.role)) {
-    return { response: NextResponse.json({ error: 'เฉพาะ System Owner เท่านั้น' }, { status: 403 }) };
+  // Allow system_owner, owner, admin, and operator to view shared trucks
+  const allowedRoles = ['system_owner', 'owner', 'admin', 'operator'];
+  if (!token.role || !allowedRoles.includes(token.role)) {
+    return { response: NextResponse.json({ error: 'เฉพาะผู้ดูแลระบบเท่านั้น' }, { status: 403 }) };
   }
 
   return { token };

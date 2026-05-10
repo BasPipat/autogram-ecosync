@@ -474,10 +474,16 @@ async function saveMediaDocument(
     return;
   }
 
-  const documentType = driver.pendingDocumentType ||
+  let documentType = driver.pendingDocumentType ||
     (driver.activeTripId && mediaType === 'image' ? 'pod_image' : undefined) ||
     (driver.activeTripId && mediaType === 'video' ? 'delivery_documents_video' : undefined) ||
     ((driver.status === 'new' || driver.status === 'awaiting_documents') ? 'onboarding_media' : undefined);
+
+  // If driver sent an image but the pending type is for text (like phone/bank), 
+  // let's treat it as a general onboarding_media so it doesn't get stuck as "Phone Number" in the UI
+  if (mediaType === 'image' && (documentType === 'phone_number' || documentType === 'bank_account')) {
+    documentType = 'onboarding_media';
+  }
 
   if (!documentType) {
     await getLineClient().replyMessage(replyToken, [
@@ -487,12 +493,35 @@ async function saveMediaDocument(
     return;
   }
 
+  const lineClient = getLineClient();
+  let content: Buffer | undefined;
+  let mimeType: string | undefined;
+
+  try {
+    const stream = await lineClient.getMessageContent(lineMessageId);
+    const chunks: any[] = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk);
+    }
+    content = Buffer.concat(chunks);
+    
+    // Attempt to guess mimeType if not provided
+    if (mediaType === 'image') mimeType = 'image/jpeg';
+    else if (mediaType === 'video') mimeType = 'video/mp4';
+    else if (fileName?.toLowerCase().endsWith('.pdf')) mimeType = 'application/pdf';
+  } catch (e) {
+    console.error('Failed to download LINE content during webhook:', e);
+  }
+
   await DriverDocument.create({
     lineUserId,
     documentType,
     mediaType,
     lineMessageId,
     fileName,
+    mimeType,
+    content,
+    size: content?.length,
     tripId: driver.activeTripId,
     jobOfferId: driver.activeJobOfferId,
   });
@@ -592,7 +621,8 @@ async function handleAnalyzeOnboarding(lineUserId: string, replyToken: string) {
     const documents = await DriverDocument.find({
       lineUserId,
       mediaType: 'image',
-      documentType: 'onboarding_media',
+      // Look for any onboarding related documents, not just 'onboarding_media'
+      documentType: { $in: ['onboarding_media', 'national_id', 'driving_license', 'head_registration', 'tail_registration', 'vehicle_insurance', 'phone_number', 'bank_account'] },
     }).sort({ createdAt: -1 }).limit(10);
 
     if (documents.length === 0) {

@@ -15,7 +15,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!isInternalRole(token.role)) {
+    const allowedRoles = ['system_owner', 'owner', 'admin'];
+    if (!token.role || !allowedRoles.includes(token.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

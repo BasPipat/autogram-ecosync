@@ -13,8 +13,10 @@ async function requireInternal(req: NextRequest) {
     return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
   }
 
-  if (!isInternalRole(token.role)) {
-    return { response: NextResponse.json({ error: 'เฉพาะ System Owner เท่านั้น' }, { status: 403 }) };
+  // Allow system_owner, owner, and admin to view driver documents
+  const allowedRoles = ['system_owner', 'owner', 'admin'];
+  if (!token.role || !allowedRoles.includes(token.role)) {
+    return { response: NextResponse.json({ error: 'เฉพาะผู้ดูแลระบบเท่านั้น' }, { status: 403 }) };
   }
 
   return { token };
@@ -32,22 +34,80 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     if ('response' in auth) return auth.response;
 
     const { id } = await context.params;
-    await connectToDatabase();
-    const document = await DriverDocument.findById(id);
-    if (!document || !document.lineMessageId) {
-      return NextResponse.json({ error: 'ไม่พบไฟล์เอกสารจาก LINE' }, { status: 404 });
+    
+    if (!id || id === 'undefined') {
+      return NextResponse.json({ error: 'รหัสเอกสารไม่ถูกต้อง' }, { status: 400 });
     }
 
-    const lineContent = await getLineClient().getMessageContent(document.lineMessageId);
-    const stream = Readable.toWeb(lineContent) as ReadableStream;
+    await connectToDatabase();
+    const document = await DriverDocument.findById(id);
+    
+    if (!document) {
+      return NextResponse.json({ error: 'ไม่พบข้อมูลเอกสารในระบบ' }, { status: 404 });
+    }
 
-    return new Response(stream, {
-      headers: {
-        'Content-Type': document.mimeType || contentType(document.mediaType),
+    // 1. Check if we have the content stored in MongoDB
+    if (document.content) {
+      const mime = document.mimeType || contentType(document.mediaType);
+      const headers: Record<string, string> = {
+        'Content-Type': mime,
+        'Cache-Control': 'private, max-age=86400', // Cache for 24h
+      };
+
+      // Set content disposition to view in browser (inline) or download
+      const disposition = mime.includes('pdf') || mime.includes('image') ? 'inline' : 'attachment';
+      if (document.fileName) {
+        headers['Content-Disposition'] = `${disposition}; filename="${encodeURIComponent(document.fileName)}"`;
+      }
+
+      return new Response(new Uint8Array(document.content), { headers });
+    }
+
+    // 2. Fallback to LINE (for older documents or if download failed)
+    if (!document.lineMessageId) {
+      if (document.mediaType === 'text') {
+        return NextResponse.json({ error: 'เอกสารนี้เป็นข้อความ: ' + (document.textValue || '') }, { status: 400 });
+      }
+      return NextResponse.json({ error: 'ไม่พบไฟล์แนบของเอกสารนี้' }, { status: 404 });
+    }
+
+    try {
+      const lineContent = await getLineClient().getMessageContent(document.lineMessageId);
+      
+      // Convert stream to Buffer to serve and potentially save
+      const chunks: any[] = [];
+      for await (const chunk of lineContent) {
+        chunks.push(chunk);
+      }
+      const buffer = Buffer.concat(chunks);
+
+      // Save to DB for future requests if not already saved
+      await DriverDocument.findByIdAndUpdate(id, {
+        content: buffer,
+        size: buffer.length
+      });
+
+      const mime = document.mimeType || contentType(document.mediaType);
+      const headers: Record<string, string> = {
+        'Content-Type': mime,
         'Cache-Control': 'private, max-age=300',
-      },
-    });
-  } catch {
-    return NextResponse.json({ error: 'ไม่สามารถเปิดไฟล์เอกสารได้' }, { status: 500 });
+      };
+
+      const disposition = mime.includes('pdf') || mime.includes('image') ? 'inline' : 'attachment';
+      if (document.fileName) {
+        headers['Content-Disposition'] = `${disposition}; filename="${encodeURIComponent(document.fileName)}"`;
+      }
+
+      return new Response(new Uint8Array(buffer), { headers });
+    } catch (lineError: any) {
+      console.error('LINE Content fetch error:', lineError);
+      return NextResponse.json({ 
+        error: 'ไม่สามารถดึงไฟล์จาก LINE ได้ (อาจหมดอายุแล้วและไม่ได้ถูกเก็บลง DB)',
+        details: lineError?.message
+      }, { status: 502 });
+    }
+  } catch (err: any) {
+    console.error('Document API error:', err);
+    return NextResponse.json({ error: 'ระบบขัดข้อง: ' + (err?.message || 'Unknown error') }, { status: 500 });
   }
 }

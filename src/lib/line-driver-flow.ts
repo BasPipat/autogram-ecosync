@@ -13,8 +13,8 @@ export const DRIVER_DOCUMENT_LABELS: Record<DriverDocumentType, string> = {
   bank_account: 'บัญชีโอนเงิน',
   pod_image: 'รูปส่งงาน',
   delivery_documents_video: 'วิดีโอเอกสาร',
-  onboarding_media: 'เอกสารลงทะเบียน (รูป)',
-  onboarding_text: 'เอกสารลงทะเบียน (ข้อความ)',
+  onboarding_media: 'เอกสาร',
+  onboarding_text: 'ข้อความลงทะเบียน',
 };
 
 export const ONBOARDING_DOCUMENT_TYPES: DriverDocumentType[] = [

@@ -10,6 +10,8 @@ export interface IDriverDocument extends Document {
   textValue?: string;
   fileName?: string;
   mimeType?: string;
+  content?: Buffer;
+  size?: number;
   status: 'pending' | 'approved' | 'rejected';
   reviewNote?: string;
   tripId?: mongoose.Types.ObjectId;
@@ -43,6 +45,8 @@ const DriverDocumentSchema = new Schema<IDriverDocument>({
   textValue: { type: String, trim: true },
   fileName: { type: String, trim: true },
   mimeType: { type: String, trim: true },
+  content: { type: Buffer },
+  size: { type: Number },
   status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending', index: true },
   reviewNote: { type: String, trim: true },
   tripId: { type: Schema.Types.ObjectId, ref: 'Trip', index: true },
