@@ -33,6 +33,8 @@ export default function ModelingPage() {
   
   const [loading, setLoading] = useState(true);
   const [isFuelPriceManual, setIsFuelPriceManual] = useState(false);
+  const [trips, setTrips] = useState<any[]>([]);
+  const [selectedTrip, setSelectedTrip] = useState<string>('');
 
   const fetchFuelPrice = useCallback(async () => {
     try {
@@ -47,6 +49,16 @@ export default function ModelingPage() {
     }
   }, []);
 
+  const fetchTrips = useCallback(async () => {
+    try {
+      const r = await fetch('/api/trips/modeling-list');
+      const data = await r.json();
+      if (Array.isArray(data)) setTrips(data);
+    } catch (e) {
+      console.error('Fetch trips error', e);
+    }
+  }, []);
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login');
@@ -54,7 +66,26 @@ export default function ModelingPage() {
       router.push('/dashboard');
     }
     fetchFuelPrice();
-  }, [status, session, router, fetchFuelPrice]);
+    fetchTrips();
+  }, [status, session, router, fetchFuelPrice, fetchTrips]);
+
+  const handleTripSelect = (tripId: string) => {
+    const trip = trips.find(t => t.tripId === tripId);
+    if (trip) {
+      setSelectedTrip(tripId);
+      if (trip.distance) setDistance(trip.distance);
+      // Logic for FE calculation based on vehicle type and weight
+      // Default: Trailer ~ 4.0, 10-Wheel ~ 5.0, 6-Wheel ~ 7.0
+      let baseFE = 4.0;
+      if (trip.vehicleType?.includes('10-Wheel')) baseFE = 5.0;
+      if (trip.vehicleType?.includes('6-Wheel')) baseFE = 7.0;
+      if (trip.vehicleType?.includes('Pickup')) baseFE = 12.0;
+      
+      // Rough weight adjustment: -0.05 per ton
+      const adjustedFE = baseFE - (trip.weight ? (trip.weight * 0.05) : 0);
+      setFuelEfficiency(Math.max(2.0, Number(adjustedFE.toFixed(1))));
+    }
+  };
 
   // Calculations based on Target Price Formula: P = ((D / FE) * G + E + Profit) / 0.9
   const fuelCost = (distance / fuelEfficiency) * fuelPrice;
@@ -102,6 +133,33 @@ export default function ModelingPage() {
             >
               {isFuelPriceManual ? <RefreshCcw size={16} /> : <Edit3 size={16} />}
             </button>
+          </div>
+        </div>
+
+        {/* Quick Load Trip */}
+        <div className="glass-card p-6 border-l-4 border-l-emerald-500 bg-emerald-50/20">
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <div className="flex items-center gap-3 shrink-0">
+              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
+                <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-800">Quick Load from Existing Trip</h3>
+                <p className="text-[11px] text-slate-500 font-medium">หยิบใบงานมาคำนวณระยะทางและ FE ทันที</p>
+              </div>
+            </div>
+            <select 
+              value={selectedTrip}
+              onChange={(e) => handleTripSelect(e.target.value)}
+              className="flex-1 w-full px-4 py-2.5 rounded-xl border border-emerald-100 bg-white text-sm font-bold text-slate-700 focus:ring-4 focus:ring-emerald-500/10 outline-none"
+            >
+              <option value="">เลือกใบงานล่าสุด...</option>
+              {trips.map(t => (
+                <option key={t.tripId} value={t.tripId}>
+                  {t.tripId} | {t.origin} → {t.destination} ({t.distance} KM, {t.weight} Tons)
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
