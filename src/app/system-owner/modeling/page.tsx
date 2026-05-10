@@ -17,6 +17,7 @@ import {
   RefreshCcw,
   Edit3
 } from 'lucide-react';
+import SidebarLayout from '@/components/SidebarLayout';
 
 export default function ModelingPage() {
   const { data: session, status } = useSession();
@@ -78,165 +79,167 @@ export default function ModelingPage() {
   const inputStyle = "w-full px-5 py-3.5 rounded-2xl bg-slate-50 border border-slate-100 outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 font-bold transition-all";
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
-            <Calculator className="text-emerald-500" />
-            Financial Modeling
-          </h1>
-          <p className="text-slate-500 mt-1 font-medium">คำนวณโครงสร้างราคาตามสูตร Target Price (P)</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="px-4 py-2 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center gap-2">
-            <Fuel size={16} className="text-emerald-600" />
-            <span className="text-[13px] font-bold text-emerald-700">Diesel B7: {fuelPrice.toFixed(2)} THB/L</span>
+    <SidebarLayout>
+      <div className="p-8 max-w-6xl mx-auto space-y-8 animate-fade-in">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+              <Calculator className="text-emerald-500" />
+              Financial Modeling
+            </h1>
+            <p className="text-slate-500 mt-1 font-medium">คำนวณโครงสร้างราคาตามสูตร Target Price (P)</p>
           </div>
-          <button 
-            onClick={() => { setIsFuelPriceManual(!isFuelPriceManual); if(!isFuelPriceManual) fetchFuelPrice(); }}
-            className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-emerald-500 transition-colors shadow-sm"
-            title="ปรับแก้ราคาน้ำมันเอง"
-          >
-            {isFuelPriceManual ? <RefreshCcw size={16} /> : <Edit3 size={16} />}
-          </button>
-        </div>
-      </div>
-
-      <div className="grid lg:grid-cols-[1fr_420px] gap-8">
-        {/* Left: Inputs */}
-        <div className="space-y-6">
-          <section className="glass-card p-8">
-            <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-              <Truck size={20} className="text-slate-400" />
-              ข้อมูลการขนส่ง (Inputs)
-            </h3>
-            
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">ระยะทาง (D - KM)</label>
-                <input type="number" value={distance} onChange={e => setDistance(Number(e.target.value))} className={inputStyle} />
-                <div className="flex justify-between items-center px-1">
-                  <span className={`text-[10px] font-bold ${recommendation.color}`}>{recommendation.label}</span>
-                  <span className="text-[10px] font-bold text-slate-400">แนะนำ: {recommendation.range}</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">อัตราสิ้นเปลือง (FE - KM/L)</label>
-                <input type="number" step="0.1" value={fuelEfficiency} onChange={e => setFuelEfficiency(Number(e.target.value))} className={inputStyle} />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">ราคาน้ำมัน (G - THB/L)</label>
-                <input 
-                  type="number" 
-                  step="0.01"
-                  value={fuelPrice} 
-                  onChange={e => setFuelPrice(Number(e.target.value))} 
-                  disabled={!isFuelPriceManual}
-                  className={`${inputStyle} ${!isFuelPriceManual ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-emerald-50/50 text-emerald-600'}`} 
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">กำไรสุทธิที่ต้องการ (Profit - บาท)</label>
-                <input type="number" value={profitTarget} onChange={e => setProfitTarget(Number(e.target.value))} className={`${inputStyle} text-emerald-700 bg-emerald-50/50`} />
-              </div>
+          <div className="flex items-center gap-2">
+            <div className="px-4 py-2 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center gap-2">
+              <Fuel size={16} className="text-emerald-600" />
+              <span className="text-[13px] font-bold text-emerald-700">Diesel B7: {fuelPrice.toFixed(2)} THB/L</span>
             </div>
-          </section>
-
-          {/* Cost Breakdown */}
-          <section className="glass-card p-8">
-            <h3 className="text-lg font-bold text-slate-800 mb-6">โครงสร้างต้นทุน (Cost Structure)</h3>
-            <div className="grid sm:grid-cols-3 gap-4">
-              <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ต้นทุนน้ำมัน</p>
-                <p className="text-xl font-black text-slate-800">{fuelCost.toLocaleString(undefined, {maximumFractionDigits: 2})}</p>
-                <p className="text-[10px] text-slate-400 mt-1 font-medium">{(distance/fuelEfficiency).toFixed(1)} ลิตร</p>
-              </div>
-              <div className="p-5 bg-emerald-50 rounded-2xl border border-emerald-100">
-                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">กำไรเป้าหมาย</p>
-                <p className="text-xl font-black text-emerald-700">{profitTarget.toLocaleString()}</p>
-                <p className="text-[10px] text-emerald-500 mt-1 font-medium">Net Profit</p>
-              </div>
-              <div className="p-5 bg-orange-50 rounded-2xl border border-orange-100">
-                <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-2">ส่วนแบ่งคนขับ (10%)</p>
-                <p className="text-xl font-black text-orange-700">{driverCommission.toLocaleString(undefined, {maximumFractionDigits: 2})}</p>
-                <p className="text-[10px] text-orange-400 mt-1 font-medium">Included in P</p>
-              </div>
-            </div>
-          </section>
+            <button 
+              onClick={() => { setIsFuelPriceManual(!isFuelPriceManual); if(!isFuelPriceManual) fetchFuelPrice(); }}
+              className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-400 hover:text-emerald-500 transition-colors shadow-sm"
+              title="ปรับแก้ราคาน้ำมันเอง"
+            >
+              {isFuelPriceManual ? <RefreshCcw size={16} /> : <Edit3 size={16} />}
+            </button>
+          </div>
         </div>
 
-        {/* Right: Summary Card */}
-        <div className="space-y-6">
-          <div className="glass-card p-8 bg-slate-900 text-white shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
-            
-            <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-10 flex items-center gap-2">
-              <ShieldCheck size={14} className="text-emerald-500" />
-              Final Summary
-            </h3>
-
-            <div className="space-y-10">
-              <div className="relative z-10">
-                <p className="text-[13px] font-bold text-slate-400 mb-1">ราคาเป้าหมายเสนอคู่ค้า (P)</p>
-                <p className="text-5xl font-black tracking-tight text-white">{targetPriceP.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
-                <p className="text-[11px] text-slate-500 mt-3 font-medium">P = (Fuel + Expenses + Profit) / 0.9</p>
-              </div>
-
-              <div className="pt-10 border-t border-white/10 space-y-8">
-                <div className="flex justify-between items-center group">
-                  <div>
-                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">ค่าจ้างรถวิ่งงาน</p>
-                    <p className="text-2xl font-black text-slate-200 transition-colors group-hover:text-white">{truckRunningCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-slate-500 font-bold">P + 3,000</p>
+        <div className="grid lg:grid-cols-[1fr_420px] gap-8">
+          {/* Left: Inputs */}
+          <div className="space-y-6">
+            <section className="glass-card p-8">
+              <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                <Truck size={20} className="text-slate-400" />
+                ข้อมูลการขนส่ง (Inputs)
+              </h3>
+              
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">ระยะทาง (D - KM)</label>
+                  <input type="number" value={distance} onChange={e => setDistance(Number(e.target.value))} className={inputStyle} />
+                  <div className="flex justify-between items-center px-1">
+                    <span className={`text-[10px] font-bold ${recommendation.color}`}>{recommendation.label}</span>
+                    <span className="text-[10px] font-bold text-slate-400">แนะนำ: {recommendation.range}</span>
                   </div>
                 </div>
 
-                <div className="p-6 bg-emerald-600 rounded-[32px] shadow-2xl shadow-emerald-500/20 transform transition-transform hover:scale-[1.02]">
-                  <div className="flex justify-between items-center mb-1">
-                    <p className="text-[11px] font-black text-emerald-950 uppercase tracking-widest">รายได้ของผม</p>
-                    <p className="text-3xl font-black text-white">{myRevenue.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
-                  </div>
-                  <div className="flex justify-between items-center opacity-80">
-                    <p className="text-[10px] text-emerald-100 font-bold">(P * 1.25) + 3,000</p>
-                    <div className="flex items-center gap-1 text-[12px] font-black text-white">
-                      <TrendingUp size={14} />
-                      +{grossMargin.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">อัตราสิ้นเปลือง (FE - KM/L)</label>
+                  <input type="number" step="0.1" value={fuelEfficiency} onChange={e => setFuelEfficiency(Number(e.target.value))} className={inputStyle} />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">ราคาน้ำมัน (G - THB/L)</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    value={fuelPrice} 
+                    onChange={e => setFuelPrice(Number(e.target.value))} 
+                    disabled={!isFuelPriceManual}
+                    className={`${inputStyle} ${!isFuelPriceManual ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-emerald-50/50 text-emerald-600'}`} 
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">กำไรสุทธิที่ต้องการ (Profit - บาท)</label>
+                  <input type="number" value={profitTarget} onChange={e => setProfitTarget(Number(e.target.value))} className={`${inputStyle} text-emerald-700 bg-emerald-50/50`} />
+                </div>
+              </div>
+            </section>
+
+            {/* Cost Breakdown */}
+            <section className="glass-card p-8">
+              <h3 className="text-lg font-bold text-slate-800 mb-6">โครงสร้างต้นทุน (Cost Structure)</h3>
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">ต้นทุนน้ำมัน</p>
+                  <p className="text-xl font-black text-slate-800">{fuelCost.toLocaleString(undefined, {maximumFractionDigits: 2})}</p>
+                  <p className="text-[10px] text-slate-400 mt-1 font-medium">{(distance/fuelEfficiency).toFixed(1)} ลิตร</p>
+                </div>
+                <div className="p-5 bg-emerald-50 rounded-2xl border border-emerald-100">
+                  <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">กำไรเป้าหมาย</p>
+                  <p className="text-xl font-black text-emerald-700">{profitTarget.toLocaleString()}</p>
+                  <p className="text-[10px] text-emerald-500 mt-1 font-medium">Net Profit</p>
+                </div>
+                <div className="p-5 bg-orange-50 rounded-2xl border border-orange-100">
+                  <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-2">ส่วนแบ่งคนขับ (10%)</p>
+                  <p className="text-xl font-black text-orange-700">{driverCommission.toLocaleString(undefined, {maximumFractionDigits: 2})}</p>
+                  <p className="text-[10px] text-orange-400 mt-1 font-medium">Included in P</p>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          {/* Right: Summary Card */}
+          <div className="space-y-6">
+            <div className="glass-card p-8 bg-slate-900 text-white shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl -mr-20 -mt-20"></div>
+              
+              <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 mb-10 flex items-center gap-2">
+                <ShieldCheck size={14} className="text-emerald-500" />
+                Final Summary
+              </h3>
+
+              <div className="space-y-10">
+                <div className="relative z-10">
+                  <p className="text-[13px] font-bold text-slate-400 mb-1">ราคาเป้าหมายเสนอคู่ค้า (P)</p>
+                  <p className="text-5xl font-black tracking-tight text-white">{targetPriceP.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                  <p className="text-[11px] text-slate-500 mt-3 font-medium">P = (Fuel + Expenses + Profit) / 0.9</p>
+                </div>
+
+                <div className="pt-10 border-t border-white/10 space-y-8">
+                  <div className="flex justify-between items-center group">
+                    <div>
+                      <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">ค่าจ้างรถวิ่งงาน</p>
+                      <p className="text-2xl font-black text-slate-200 transition-colors group-hover:text-white">{truckRunningCost.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-slate-500 font-bold">P + 3,000</p>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex justify-between items-center px-2 py-3 border border-white/5 rounded-2xl bg-white/5">
-                  <p className="text-[13px] font-bold text-slate-400">กำไรส่วนต่าง (Margin)</p>
-                  <p className="text-xl font-black text-emerald-400">+{grossMargin.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span className="text-[10px] ml-1">THB</span></p>
+                  <div className="p-6 bg-emerald-600 rounded-[32px] shadow-2xl shadow-emerald-500/20 transform transition-transform hover:scale-[1.02]">
+                    <div className="flex justify-between items-center mb-1">
+                      <p className="text-[11px] font-black text-emerald-950 uppercase tracking-widest">รายได้ของผม</p>
+                      <p className="text-3xl font-black text-white">{myRevenue.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                    </div>
+                    <div className="flex justify-between items-center opacity-80">
+                      <p className="text-[10px] text-emerald-100 font-bold">(P * 1.25) + 3,000</p>
+                      <div className="flex items-center gap-1 text-[12px] font-black text-white">
+                        <TrendingUp size={14} />
+                        +{grossMargin.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center px-2 py-3 border border-white/5 rounded-2xl bg-white/5">
+                    <p className="text-[13px] font-bold text-slate-400">กำไรส่วนต่าง (Margin)</p>
+                    <p className="text-xl font-black text-emerald-400">+{grossMargin.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span className="text-[10px] ml-1">THB</span></p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="glass-card p-6 bg-blue-50/50 border-blue-100">
-            <h4 className="text-[13px] font-bold text-blue-800 mb-3 flex items-center gap-2">
-              <Info size={16} />
-              Operation Notes
-            </h4>
-            <ul className="space-y-3">
-              <li className="text-[11px] text-blue-700/80 leading-relaxed font-semibold flex gap-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 flex-shrink-0"></div>
-                ค่าตู้คอนเทนเนอร์ (3,000 บาท) ยังไม่จ่ายตอนนี้ ให้เบิกตามใบเสร็จจริง
-              </li>
-              <li className="text-[11px] text-blue-700/80 leading-relaxed font-semibold flex gap-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 flex-shrink-0"></div>
-                ระบบดึงราคาน้ำมัน Diesel B7 ล่าสุดจาก PTT Station อัตโนมัติ
-              </li>
-            </ul>
+            <div className="glass-card p-6 bg-blue-50/50 border-blue-100">
+              <h4 className="text-[13px] font-bold text-blue-800 mb-3 flex items-center gap-2">
+                <Info size={16} />
+                Operation Notes
+              </h4>
+              <ul className="space-y-3">
+                <li className="text-[11px] text-blue-700/80 leading-relaxed font-semibold flex gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 flex-shrink-0"></div>
+                  ค่าตู้คอนเทนเนอร์ (3,000 บาท) ยังไม่จ่ายตอนนี้ ให้เบิกตามใบเสร็จจริง
+                </li>
+                <li className="text-[11px] text-blue-700/80 leading-relaxed font-semibold flex gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-1.5 flex-shrink-0"></div>
+                  ระบบดึงราคาน้ำมัน Diesel B7 ล่าสุดจาก PTT Station อัตโนมัติ
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </SidebarLayout>
   );
 }
