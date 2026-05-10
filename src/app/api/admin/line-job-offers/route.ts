@@ -44,13 +44,32 @@ function formatCurrency(value: number) {
 
 function ensureHttps(url: string | undefined): string {
   if (!url) return '';
-  const trimmed = url.trim();
+  let trimmed = url.trim();
+  
+  // Remove any leading slashes
+  while (trimmed.startsWith('/')) {
+    trimmed = trimmed.substring(1);
+  }
+
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
-  if (trimmed.startsWith('www.')) return `https://${trimmed}`;
-  if (trimmed.startsWith('google.com') || trimmed.startsWith('maps.google.com')) return `https://www.${trimmed}`;
-  // If it doesn't have a protocol, assume it's a domain-start and add https://
-  if (trimmed.includes('google.com') || trimmed.includes('maps.app.goo.gl')) return `https://${trimmed}`;
-  return trimmed;
+  
+  // Standard Google Maps patterns
+  if (trimmed.startsWith('maps.google.com') || 
+      trimmed.startsWith('google.com/maps') || 
+      trimmed.startsWith('maps.app.goo.gl')) {
+    return `https://${trimmed}`;
+  }
+  
+  if (trimmed.startsWith('www.')) {
+    return `https://${trimmed}`;
+  }
+  
+  // If it's a known map domain but missing protocol
+  if (trimmed.includes('google.com') || trimmed.includes('goo.gl')) {
+    return `https://${trimmed}`;
+  }
+
+  return `https://${trimmed}`;
 }
 
 function serializeOffer(offer: IJobOffer) {
