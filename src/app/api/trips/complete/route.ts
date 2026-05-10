@@ -1,9 +1,11 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
+
 import { connectToDatabase } from '@/lib/mongodb';
-import { Trip, CarbonLedger } from '@/models/EcoSync';
+import { Trip } from '@/models/Trip';
+import { CarbonLedger } from '@/models/CarbonLedger';
 
 // ค่าสัมประสิทธิ์การปล่อยก๊าซเรือนกระจก (Emission Factor) อ้างอิง TGO เบื้องต้นสำหรับรถบรรทุก
-// (kgCO2e / ton-km) - บอสสามารถปรับแก้ค่านี้ให้ตรงกับประเภทรถ Volvo FM ของบอสได้ภายหลังครับ
 const EMISSION_FACTOR = 0.154; 
 
 export async function POST(request: Request) {
@@ -19,20 +21,21 @@ export async function POST(request: Request) {
     await connectToDatabase();
 
     // 2. บันทึกข้อมูลงานขนส่ง (Trip)
+    // หมายเหตุ: ปรับฟิลด์ให้ตรงกับ src/models/Trip.ts (distance, weight, status)
     const newTrip = await Trip.create({
       tripId,
       origin,
       destination,
-      distanceKm,
-      cargoWeightTons,
-      driverId,
-      status: 'completed'
+      distance: distanceKm,
+      weight: cargoWeightTons,
+      driverId, // Note: ใน Trip.ts driverId เป็น ObjectId แต่อนุญาตให้ผ่านเป็น String ได้ถ้าไม่ได้ validate strict หรือจะใช้ driverName แทน
+      status: 'No POD' // ปรับให้ตรงกับ enum ใน Trip.ts
     });
 
-    // 3. Logic คำนวณคาร์บอน (ตามหลักการ: น้ำหนัก x ระยะทาง x Emission Factor)
+    // 3. Logic คำนวณคาร์บอน
     const emissionsKgCO2 = (cargoWeightTons * distanceKm * EMISSION_FACTOR).toFixed(2);
 
-    // 4. บันทึกลง Carbon Activity Ledger
+    // 4. บันทึกลง Carbon Ledger (ใช้โมเดลใหม่ที่แยกออกมา)
     const newLedger = await CarbonLedger.create({
       tripId,
       emissionsKgCO2: parseFloat(emissionsKgCO2),
@@ -47,7 +50,6 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('Error in complete trip API:', error);
-    // ป้องกัน Error กรณีส่ง tripId ซ้ำ
     if (error.code === 11000) {
       return NextResponse.json({ error: 'รหัสงานขนส่ง (Trip ID) นี้ถูกบันทึกไปแล้ว' }, { status: 400 });
     }

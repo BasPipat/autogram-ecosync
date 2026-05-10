@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { Readable } from 'node:stream';
 import { connectToDatabase } from '@/lib/mongodb';
@@ -5,7 +6,6 @@ import { getSessionToken, isInternalRole } from '@/lib/access';
 import { DriverDocument } from '@/models/DriverDocument';
 import { getLineClient } from '@/lib/line';
 
-export const dynamic = 'force-dynamic';
 
 async function requireInternal(req: NextRequest) {
   const token = await getSessionToken(req);

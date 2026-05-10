@@ -1,8 +1,8 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { News } from '@/models/News';
 
-export const dynamic = 'force-dynamic';
 
 export async function GET(
   req: NextRequest,

@@ -1,9 +1,17 @@
-import { NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
+import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import { IntegrityVault } from '@/models/EcoSync';
+import { IntegrityVault } from '@/models/IntegrityVault';
+import { getSessionToken } from '@/lib/access';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Add Authentication Check
+    const token = await getSessionToken(request);
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { tripId } = await request.json();
 
     if (!tripId) {
@@ -28,8 +36,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ message: 'อนุมัติหลักฐานสำเร็จ', data: updatedVault }, { status: 200 });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Verify API Error:', error);
-    return NextResponse.json({ error: 'เกิดข้อผิดพลาดภายในระบบ' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดภายในระบบ';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

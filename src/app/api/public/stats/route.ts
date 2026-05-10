@@ -1,8 +1,8 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Trip } from '@/models/Trip';
 
-export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/public/stats

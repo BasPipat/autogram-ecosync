@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Trip } from '@/models/Trip';
@@ -6,7 +7,6 @@ import { ObjectId } from 'mongodb';
 import { generateMonthlyLedgers, getActiveMasterSetting, getRangeFromFilter } from '@/lib/carbon-ledger';
 import { getSessionToken, isInternalRole } from '@/lib/access';
 
-export const dynamic = 'force-dynamic';
 
 function asNumber(v: unknown, fallback: number) {
   const n = Number(v);

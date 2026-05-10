@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { FlexMessage } from '@line/bot-sdk';
@@ -8,7 +9,6 @@ import { LineDriver } from '@/models/LineDriver';
 import { JobOffer, IJobOffer } from '@/models/JobOffer';
 import { Trip } from '@/models/Trip';
 
-export const dynamic = 'force-dynamic';
 
 type CreateOfferBody = {
   tripId?: unknown;

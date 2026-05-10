@@ -1,10 +1,10 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getLineClient } from '@/lib/line';
 import { getSessionToken, isInternalRole } from '@/lib/access';
 import fs from 'fs';
 import path from 'path';
 
-export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {

@@ -1,50 +1,73 @@
 'use client';
 
 import SidebarLayout from '@/components/SidebarLayout';
-import React, { useEffect, useState } from 'react';
-import { Leaf, Truck, CheckCircle, Loader2, UploadCloud, X } from 'lucide-react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Leaf, Truck, CheckCircle, Loader2, UploadCloud, AlertCircle } from 'lucide-react';
+import ConfirmModal from '@/components/ConfirmModal';
+
+interface TripData {
+  id: string;
+  origin: string;
+  dest: string;
+  carbon: string;
+  status: 'Verified' | 'Pending' | 'No POD';
+}
+
+interface DashboardStats {
+  totalTrips: number;
+  totalCarbon: string;
+  verifiedPODs: number; // This is now a percentage from API
+}
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({ totalTrips: 0, totalCarbon: "0.00", verifiedPODs: 0 });
-  const [trips, setTrips] = useState<any[]>([]);
+  const [stats, setStats] = useState<DashboardStats>({ totalTrips: 0, totalCarbon: "0.00", verifiedPODs: 0 });
+  const [trips, setTrips] = useState<TripData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   // Modal states
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedTrip, setSelectedTrip] = useState('');
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [selectedTripId, setSelectedTripId] = useState('');
   const [podUrl, setPodUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+
   const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
   const [verifyTripId, setVerifyTripId] = useState('');
   const [verifyImageUrl, setVerifyImageUrl] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       const response = await fetch('/api/dashboard', { cache: 'no-store' });
+      if (!response.ok) throw new Error('API request failed');
+      
       const data = await response.json();
 
       if (!data.error) {
         setStats(data.stats);
         setTrips(data.recentTrips || []);
+        setFetchError(false);
+      } else {
+        setFetchError(true);
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      setFetchError(true);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchDashboardData();
     const interval = setInterval(fetchDashboardData, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchDashboardData]);
 
-  const handleOpenModal = (tripId: string) => {
-    setSelectedTrip(tripId);
+  const handleOpenUploadModal = (tripId: string) => {
+    setSelectedTripId(tripId);
     setPodUrl('');
-    setIsModalOpen(true);
+    setIsUploadModalOpen(true);
   };
 
   const handleUploadPOD = async () => {
@@ -54,10 +77,10 @@ export default function Dashboard() {
       const response = await fetch('/api/vault/upload-pod', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tripId: selectedTrip, podUrl }),
+        body: JSON.stringify({ tripId: selectedTripId, podUrl }), // API updated to handle podUrl
       });
       if (response.ok) {
-        setIsModalOpen(false);
+        setIsUploadModalOpen(false);
         setPodUrl('');
         await fetchDashboardData();
       }
@@ -70,6 +93,7 @@ export default function Dashboard() {
 
   const handleOpenVerifyModal = (tripId: string) => {
     setVerifyTripId(tripId);
+    setVerifyImageUrl('');
     setIsVerifyModalOpen(true);
   };
 
@@ -156,11 +180,29 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/50 border border-white/50 backdrop-blur-md shadow-sm">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-              <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">System Live</span>
+              <div className={`w-2 h-2 rounded-full animate-pulse ${fetchError ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
+              <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+                {fetchError ? 'System Offline' : 'System Live'}
+              </span>
             </div>
           </div>
         </div>
+
+        {/* Error State UI (UX-01) */}
+        {fetchError && (
+          <div className="px-8 mb-6">
+            <div className="bg-red-50 border border-red-100 rounded-2xl p-4 flex items-center gap-3 text-red-700 animate-fade-in">
+              <AlertCircle size={20} />
+              <p className="text-sm font-bold">Unable to fetch latest data. Showing cached information.</p>
+              <button 
+                onClick={() => fetchDashboardData()}
+                className="ml-auto text-xs underline font-black uppercase tracking-tighter"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Stats Grid */}
         <div className="px-8 -mt-10 grid md:grid-cols-3 gap-6 stagger">
@@ -253,7 +295,7 @@ export default function Dashboard() {
                         <div className="flex gap-2">
                           {trip.status === 'No POD' ? (
                             <button
-                              onClick={() => handleOpenModal(trip.id)}
+                              onClick={() => handleOpenUploadModal(trip.id)}
                               className="px-5 py-2 rounded-xl text-[12px] font-black bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95"
                             >
                               Upload POD
@@ -286,79 +328,35 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Modals remain with improved styling */}
-        {isModalOpen && (
-          <div className="fixed inset-0 flex items-center justify-center z-[100] p-4 bg-slate-900/40 backdrop-blur-md">
-            <div className="w-full max-w-md p-8 bg-white rounded-[40px] shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-300">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-black text-slate-800 tracking-tight">Upload Evidence</h3>
-                <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 flex items-center justify-center hover:bg-slate-50 rounded-2xl text-slate-300 transition-all">
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Document Link (POD)</label>
-                  <input
-                    type="url"
-                    value={podUrl}
-                    onChange={(e) => setPodUrl(e.target.value)}
-                    className="w-full px-6 py-4 rounded-2xl text-[14px] border border-slate-100 bg-slate-50 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
-                    placeholder="Paste image link here..."
-                  />
-                </div>
-                <div className="flex gap-4">
-                  <button onClick={() => setIsModalOpen(false)} className="flex-1 px-6 py-4 rounded-2xl text-[14px] font-bold text-slate-400 bg-slate-50 hover:bg-slate-100 transition-all">Cancel</button>
-                  <button
-                    onClick={handleUploadPOD}
-                    disabled={isUploading || !podUrl.trim()}
-                    className="flex-2 px-6 py-4 rounded-2xl text-[14px] font-black text-white bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-200 disabled:opacity-50 transition-all flex items-center justify-center gap-3"
-                  >
-                    {isUploading ? <Loader2 className="animate-spin" size={18} /> : <UploadCloud size={18} />}
-                    Submit POD
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Refactored Modals */}
+        <ConfirmModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+          onSubmit={handleUploadPOD}
+          title="Upload Evidence"
+          label="Document Link (POD)"
+          placeholder="Paste image link here..."
+          value={podUrl}
+          onChange={setPodUrl}
+          loading={isUploading}
+          submitLabel="Submit POD"
+          submitIcon={UploadCloud}
+        />
 
-        {/* Verify Modal with improved styling */}
-        {isVerifyModalOpen && (
-          <div className="fixed inset-0 flex items-center justify-center z-[100] p-4 bg-slate-900/40 backdrop-blur-md">
-            <div className="w-full max-w-md p-8 bg-white rounded-[40px] shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-300">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-2xl font-black text-slate-800 tracking-tight">Audit Verification</h3>
-                <button onClick={() => setIsVerifyModalOpen(false)} className="w-10 h-10 flex items-center justify-center hover:bg-slate-50 rounded-2xl text-slate-300 transition-all">
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Confirmation Source URL</label>
-                  <input
-                    type="url"
-                    value={verifyImageUrl}
-                    onChange={(e) => setVerifyImageUrl(e.target.value)}
-                    className="w-full px-6 py-4 rounded-2xl text-[14px] border border-slate-100 bg-slate-50 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
-                    placeholder="Verify image link..."
-                  />
-                </div>
-                <div className="flex gap-4">
-                  <button onClick={() => setIsVerifyModalOpen(false)} className="flex-1 px-6 py-4 rounded-2xl text-[14px] font-bold text-slate-400 bg-slate-50 hover:bg-slate-100 transition-all">Cancel</button>
-                  <button
-                    onClick={handleVerifyPOD}
-                    disabled={isVerifying || !verifyImageUrl.trim()}
-                    className="flex-2 px-6 py-4 rounded-2xl text-[14px] font-black text-white bg-slate-900 hover:bg-black shadow-xl shadow-slate-200 disabled:opacity-50 transition-all flex items-center justify-center gap-3"
-                  >
-                    {isVerifying ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle size={18} />}
-                    Approve Work
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <ConfirmModal
+          isOpen={isVerifyModalOpen}
+          onClose={() => setIsVerifyModalOpen(false)}
+          onSubmit={handleVerifyPOD}
+          title="Audit Verification"
+          label="Confirmation Source URL"
+          placeholder="Verify image link..."
+          value={verifyImageUrl}
+          onChange={setVerifyImageUrl}
+          loading={isVerifying}
+          submitLabel="Approve Work"
+          submitIcon={CheckCircle}
+          submitColor="bg-slate-900 hover:bg-black shadow-slate-200"
+        />
       </div>
     </SidebarLayout>
   );

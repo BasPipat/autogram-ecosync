@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { User } from '@/models/User';
@@ -5,7 +6,6 @@ import bcrypt from 'bcryptjs';
 import { ObjectId } from 'mongodb';
 import { getSessionToken, isInternalRole } from '@/lib/access';
 
-export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {

@@ -1,10 +1,10 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Location } from '@/models/Location';
 import { getSessionToken, isInternalRole } from '@/lib/access';
 import mongoose from 'mongoose';
 
-export const dynamic = 'force-dynamic';
 
 function normalizeLocationRow(row: any) {
   return {

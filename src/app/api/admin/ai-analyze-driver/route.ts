@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { getSessionToken, isInternalRole } from '@/lib/access';
@@ -6,7 +7,6 @@ import { getLineClient } from '@/lib/line';
 import { analyzeDriverDocuments } from '@/lib/gemini';
 import { Readable } from 'node:stream';
 
-export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   try {

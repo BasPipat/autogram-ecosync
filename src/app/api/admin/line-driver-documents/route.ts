@@ -1,9 +1,9 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { getSessionToken, isInternalRole } from '@/lib/access';
 import { DriverDocument } from '@/models/DriverDocument';
 
-export const dynamic = 'force-dynamic';
 
 export async function DELETE(req: NextRequest) {
   try {

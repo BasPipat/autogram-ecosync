@@ -1,20 +1,31 @@
-import { NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
+import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import { IntegrityVault, Trip } from '@/models/EcoSync';
+import { Trip } from '@/models/Trip';
+import { IntegrityVault } from '@/models/IntegrityVault';
+import { getSessionToken } from '@/lib/access';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // SEC-01: Add Authentication Check
+    const token = await getSessionToken(request);
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
-    const { tripId, podImageUrl } = body;
+    // BUG-02: Client sends podUrl, API was expecting podImageUrl
+    const { tripId, podUrl } = body;
+    const podImageUrl = podUrl; // Support the client-side field name
 
     // 1. ตรวจสอบข้อมูล
     if (!tripId || !podImageUrl) {
-      return NextResponse.json({ error: 'กรุณาส่งรหัสงาน (tripId) และรูปลิงก์ (podImageUrl)' }, { status: 400 });
+      return NextResponse.json({ error: 'กรุณาส่งรหัสงาน (tripId) และรูปลิงก์ (podUrl)' }, { status: 400 });
     }
 
     await connectToDatabase();
 
-    // 2. เช็กว่า Trip นี้มีอยู่จริงและวิ่งเสร็จแล้วหรือยัง
+    // 2. เช็กว่า Trip นี้มีอยู่จริง
     const existingTrip = await Trip.findOne({ tripId });
     if (!existingTrip) {
       return NextResponse.json({ error: 'ไม่พบรหัสงานขนส่งนี้ในระบบ' }, { status: 404 });
@@ -22,13 +33,13 @@ export async function POST(request: Request) {
 
     // 3. บันทึกหลักฐานลง Integrity Vault
     const newVaultEntry = await IntegrityVault.findOneAndUpdate(
-      { tripId }, // หาจาก tripId
+      { tripId },
       { 
         tripId, 
         podImageUrl, 
-        isVerified: false // ให้แอดมินหรือระบบหลังบ้านมากด Verify ทีหลัง
+        isVerified: false 
       },
-      { upsert: true, new: true } // ถ้าไม่มีให้สร้างใหม่ ถ้ามีให้อัปเดต
+      { upsert: true, new: true }
     );
 
     return NextResponse.json({
@@ -36,8 +47,9 @@ export async function POST(request: Request) {
       vaultData: newVaultEntry
     }, { status: 201 });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in upload POD API:', error);
-    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการบันทึกหลักฐาน' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดในการบันทึกหลักฐาน';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

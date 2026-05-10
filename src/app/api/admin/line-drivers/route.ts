@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/mongodb';
@@ -6,7 +7,6 @@ import { LineDriver, ILineDriver, LineDriverStatus } from '@/models/LineDriver';
 import { DriverDocument, IDriverDocument } from '@/models/DriverDocument';
 import { SharedTruck } from '@/models/SharedTruck';
 
-export const dynamic = 'force-dynamic';
 
 type UpdateLineDriverBody = {
   lineUserId?: unknown;

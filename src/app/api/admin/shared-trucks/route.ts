@@ -1,9 +1,9 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { getSessionToken } from '@/lib/access';
 import { SharedTruck, ISharedTruck } from '@/models/SharedTruck';
 
-export const dynamic = 'force-dynamic';
 
 type SharedTruckBody = {
   sharedTruckId?: unknown;

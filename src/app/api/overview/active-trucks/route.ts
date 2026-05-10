@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Trip } from '@/models/Trip';
@@ -5,7 +6,6 @@ import { Driver } from '@/models/Driver';
 import mongoose from 'mongoose';
 import { getSessionToken, isInternalRole } from '@/lib/access';
 
-export const dynamic = 'force-dynamic';
 
 const ALLOWED_ROLES = new Set(['owner', 'admin', 'operator', 'corp_admin', 'coordinator']);
 

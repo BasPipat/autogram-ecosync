@@ -1,10 +1,10 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Trip } from '@/models/Trip';
 import { Setting } from '@/models/Setting';
 import { getSessionToken } from '@/lib/access';
 
-export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/trips/calculate-emission

@@ -1,9 +1,9 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { News } from '@/models/News';
 import { getSessionToken, isInternalRole } from '@/lib/access';
 
-export const dynamic = 'force-dynamic';
 
 // Public: Get latest news for landing page
 export async function GET() {

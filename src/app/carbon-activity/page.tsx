@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import SidebarLayout from '@/components/SidebarLayout';
 import { Leaf, Loader2, AlertCircle, BarChart3, Truck, Route, Fuel, Flame } from 'lucide-react';
 
@@ -51,7 +51,7 @@ export default function CarbonActivityPage() {
   const [data, setData] = useState<ApiData | null>(null);
   const [displayedLedgerCount, setDisplayedLedgerCount] = useState(12);
 
-  const fetchData = async (f: FilterType, v: string) => {
+  const fetchData = useCallback(async (f: FilterType, v: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -67,11 +67,11 @@ export default function CarbonActivityPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchData(filter, value);
-  }, []);
+  }, [fetchData, filter, value]);
 
   const maxEmission = useMemo(
     () => Math.max(...(data?.chart.map((c) => c.emissionKgCo2e) || [1])),
@@ -83,7 +83,6 @@ export default function CarbonActivityPage() {
     setFilter(nextFilter);
     setValue(nextValue);
     setDisplayedLedgerCount(12);
-    fetchData(nextFilter, nextValue);
   };
 
   const onApply = () => {
@@ -256,10 +255,8 @@ export default function CarbonActivityPage() {
                     {data.monthlyLedger.slice(-displayedLedgerCount).reverse().map((row) => (
                       <tr
                         key={row.monthKey}
-                        className="transition-colors"
+                        className="transition-colors hover:bg-[var(--border-light)]"
                         style={{ borderTop: '1px solid var(--border-light)' }}
-                        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--border-light)'; }}
-                        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                       >
                         <td className="p-3 font-semibold" style={{ color: 'var(--text-primary)' }}>{row.monthKey}</td>
                         <td className="p-3" style={{ color: 'var(--text-secondary)' }}>{row.totalTrips}</td>

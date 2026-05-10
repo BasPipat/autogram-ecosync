@@ -1,10 +1,10 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Customer } from '@/models/Customer';
 import { getSessionToken, isInternalRole } from '@/lib/access';
 import mongoose from 'mongoose';
 
-export const dynamic = 'force-dynamic';
 
 function isValidThaiTaxId(taxId: string): boolean {
   if (!taxId || taxId.length !== 13 || !/^\d{13}$/.test(taxId)) return false;
