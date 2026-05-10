@@ -299,10 +299,19 @@ export default function ManageTripsPage() {
 
   const ensureHttps = (url: string) => {
     if (!url) return '';
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    if (url.startsWith('www.')) return `https://${url}`;
-    if (url.startsWith('google.com') || url.startsWith('maps.google.com')) return `https://www.${url}`;
-    return url;
+    let trimmed = url.trim();
+    while (trimmed.startsWith('/')) trimmed = trimmed.substring(1);
+
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    
+    if (trimmed.startsWith('maps.google.com') || trimmed.startsWith('maps.app.goo.gl')) {
+      return `https://${trimmed}`;
+    }
+    if (trimmed.startsWith('google.com/maps')) {
+      return `https://www.${trimmed}`;
+    }
+    if (trimmed.startsWith('www.')) return `https://${trimmed}`;
+    return `https://${trimmed}`;
   };
 
   const confirmLocation = () => {
