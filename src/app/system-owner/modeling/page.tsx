@@ -227,7 +227,7 @@ export default function ModelingPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[11px] font-black text-emerald-600 uppercase tracking-widest ml-1">กำไรสุทธิคนขับ (Auto-calculated)</label>
+                  <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">กำไรสุทธิคนขับ (Auto-calculated)</label>
                   <div className="relative">
                     <input 
                       type="number" 
@@ -240,6 +240,17 @@ export default function ModelingPage() {
                       FIXED BY D
                     </div>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-orange-600 uppercase tracking-widest ml-1">ค่าใช้จ่ายอื่นๆ (E - บาท)</label>
+                  <input 
+                    type="number" 
+                    value={expenses} 
+                    onChange={e => setExpenses(Number(e.target.value))} 
+                    placeholder="เช่น ค่าทางด่วน..."
+                    className={`${inputStyle} border-orange-100 focus:ring-orange-500/10 focus:border-orange-500`} 
+                  />
                 </div>
               </div>
             </section>
