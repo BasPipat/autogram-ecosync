@@ -106,7 +106,10 @@ export default function ModelingPage() {
 
   // Calculations based on Target Price Formula: P = ((D / FE) * G + E + Profit) / 0.9
   const fuelCost = (distance / fuelEfficiency) * fuelPrice;
-  const targetPriceP = (fuelCost + expenses + profitTarget) / 0.9;
+  const rawP = (fuelCost + expenses + profitTarget) / 0.9;
+  // Round UP to nearest 10 as requested
+  const targetPriceP = Math.ceil(rawP / 10) * 10;
+  
   const truckRunningCost = targetPriceP + containerFee;
   const myRevenue = (targetPriceP * (1 + ownerMargin/100)) + containerFee;
   const grossMargin = myRevenue - truckRunningCost;
@@ -320,7 +323,7 @@ export default function ModelingPage() {
               <div className="space-y-10">
                 <div className="relative z-10">
                   <p className="text-[13px] font-bold text-slate-400 mb-1">ราคาเป้าหมายเสนอคู่ค้า (P)</p>
-                  <p className="text-5xl font-black tracking-tight text-white">{targetPriceP.toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                  <p className="text-5xl font-black tracking-tight text-emerald-400">{targetPriceP.toLocaleString()}</p>
                   <p className="text-[11px] text-slate-500 mt-3 font-medium">P = (Fuel + Expenses + Profit) / 0.9</p>
                 </div>
 

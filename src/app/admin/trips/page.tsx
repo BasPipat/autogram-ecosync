@@ -398,8 +398,49 @@ export default function ManageTripsPage() {
     } catch { alert('ระบบขัดข้อง'); }
   };
 
-  const handleSendToSharedTrucks = async (trip: { _id: string; tripId: string }) => {
-    const input = prompt(`กรอกราคาตั้งต้นสำหรับงาน ${trip.tripId}\nระบบจะส่งให้รถร่วมในราคา -1%`);
+  const [fuelPrice, setFuelPrice] = useState<number>(39.94);
+
+  const fetchFuelPrice = async () => {
+    try {
+      const r = await fetch('/api/external/fuel-prices');
+      const data = await r.json();
+      if (data.diesel_b7) setFuelPrice(data.diesel_b7);
+    } catch (e) { console.error('Fuel price fetch error', e); }
+  };
+
+  useEffect(() => {
+    fetchFuelPrice();
+  }, []);
+
+  const handleSendToSharedTrucks = async (trip: any) => {
+    // 1. Calculate automated P for this specific trip
+    const d = Number(trip.distance) || 0;
+    const w = Number(trip.weight) || 0;
+    
+    // Default FE logic from modeling page
+    let baseFE = 4.0;
+    if (trip.vehicleType?.includes('10-Wheel')) baseFE = 5.0;
+    if (trip.vehicleType?.includes('6-Wheel')) baseFE = 7.0;
+    if (trip.vehicleType?.includes('Pickup')) baseFE = 12.0;
+    const fe = Math.max(2.0, baseFE - (w * 0.05));
+    
+    // Profit Standard
+    let profit = 5500;
+    if (d <= 250) profit = 2500;
+    else if (d <= 450) profit = 4000;
+
+    const fuelCost = (d / fe) * fuelPrice;
+    const rawP = (fuelCost + 0 + profit) / 0.9;
+    const calculatedP = Math.ceil(rawP / 10) * 10;
+
+    const input = prompt(
+      `ส่งงานให้รถร่วมสำหรับงาน ${trip.tripId}\n\n` +
+      `ระยะทาง: ${d} km | น้ำหนัก: ${w} ton\n` +
+      `ราคาเป้าหมายแนะนำ (P): ${calculatedP.toLocaleString()} บาท\n\n` +
+      `กรุณายืนยันราคาจ้าง หรือแก้ไขตามต้องการ:`,
+      calculatedP.toString()
+    );
+
     if (!input) return;
 
     const basePrice = Number(input.replace(/,/g, '').trim());
