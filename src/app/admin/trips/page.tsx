@@ -299,19 +299,38 @@ export default function ManageTripsPage() {
 
   const ensureHttps = (url: string) => {
     if (!url) return '';
-    let trimmed = url.trim();
-    while (trimmed.startsWith('/')) trimmed = trimmed.substring(1);
+    const trimmed = url.trim();
+    
+    // Nuclear Option: Extract coordinates and reconstruct
+    const coordMatch = trimmed.match(/q=([\d.-]+),([\d.-]+)/) || trimmed.match(/@([\d.-]+),([\d.-]+)/);
+    if (coordMatch) {
+      return `https://www.google.com/maps?q=${coordMatch[1]},${coordMatch[2]}`;
+    }
 
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
     
-    if (trimmed.startsWith('maps.google.com') || trimmed.startsWith('maps.app.goo.gl')) {
-      return `https://${trimmed}`;
+    let clean = trimmed;
+    while (clean.startsWith('/') || clean.startsWith('.') || clean.startsWith(' ')) {
+      clean = clean.substring(1);
     }
-    if (trimmed.startsWith('google.com/maps')) {
-      return `https://www.${trimmed}`;
+
+    // Standard subdomains
+    if (clean.startsWith('maps.google.com') || clean.startsWith('maps.app.goo.gl')) {
+      return `https://${clean}`;
     }
-    if (trimmed.startsWith('www.')) return `https://${trimmed}`;
-    return `https://${trimmed}`;
+    
+    if (clean.startsWith('google.com/maps')) {
+      return `https://www.${clean}`;
+    }
+
+    if (clean.startsWith('www.')) return `https://${clean}`;
+    
+    // Generic fallback for any other map link
+    if (clean.includes('google.com') || clean.includes('goo.gl')) {
+      return `https://${clean}`;
+    }
+
+    return `https://${clean}`;
   };
 
   const confirmLocation = () => {
