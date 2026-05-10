@@ -42,6 +42,17 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', maximumFractionDigits: 0 }).format(value);
 }
 
+function ensureHttps(url: string | undefined): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+  if (trimmed.startsWith('www.')) return `https://${trimmed}`;
+  if (trimmed.startsWith('google.com') || trimmed.startsWith('maps.google.com')) return `https://www.${trimmed}`;
+  // If it doesn't have a protocol, assume it's a domain-start and add https://
+  if (trimmed.includes('google.com') || trimmed.includes('maps.app.goo.gl')) return `https://${trimmed}`;
+  return trimmed;
+}
+
 function serializeOffer(offer: IJobOffer) {
   return {
     _id: offer._id.toString(),
@@ -66,8 +77,8 @@ function serializeOffer(offer: IJobOffer) {
 
 function jobOfferFlex(offer: IJobOffer): FlexMessage {
   // Ensure we have valid Google Maps URLs or fallback
-  const originUrl = offer.originMapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(offer.origin)}`;
-  const destUrl = offer.destinationMapUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(offer.destination)}`;
+  const originUrl = ensureHttps(offer.originMapUrl) || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(offer.origin)}`;
+  const destUrl = ensureHttps(offer.destinationMapUrl) || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(offer.destination)}`;
 
   return {
     type: 'flex',
@@ -184,9 +195,9 @@ export async function POST(req: NextRequest) {
         tripId: trip._id,
         tripCode: trip.tripId,
         origin: trip.origin,
-        originMapUrl: trip.originMapUrl,
+        originMapUrl: ensureHttps(trip.originMapUrl),
         destination: trip.destination,
-        destinationMapUrl: trip.destinationMapUrl,
+        destinationMapUrl: ensureHttps(trip.destinationMapUrl),
         basePrice,
         driverPrice,
         discountPercent: 1,
