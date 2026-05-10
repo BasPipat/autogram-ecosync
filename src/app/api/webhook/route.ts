@@ -254,6 +254,15 @@ async function acceptJob(lineUserId: string, offerId: string, replyToken: string
     return;
   }
 
+  // Check if driver already has an active trip
+  if (driver.activeTripId) {
+    await getLineClient().replyMessage(replyToken, { 
+      type: 'text', 
+      text: 'พี่มีงานที่กำลังดำเนินการอยู่ครับ กรุณาปิดงานเดิมให้เรียบร้อยก่อนจึงจะรับงานใหม่ได้ครับ' 
+    });
+    return;
+  }
+
   const truck = driver.sharedTruckId
     ? await SharedTruck.findById(driver.sharedTruckId)
     : await SharedTruck.findOne({ lineUserId });
@@ -554,7 +563,11 @@ async function saveMediaDocument(
       paymentRequestedAt: new Date(),
     }, { new: true });
 
-    await LineDriver.findOneAndUpdate({ lineUserId }, { pendingDocumentType: undefined });
+    await LineDriver.findOneAndUpdate({ lineUserId }, { 
+      pendingDocumentType: undefined,
+      activeTripId: undefined,
+      activeJobOfferId: undefined 
+    });
 
     if (PAYMENT_NOTIFY_LINE_USER_ID && trip) {
       await getLineClient().pushMessage(PAYMENT_NOTIFY_LINE_USER_ID, {
