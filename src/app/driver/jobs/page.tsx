@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { 
   Truck, MapPin, Navigation, Package, 
   ChevronRight, Search, Filter, Loader2,
@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 
-export default function JobBoardPage() {
+function JobBoardContent() {
   const searchParams = useSearchParams();
   const lineUserId = searchParams.get('lineUserId');
   
@@ -171,5 +171,17 @@ export default function JobBoardPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function JobBoardPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 className="animate-spin text-emerald-500" size={32} />
+      </div>
+    }>
+      <JobBoardContent />
+    </Suspense>
   );
 }
