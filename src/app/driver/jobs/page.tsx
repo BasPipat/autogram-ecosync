@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import liff from '@line/liff';
 
 function JobBoardContent() {
   const { data: session, status } = useSession();
@@ -42,23 +43,57 @@ function JobBoardContent() {
   };
 
   useEffect(() => {
-    // Get location first for proximity sorting
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-          setLocation(coords);
-          fetchJobs(coords.lat, coords.lng);
-        },
-        () => {
-          // Fallback to non-proximity
-          fetchJobs();
+    const initAndCheckStatus = async () => {
+      let finalLineUserId = lineUserId;
+
+      // 1. If no lineUserId in URL, try LIFF
+      if (!finalLineUserId && process.env.NEXT_PUBLIC_LINE_LIFF_ID) {
+        try {
+          await liff.init({ liffId: process.env.NEXT_PUBLIC_LINE_LIFF_ID });
+          if (liff.isLoggedIn()) {
+            const profile = await liff.getProfile();
+            finalLineUserId = profile.userId;
+          }
+        } catch (err) {
+          console.error('LIFF Init Error in Job Board:', err);
         }
-      );
-    } else {
-      fetchJobs();
-    }
-  }, [lineUserId]);
+      }
+
+      // 2. Check Status if we have a lineUserId
+      if (finalLineUserId) {
+        try {
+          const statusRes = await fetch(`/api/driver/status?lineUserId=${finalLineUserId}`);
+          const statusData = await statusRes.json();
+          
+          if (!statusData.isRegistered || statusData.status !== 'approved') {
+            alert('กรุณาลงทะเบียนหรือรอการตรวจสอบเอกสารก่อนเริ่มใช้งานครับ');
+            router.replace('/driver/register');
+            return;
+          }
+        } catch (err) {
+          console.error('Status Check Error:', err);
+        }
+      }
+
+      // 3. Get location and fetch jobs
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            setLocation(coords);
+            fetchJobs(coords.lat, coords.lng);
+          },
+          () => {
+            fetchJobs();
+          }
+        );
+      } else {
+        fetchJobs();
+      }
+    };
+
+    initAndCheckStatus();
+  }, [lineUserId, router]);
 
   // Authorization Check
   const isSystemOwner = session?.user?.role === 'system_owner';

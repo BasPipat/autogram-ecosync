@@ -30,7 +30,16 @@ export default function MyMissionRedirect() {
         const profile = await liff.getProfile();
         const lineUserId = profile.userId;
 
-        // 3. Fetch active trip from API
+        // 3. Fetch status and active trip from API
+        const statusRes = await fetch(`/api/driver/status?lineUserId=${lineUserId}`);
+        const statusData = await statusRes.json();
+
+        if (!statusData.isRegistered || statusData.status !== 'approved') {
+          alert('กรุณาลงทะเบียนหรือรอการตรวจสอบเอกสารก่อนเริ่มใช้งานครับ');
+          router.replace('/driver/register');
+          return;
+        }
+
         const res = await fetch(`/api/driver/active-trip?lineUserId=${lineUserId}`);
         const data = await res.json();
 
@@ -43,7 +52,7 @@ export default function MyMissionRedirect() {
         } else {
            // If no active mission, go to job board with alert
            alert('คุณยังไม่มีงานที่กำลังดำเนินการ ลองหาภารกิจใหม่ดูสิ!');
-           router.replace(`/driver/jobs`);
+           router.replace(`/driver/jobs?lineUserId=${lineUserId}`);
         }
 
       } catch (err: any) {
