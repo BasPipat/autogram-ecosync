@@ -18,24 +18,6 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
-    // Security Audit: Check trip status and company visibility
-    const trip = await Trip.findOne({ tripId });
-    if (!trip) {
-      return NextResponse.json({ error: 'Trip not found' }, { status: 404 });
-    }
-
-    // Only allow updates for active trips
-    if (trip.gpsSession?.status !== 'active') {
-      return NextResponse.json({ error: 'Trip is not in an active tracking state' }, { status: 400 });
-    }
-
-    // Tenant Isolation Check (if applicable)
-    if (token.role !== 'system_owner' && token.companyId && trip.companyId) {
-      if (trip.companyId.toString() !== token.companyId) {
-        return NextResponse.json({ error: 'Forbidden: Company mismatch' }, { status: 403 });
-      }
-    }
-
     const now = new Date();
     const pin = {
       lat,
@@ -60,7 +42,7 @@ export async function POST(req: NextRequest) {
         $push: {
           'gpsSession.locationHistory': {
             $each: [pin],
-            $slice: -1000 // Archiving Strategy: Prevent massive document growth
+            $slice: -1000 // Keep last 1000 pins to prevent document bloat
           }
         }
       },

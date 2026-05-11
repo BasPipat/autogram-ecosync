@@ -181,58 +181,22 @@ export default function Dashboard() {
   };
 
   const updateServerLocation = async (pos: CurrentPosition, tripId: string) => {
-    const payload = {
-      tripId,
-      lat: pos.lat,
-      lng: pos.lng,
-      speed: pos.speed,
-      heading: pos.heading,
-      timestamp: pos.timestamp
-    };
-
     try {
-      const response = await fetch('/api/trips/update-location', {
+      await fetch('/api/trips/update-location', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          tripId,
+          lat: pos.lat,
+          lng: pos.lng,
+          speed: pos.speed,
+          heading: pos.heading,
+          timestamp: pos.timestamp
+        }),
       });
-
-      if (!response.ok) throw new Error('Network response was not ok');
-      
       setLastUpdateTime(Date.now());
-      
-      // If we succeed, check if there's anything in the offline queue to sync
-      syncOfflineQueue(tripId);
     } catch (error) {
-      console.error('Failed to sync location, queuing for later:', error);
-      const queue = JSON.parse(localStorage.getItem('gps_offline_queue') || '[]');
-      queue.push(payload);
-      localStorage.setItem('gps_offline_queue', JSON.stringify(queue.slice(-50))); // Keep last 50 failed attempts
-    }
-  };
-
-  const syncOfflineQueue = async (tripId: string) => {
-    const queue = JSON.parse(localStorage.getItem('gps_offline_queue') || '[]');
-    if (queue.length === 0) return;
-
-    console.log(`Attempting to sync ${queue.length} offline coordinates...`);
-    
-    // We send them one by one to ensure integrity, or could batch if API supported it
-    // For now, let's just try the first one and see
-    const item = queue[0];
-    try {
-      const res = await fetch('/api/trips/update-location', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item),
-      });
-      if (res.ok) {
-        queue.shift();
-        localStorage.setItem('gps_offline_queue', JSON.stringify(queue));
-        if (queue.length > 0) setTimeout(() => syncOfflineQueue(tripId), 1000);
-      }
-    } catch (e) {
-      console.warn('Sync failed, will retry later');
+      console.error('Failed to sync location:', error);
     }
   };
 
@@ -257,14 +221,7 @@ export default function Dashboard() {
 
     const id = navigator.geolocation.watchPosition(
       (position) => {
-        const { latitude, longitude, speed, heading, accuracy } = position.coords;
-        
-        // Accuracy Tuning: Discard coordinates with accuracy > 100 meters
-        if (accuracy > 100) {
-          console.warn(`Low accuracy detected (${accuracy}m), ignoring coordinate.`);
-          return;
-        }
-
+        const { latitude, longitude, speed, heading } = position.coords;
         const newPos: CurrentPosition = {
           lat: latitude,
           lng: longitude,
