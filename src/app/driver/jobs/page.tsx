@@ -105,7 +105,7 @@ function JobBoardContent() {
             </div>
             <div>
               <h1 className="text-xl font-black text-slate-800 tracking-tight">Load Board</h1>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Public Job Marketplace</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Available Shipments</p>
             </div>
           </div>
           <button className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400">

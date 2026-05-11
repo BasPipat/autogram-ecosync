@@ -10,7 +10,7 @@ import {
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/driver/jobs', label: 'ตลาดหางาน', icon: Search, role: 'system_owner' },
+  { href: '/driver/jobs', label: 'Load Board', icon: Search, role: 'system_owner' },
   { href: '/admin/trips', label: 'Trip Management', icon: Truck },
   { href: '/report-center', label: 'Carbon Intelligence', icon: Leaf },
   { href: '/system-owner/modeling', label: 'Financial Modeling', icon: Calculator, role: 'system_owner' },
@@ -261,7 +261,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         <div className="flex justify-around py-2">
           {[
             { href: '/dashboard', icon: LayoutDashboard, label: 'Home' },
-            ...(session?.user?.role === 'system_owner' ? [{ href: '/driver/jobs', icon: Search, label: 'Market' }] : []),
+            ...(session?.user?.role === 'system_owner' ? [{ href: '/driver/jobs', icon: Search, label: 'Loads' }] : []),
             { href: '/admin/trips', icon: Truck, label: 'Trips' },
             { href: '/report-center', icon: Leaf, label: 'Carbon' },
             { href: '/master-settings', icon: Settings, label: 'Settings' },
