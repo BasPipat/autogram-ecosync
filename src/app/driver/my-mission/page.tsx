@@ -14,7 +14,7 @@ export default function MyMissionRedirect() {
       try {
         const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
         if (!liffId) {
-          setError('LIFF ID is not configured in .env.local');
+          setError('ระบบยังไม่ได้ตั้งค่า LIFF ID กรุณาตรวจสอบ Environment Variables ใน Vercel Dashboard');
           return;
         }
 

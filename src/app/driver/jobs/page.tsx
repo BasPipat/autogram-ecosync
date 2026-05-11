@@ -119,10 +119,16 @@ function JobBoardContent() {
             เฉพาะ System Owner และคนขับรถที่มีสิทธิ์เข้าถึงเท่านั้นที่จะเห็นหน้านี้
           </p>
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => {
+              if (liff.isInClient()) {
+                liff.closeWindow();
+              } else {
+                router.push('/driver/register');
+              }
+            }}
             className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-sm shadow-lg shadow-slate-200"
           >
-            กลับหน้าหลัก
+            ไปหน้าลงทะเบียน / ปิดหน้าต่าง
           </button>
         </div>
       </div>
