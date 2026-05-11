@@ -125,8 +125,20 @@ function welcomeMessages(): Message[] {
         '4️⃣ เมื่ออัปโหลดรูปครบแล้ว ให้พิมพ์หรือกดคำว่า "ตรวจสอบข้อมูล"',
         'ทางแอดมินจะรีบตรวจสอบ เมื่อผ่านแล้วระบบจะเปิดให้คุณกดเข้าไปดูงานใน "ดูงาน (Load Board)" ได้ทันทีครับ 🚀',
       ].join('\n'),
+      quickReply: {
+        items: [
+          {
+            type: 'action',
+            action: {
+              type: 'postback',
+              label: 'ตรวจสอบข้อมูล',
+              data: 'action=analyze_onboarding',
+              displayText: 'ตรวจสอบข้อมูลที่ส่งมา',
+            },
+          },
+        ],
+      },
     },
-    onboardingMenuMessage(),
   ];
 }
 
