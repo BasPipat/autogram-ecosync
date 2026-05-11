@@ -25,6 +25,8 @@ interface TripDetails {
   cargoName?: string;
   originMapUrl?: string;
   destinationMapUrl?: string;
+  originPin?: { lat: number, lng: number };
+  destinationPin?: { lat: number, lng: number };
 }
 
 interface CurrentPosition {
@@ -382,6 +384,20 @@ export default function DriverJobPage({ params }: { params: Promise<{ id: string
                      rotation: lastPosition.heading || 0,
                      anchor: (typeof window !== 'undefined' && window.google) ? new window.google.maps.Point(12, 12) : { x: 12, y: 12 } as any
                    }}
+                 />
+               )}
+
+               {trip?.originPin && (
+                 <Marker 
+                   position={{ lat: trip.originPin.lat, lng: trip.originPin.lng }}
+                   label={{ text: "Pickup", color: "white", fontSize: "10px", fontWeight: "bold" }}
+                 />
+               )}
+
+               {trip?.destinationPin && (
+                 <Marker 
+                   position={{ lat: trip.destinationPin.lat, lng: trip.destinationPin.lng }}
+                   label={{ text: "Dropoff", color: "white", fontSize: "10px", fontWeight: "bold" }}
                  />
                )}
              </GoogleMap>

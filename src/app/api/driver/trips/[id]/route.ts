@@ -38,7 +38,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       cargoType: trip.cargoType,
       cargoName: trip.cargoName,
       originMapUrl: trip.originMapUrl,
-      destinationMapUrl: trip.destinationMapUrl
+      destinationMapUrl: trip.destinationMapUrl,
+      originPin: trip.originPin,
+      destinationPin: trip.destinationPin
     });
   } catch (error) {
     console.error('Fetch driver job error:', error);
