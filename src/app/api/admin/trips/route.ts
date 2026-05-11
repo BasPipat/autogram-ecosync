@@ -60,12 +60,28 @@ export async function POST(req: NextRequest) {
     }
 
     // Extract coordinates for GeoJSON indexing
-    const originMatch = data.originMapUrl?.match(/q=([\d.-]+),([\d.-]+)/);
-    if (originMatch) {
-      data.originLocation = {
-        type: 'Point',
-        coordinates: [parseFloat(originMatch[2]), parseFloat(originMatch[1])] // [lng, lat] for MongoDB 2dsphere
-      };
+    // Extract coordinates for GeoJSON indexing and Pins
+    const extractCoords = (url: string) => {
+      const match = url?.match(/q=([\d.-]+),([\d.-]+)/) || url?.match(/@([\d.-]+),([\d.-]+)/);
+      if (match) {
+        return {
+          lat: parseFloat(match[1]),
+          lng: parseFloat(match[2])
+        };
+      }
+      return null;
+    };
+
+    const originCoords = extractCoords(data.originMapUrl);
+    if (originCoords) {
+      data.originLocation = { type: 'Point', coordinates: [originCoords.lng, originCoords.lat] };
+      data.originPin = { ...originCoords, googleMapsUrl: data.originMapUrl };
+    }
+
+    const destCoords = extractCoords(data.destinationMapUrl);
+    if (destCoords) {
+      data.destinationLocation = { type: 'Point', coordinates: [destCoords.lng, destCoords.lat] };
+      data.destinationPin = { ...destCoords, googleMapsUrl: data.destinationMapUrl };
     }
 
     const createdTrips = [];
