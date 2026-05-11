@@ -996,7 +996,6 @@ export default function ManageUsersPage() {
                         )}
                         AI วิเคราะห์
                       </button>
-                      </button>
                     </div>
                   </td>
                 </tr>
