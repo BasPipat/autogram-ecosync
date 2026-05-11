@@ -7,7 +7,7 @@ import {
   Navigation, MapPin, Battery, Activity, ShieldCheck, Map as MapIcon,
   LocateFixed, Settings2
 } from 'lucide-react';
-import { useJsApiLoader, GoogleMap, Marker, InfoWindow, Polyline } from '@react-google-maps/api';
+import { useJsApiLoader, GoogleMap, Marker } from '@react-google-maps/api';
 import ConfirmModal from '@/components/ConfirmModal';
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
@@ -201,7 +201,7 @@ export default function Dashboard() {
   };
 
   const startTracking = async (tripId: string) => {
-    if (!navigator.geolocation) {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
       setPermissionError('Browser does not support geolocation');
       return;
     }
@@ -259,7 +259,7 @@ export default function Dashboard() {
   };
 
   const stopTracking = () => {
-    if (watchId !== null) {
+    if (typeof window !== 'undefined' && watchId !== null) {
       navigator.geolocation.clearWatch(watchId);
       setWatchId(null);
     }
@@ -273,8 +273,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     return () => {
-      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-      if (wakeLock) wakeLock.release();
+      if (typeof window !== 'undefined') {
+        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+        if (wakeLock) wakeLock.release();
+      }
     };
   }, [watchId, wakeLock]);
 
@@ -477,7 +479,7 @@ export default function Dashboard() {
 
               <div className="rounded-[28px] overflow-hidden border border-slate-100 shadow-inner h-[400px] bg-slate-50 relative group">
                 {!isLoaded ? (
-                  <div className="absolute inset-0 flex flex-center flex-col gap-4">
+                  <div className="absolute inset-0 flex items-center justify-center flex-col gap-4">
                     <Loader2 className="animate-spin text-emerald-500" />
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Warming Satellite Engines...</p>
                   </div>
@@ -507,7 +509,7 @@ export default function Dashboard() {
                           strokeWeight: 4,
                           strokeColor: "#ffffff",
                           scale: 2.5,
-                          anchor: new google.maps.Point(12, 22),
+                          anchor: (typeof window !== 'undefined' && window.google) ? new window.google.maps.Point(12, 22) : { x: 12, y: 22 } as any,
                         }}
                       />
                     )}
