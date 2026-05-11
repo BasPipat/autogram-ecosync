@@ -8,6 +8,8 @@ import {
   LocateFixed, Settings2
 } from 'lucide-react';
 import { useJsApiLoader, GoogleMap, Marker } from '@react-google-maps/api';
+import { getPusherClient } from '@/lib/pusher';
+import { ChevronDown, ChevronUp, Radio } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
@@ -40,6 +42,17 @@ interface CarbonChartPoint {
   status: string;
 }
 
+interface ActiveUnit {
+  tripId: string;
+  lat: number;
+  lng: number;
+  speed: number;
+  heading: number;
+  lastUpdate: number;
+  driverName: string;
+  licensePlate: string;
+}
+
 interface CurrentPosition {
   lat: number;
   lng: number;
@@ -67,20 +80,16 @@ export default function Dashboard() {
   const [verifyImageUrl, setVerifyImageUrl] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
 
-  // Tracking & Maps states
+  // Monitor states
+  const [isMapExpanded, setIsMapExpanded] = useState(false);
+  const [activeUnits, setActiveUnits] = useState<Record<string, ActiveUnit>>({});
+  const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
+
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
     libraries: ['places'],
   });
-
-  const [isTracking, setIsTracking] = useState(false);
-  const [watchId, setWatchId] = useState<number | null>(null);
-  const [lastPosition, setLastPosition] = useState<CurrentPosition | null>(null);
-  const [lastUpdateTime, setLastUpdateTime] = useState<number>(0);
-  const [wakeLock, setWakeLock] = useState<any>(null);
-  const [permissionError, setPermissionError] = useState<string | null>(null);
-  const [trackingTripId, setTrackingTripId] = useState<string | null>(null);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -166,120 +175,27 @@ export default function Dashboard() {
     }
   };
 
-  // --- GPS Tracking Logic ---
-
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371e3; // metres
-    const φ1 = lat1 * Math.PI/180;
-    const φ2 = lat2 * Math.PI/180;
-    const Δφ = (lat2-lat1) * Math.PI/180;
-    const Δλ = (lon2-lon1) * Math.PI/180;
-    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ/2) * Math.sin(Δλ/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c; 
-  };
-
-  const updateServerLocation = async (pos: CurrentPosition, tripId: string) => {
-    try {
-      await fetch('/api/trips/update-location', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tripId,
-          lat: pos.lat,
-          lng: pos.lng,
-          speed: pos.speed,
-          heading: pos.heading,
-          timestamp: pos.timestamp
-        }),
-      });
-      setLastUpdateTime(Date.now());
-    } catch (error) {
-      console.error('Failed to sync location:', error);
-    }
-  };
-
-  const startTracking = async (tripId: string) => {
-    if (typeof window === 'undefined' || !navigator.geolocation) {
-      setPermissionError('Browser does not support geolocation');
-      return;
-    }
-
-    setTrackingTripId(tripId);
-    setPermissionError(null);
-
-    // Request Wake Lock
-    try {
-      if ('wakeLock' in navigator) {
-        const lock = await (navigator as any).wakeLock.request('screen');
-        setWakeLock(lock);
-      }
-    } catch (err) {
-      console.warn('Wake Lock failed:', err);
-    }
-
-    const id = navigator.geolocation.watchPosition(
-      (position) => {
-        const { latitude, longitude, speed, heading } = position.coords;
-        const newPos: CurrentPosition = {
-          lat: latitude,
-          lng: longitude,
-          speed,
-          heading,
-          timestamp: position.timestamp
-        };
-
-        setLastPosition((prev) => {
-          if (!prev) {
-            updateServerLocation(newPos, tripId);
-            return newPos;
-          }
-
-          const dist = calculateDistance(prev.lat, prev.lng, newPos.lat, newPos.lng);
-          const timeDiff = Date.now() - lastUpdateTime;
-
-          // Throttling: 50 meters OR 1 minute
-          if (dist > 50 || timeDiff > 60000) {
-            updateServerLocation(newPos, tripId);
-            return newPos;
-          }
-          return prev;
-        });
-      },
-      (error) => {
-        console.error('GPS Error:', error);
-        if (error.code === 1) setPermissionError('Please allow location access in your browser settings.');
-      },
-      { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
-    );
-
-    setWatchId(id);
-    setIsTracking(true);
-  };
-
-  const stopTracking = () => {
-    if (typeof window !== 'undefined' && watchId !== null) {
-      navigator.geolocation.clearWatch(watchId);
-      setWatchId(null);
-    }
-    if (wakeLock) {
-      wakeLock.release();
-      setWakeLock(null);
-    }
-    setIsTracking(false);
-    setTrackingTripId(null);
-  };
-
+  // --- Pusher Real-time Logic ---
   useEffect(() => {
+    if (!isMapExpanded) return;
+
+    const pusher = getPusherClient();
+    if (!pusher) return;
+
+    const channel = pusher.subscribe('fleet-tracking');
+    
+    channel.bind('location-updated', (data: ActiveUnit) => {
+      setActiveUnits(prev => ({
+        ...prev,
+        [data.tripId]: data
+      }));
+    });
+
     return () => {
-      if (typeof window !== 'undefined') {
-        if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-        if (wakeLock) wakeLock.release();
-      }
+      channel.unbind_all();
+      pusher.unsubscribe('fleet-tracking');
     };
-  }, [watchId, wakeLock]);
+  }, [isMapExpanded]);
 
   if (loading) {
     return (
@@ -399,150 +315,111 @@ export default function Dashboard() {
 
         {/* --- LIVE GPS TRACKING SECTION (NEW) --- */}
         <div className="px-8 mt-8 animate-fade-in">
-          <div className="bg-white rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 overflow-hidden">
-            <div className="p-8 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="bg-white rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 overflow-hidden transition-all duration-500">
+            <div className="p-8 border-b border-slate-50 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <div className={`w-2 h-2 rounded-full ${isTracking ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></div>
+                  <div className={`w-2 h-2 rounded-full ${Object.keys(activeUnits).length > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></div>
                   <h3 className="text-lg font-black text-slate-800">Fleet Mission Control</h3>
                 </div>
                 <p className="text-[12px] font-medium text-slate-400">Real-time GPS tracking & route synchronization</p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                {isTracking ? (
-                  <button
-                    onClick={stopTracking}
-                    className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-red-50 text-red-600 border border-red-100 font-black text-[13px] hover:bg-red-100 transition-all shadow-sm shadow-red-50"
-                  >
-                    <Activity size={18} className="animate-pulse" />
-                    STOP TRACKING
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-tighter mr-2">Ready to start?</span>
-                    <button
-                      onClick={() => {
-                        const activeTrip = trips.find(t => t.status !== 'Verified');
-                        if (activeTrip) startTracking(activeTrip.id);
-                        else alert('No active trips found to track.');
-                      }}
-                      className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-emerald-600 text-white font-black text-[13px] hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
-                    >
-                      <LocateFixed size={18} />
-                      START MISSION TRACKING
-                    </button>
-                  </div>
-                )}
-              </div>
+              <button
+                onClick={() => setIsMapExpanded(!isMapExpanded)}
+                className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-slate-900 text-white font-black text-[13px] hover:bg-black transition-all shadow-lg shadow-slate-200"
+              >
+                {isMapExpanded ? <ChevronUp size={18} /> : <Radio size={18} className="animate-pulse" />}
+                {isMapExpanded ? 'HIDE LIVE MONITOR' : 'SHOW LIVE MONITOR'}
+              </button>
             </div>
 
-            {/* Permission Error / Recovery UI */}
-            {permissionError && (
-              <div className="mx-8 mt-6 bg-amber-50 border border-amber-200 rounded-2xl p-5 flex flex-col md:flex-row items-center gap-4 text-amber-900 shadow-sm shadow-amber-50 animate-bounce-subtle">
-                <Settings2 size={24} className="shrink-0" />
-                <div className="flex-1">
-                  <p className="font-black text-sm mb-1">Location Access Blocked</p>
-                  <p className="text-[12px] font-medium opacity-80">{permissionError}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => window.location.reload()}
-                    className="px-4 py-2 bg-white border border-amber-200 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-amber-100"
-                  >
-                    Refresh Page
-                  </button>
+            {isMapExpanded && (
+              <div className="animate-fade-in">
+
+                <div className="p-6 relative">
+                  <div className="absolute top-10 left-10 z-10 flex flex-col gap-2 pointer-events-none">
+                    {Object.keys(activeUnits).length > 0 && (
+                      <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl border border-emerald-100 shadow-xl flex items-center gap-3 animate-slide-up">
+                        <div className="p-2 bg-emerald-50 rounded-xl">
+                          <Radio size={16} className="text-emerald-500 animate-pulse" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Live Fleet</p>
+                          <p className="text-sm font-black text-slate-800">
+                            {Object.keys(activeUnits).length} <span className="text-[10px] text-slate-400">Active Units</span>
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-[28px] overflow-hidden border border-slate-100 shadow-inner h-[400px] bg-slate-50 relative group">
+                    {!isLoaded ? (
+                      <div className="absolute inset-0 flex items-center justify-center flex-col gap-4">
+                        <Loader2 className="animate-spin text-emerald-500" />
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Warming Satellite Engines...</p>
+                      </div>
+                    ) : (
+                      <GoogleMap
+                        mapContainerStyle={{ width: '100%', height: '100%' }}
+                        center={selectedUnitId ? { lat: activeUnits[selectedUnitId].lat, lng: activeUnits[selectedUnitId].lng } : { lat: 13.7563, lng: 100.5018 }}
+                        zoom={10}
+                        options={{
+                          disableDefaultUI: true,
+                          zoomControl: true,
+                          styles: [
+                            { elementType: "geometry", stylers: [{ color: "#f8fafc" }] },
+                            { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+                            { featureType: "water", elementType: "geometry", stylers: [{ color: "#e2e8f0" }] },
+                            { featureType: "poi", stylers: [{ visibility: "off" }] }
+                          ]
+                        }}
+                      >
+                        {Object.values(activeUnits).map((unit) => (
+                          <Marker
+                            key={unit.tripId}
+                            position={{ lat: unit.lat, lng: unit.lng }}
+                            onClick={() => setSelectedUnitId(unit.tripId)}
+                            icon={{
+                              path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z",
+                              fillColor: selectedUnitId === unit.tripId ? "#3B82F6" : "#10b981",
+                              fillOpacity: 1,
+                              strokeWeight: 4,
+                              strokeColor: "#ffffff",
+                              scale: 2.5,
+                              anchor: (typeof window !== 'undefined' && window.google) ? new window.google.maps.Point(12, 22) : { x: 12, y: 22 } as any,
+                            }}
+                          />
+                        ))}
+                      </GoogleMap>
+                    )}
+                  </div>
+                  
+                  <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100/50">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Monitor Status</p>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${Object.keys(activeUnits).length > 0 ? 'bg-emerald-50 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-300'}`}></div>
+                        <span className="text-xs font-black text-slate-700 uppercase tracking-tighter">
+                          {Object.keys(activeUnits).length > 0 ? 'Fleet Sync active' : 'Awaiting Signals'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100/50">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Selected Unit</p>
+                      <span className="text-xs font-black text-slate-700 uppercase tracking-tighter">{selectedUnitId || 'None'}</span>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100/50">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Last Update</p>
+                      <span className="text-xs font-black text-slate-700 uppercase tracking-tighter">
+                        {selectedUnitId && activeUnits[selectedUnitId] ? new Date(activeUnits[selectedUnitId].lastUpdate).toLocaleTimeString() : '--:--:--'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
-
-            {/* Map Container */}
-            <div className="p-6 relative">
-              <div className="absolute top-10 left-10 z-10 flex flex-col gap-2">
-                {isTracking && lastPosition && (
-                  <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl border border-emerald-100 shadow-xl flex items-center gap-3 animate-slide-up">
-                    <div className="p-2 bg-emerald-50 rounded-xl">
-                      <Navigation 
-                        size={16} 
-                        className="text-emerald-500" 
-                        style={{ transform: `rotate(${(lastPosition.heading || 0)}deg)` }} 
-                      />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Active Velocity</p>
-                      <p className="text-sm font-black text-slate-800">
-                        {lastPosition.speed ? Math.round(lastPosition.speed * 3.6) : 0} <span className="text-[10px] text-slate-400">km/h</span>
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-[28px] overflow-hidden border border-slate-100 shadow-inner h-[400px] bg-slate-50 relative group">
-                {!isLoaded ? (
-                  <div className="absolute inset-0 flex items-center justify-center flex-col gap-4">
-                    <Loader2 className="animate-spin text-emerald-500" />
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Warming Satellite Engines...</p>
-                  </div>
-                ) : (
-                  <GoogleMap
-                    mapContainerStyle={{ width: '100%', height: '100%' }}
-                    center={lastPosition ? { lat: lastPosition.lat, lng: lastPosition.lng } : { lat: 13.7563, lng: 100.5018 }}
-                    zoom={15}
-                    options={{
-                      disableDefaultUI: true,
-                      zoomControl: true,
-                      styles: [
-                        { elementType: "geometry", stylers: [{ color: "#f8fafc" }] },
-                        { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
-                        { featureType: "water", elementType: "geometry", stylers: [{ color: "#e2e8f0" }] },
-                        { featureType: "poi", stylers: [{ visibility: "off" }] }
-                      ]
-                    }}
-                  >
-                    {lastPosition && (
-                      <Marker
-                        position={{ lat: lastPosition.lat, lng: lastPosition.lng }}
-                        icon={{
-                          path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z",
-                          fillColor: "#10b981",
-                          fillOpacity: 1,
-                          strokeWeight: 4,
-                          strokeColor: "#ffffff",
-                          scale: 2.5,
-                          anchor: (typeof window !== 'undefined' && window.google) ? new window.google.maps.Point(12, 22) : { x: 12, y: 22 } as any,
-                        }}
-                      />
-                    )}
-                  </GoogleMap>
-                )}
-              </div>
-              
-              <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100/50">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status</p>
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${isTracking ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-300'}`}></div>
-                    <span className="text-xs font-black text-slate-700 uppercase tracking-tighter">{isTracking ? 'Satellite Sync active' : 'Offline'}</span>
-                  </div>
-                </div>
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100/50">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Wake Lock</p>
-                  <div className="flex items-center gap-2">
-                    <Battery className={wakeLock ? 'text-emerald-500' : 'text-slate-300'} size={14} />
-                    <span className="text-xs font-black text-slate-700 uppercase tracking-tighter">{wakeLock ? 'Screen Active' : 'Eco Mode'}</span>
-                  </div>
-                </div>
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100/50">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Trip ID</p>
-                  <span className="text-xs font-black text-slate-700 uppercase tracking-tighter">{trackingTripId || 'None'}</span>
-                </div>
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100/50">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Last Update</p>
-                  <span className="text-xs font-black text-slate-700 uppercase tracking-tighter">{lastUpdateTime > 0 ? new Date(lastUpdateTime).toLocaleTimeString() : '--:--:--'}</span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Trip } from '@/models/Trip';
 import { getSessionToken } from '@/lib/access';
+import { pusherServer } from '@/lib/pusher';
 
 export async function POST(req: NextRequest) {
   try {
@@ -51,6 +52,22 @@ export async function POST(req: NextRequest) {
 
     if (!updatedTrip) {
       return NextResponse.json({ error: 'Trip not found' }, { status: 404 });
+    }
+
+    // Trigger Pusher event for real-time monitoring
+    try {
+      await pusherServer.trigger('fleet-tracking', 'location-updated', {
+        tripId,
+        lat,
+        lng,
+        speed: speed ?? 0,
+        heading: heading ?? 0,
+        timestamp: pin.timestamp,
+        driverName: updatedTrip.driverName || 'Unknown',
+        licensePlate: updatedTrip.licensePlate || 'Unknown',
+      });
+    } catch (pError) {
+      console.error('Pusher trigger error:', pError);
     }
 
     return NextResponse.json({ success: true });
