@@ -46,6 +46,7 @@ export interface ILineDriver extends Document {
   reviewNote?: string;
   approvedAt?: Date;
   rejectedAt?: Date;
+  licensePlate?: string;
 
   // CFO Relevant Fields
   vehicleType?: string;
@@ -108,6 +109,7 @@ const LineDriverSchema = new Schema<ILineDriver>({
   reviewNote: { type: String, trim: true },
   approvedAt: { type: Date },
   rejectedAt: { type: Date },
+  licensePlate: { type: String, trim: true },
   
   vehicleType: { type: String },
   engineSize: { type: String },

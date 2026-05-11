@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
       vehicleType,
       engineSize,
       fuelType,
+      licensePlate,
       status: 'under_review', // Set to under review after submission
       gpsConsentStatus: gpsStatus === 'granted' ? 'granted' : 'pending',
       gpsConsentAt: gpsStatus === 'granted' ? new Date() : undefined,
