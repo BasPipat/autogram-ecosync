@@ -18,10 +18,8 @@ export async function GET(req: NextRequest) {
       driver = await LineDriver.findOne({ lineUserId });
     }
 
-    // 2. Query Public Jobs
-    // Use $nearSphere if lat/lng provided, otherwise just find all public
+    // 2. Query Public Jobs (All unassigned trips)
     let query: any = { 
-      isPublic: true, 
       status: { $in: ['Pending', 'No POD'] },
       driverId: { $exists: false } // Only unclaimed jobs
     };
