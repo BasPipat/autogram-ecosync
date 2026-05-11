@@ -29,6 +29,15 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
          query.companyName = token.companyName;
       }
     }
+    
+    // Extract coordinates for GeoJSON indexing
+    const originMatch = data.originMapUrl?.match(/q=([\d.-]+),([\d.-]+)/);
+    if (originMatch) {
+      data.originLocation = {
+        type: 'Point',
+        coordinates: [parseFloat(originMatch[2]), parseFloat(originMatch[1])] // [lng, lat] for MongoDB 2dsphere
+      };
+    }
 
     const updatedTrip = await Trip.findOneAndUpdate(query, { $set: data }, { new: true });
     if (!updatedTrip) {

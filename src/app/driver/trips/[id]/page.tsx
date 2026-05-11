@@ -15,9 +15,16 @@ interface TripDetails {
   origin: string;
   destination: string;
   weight: number;
+  distance?: number;
   driverName: string;
   licensePlate: string;
+  driverId?: string;
   status: string;
+  isPublic?: boolean;
+  cargoType?: string;
+  cargoName?: string;
+  originMapUrl?: string;
+  destinationMapUrl?: string;
 }
 
 interface CurrentPosition {
@@ -41,6 +48,10 @@ export default function DriverJobPage({ params }: { params: Promise<{ id: string
   const [wakeLock, setWakeLock] = useState<any>(null);
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<number>(0);
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const lineUserId = searchParams?.get('lineUserId');
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [missionFinished, setMissionFinished] = useState(false);
 
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
@@ -146,6 +157,48 @@ export default function DriverJobPage({ params }: { params: Promise<{ id: string
     }
   };
 
+  const acceptJob = async () => {
+    setIsAccepting(true);
+    try {
+      const res = await fetch(`/api/driver/trips/${tripId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lineUserId, action: 'accept' }),
+      });
+      if (res.ok) {
+        fetchTripDetails();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to accept job');
+      }
+    } catch (err) {
+      alert('System error');
+    } finally {
+      setIsAccepting(false);
+    }
+  };
+
+  const completeJob = async () => {
+    if (!confirm('ยืนยันว่าส่งสินค้าเรียบร้อยแล้ว?')) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/driver/trips/${tripId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'complete' }),
+      });
+      if (res.ok) {
+        stopTracking();
+        setMissionFinished(true);
+        fetchTripDetails();
+      }
+    } catch (err) {
+      alert('Error finishing mission');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     return () => {
       if (typeof window !== 'undefined') {
@@ -171,6 +224,29 @@ export default function DriverJobPage({ params }: { params: Promise<{ id: string
           <AlertCircle className="mx-auto text-red-500 mb-4" size={48} />
           <h1 className="text-xl font-bold mb-2">Job Error</h1>
           <p className="text-slate-400">{error || 'Job data not found'}</p>
+          <button onClick={() => window.location.href='/driver/jobs'} className="mt-6 px-6 py-3 bg-slate-800 rounded-2xl text-xs font-bold uppercase tracking-widest">Back to Market</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (missionFinished || trip.status === 'Verified') {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6">
+        <div className="bg-slate-900 rounded-[40px] p-10 border border-slate-800 text-center max-w-sm w-full shadow-2xl">
+          <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <ShieldCheck size={40} className="text-emerald-500" />
+          </div>
+          <h1 className="text-2xl font-black mb-2">Mission Success!</h1>
+          <p className="text-slate-500 text-sm font-medium mb-8">
+            ส่งสินค้าเรียบร้อยแล้ว และระบบได้บันทึกข้อมูล CFO เรียบร้อยแล้ว ขอบคุณที่ร่วมเดินทางไปกับเรา
+          </p>
+          <button 
+            onClick={() => window.location.href='/driver/jobs'}
+            className="w-full py-4 bg-emerald-500 text-slate-950 rounded-2xl font-black text-sm shadow-lg shadow-emerald-500/20"
+          >
+            กลับหน้าตลาดงาน
+          </button>
         </div>
       </div>
     );
@@ -231,16 +307,29 @@ export default function DriverJobPage({ params }: { params: Promise<{ id: string
 
               <div className="grid grid-cols-2 gap-3 pt-2">
                  <div className="bg-slate-800/50 p-3 rounded-2xl border border-slate-800">
-                    <span className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Payload</span>
-                    <span className="text-lg font-black text-white">{trip.weight} <span className="text-xs font-bold text-slate-500">TON</span></span>
+                    <span className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Payload / Dist</span>
+                    <span className="text-sm font-black text-white">{trip.weight} <span className="text-[10px] font-bold text-slate-500">T</span> / {trip.distance} <span className="text-[10px] font-bold text-slate-500">KM</span></span>
                  </div>
                  <div className="bg-slate-800/50 p-3 rounded-2xl border border-slate-800">
-                    <span className="text-[9px] font-bold text-slate-500 uppercase block mb-1">CFO Integrity</span>
-                    <span className="text-lg font-black text-emerald-500">100%</span>
+                    <span className="text-[9px] font-bold text-slate-500 uppercase block mb-1">Cargo Type</span>
+                    <span className="text-sm font-black text-emerald-500 uppercase">{trip.cargoType || 'ตู้'}</span>
                  </div>
               </div>
            </div>
         </div>
+
+        {/* Unaccepted Job Warning */}
+        {!trip.driverId && (
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-[24px] p-5 animate-pulse">
+            <div className="flex items-center gap-3">
+              <Info className="text-amber-500" size={20} />
+              <div>
+                <p className="text-sm font-bold text-amber-500">งานนี้ยังไม่มีคนขับรับ</p>
+                <p className="text-[10px] text-amber-500/70">กรุณากดรับงานด้านล่างเพื่อเริ่มการติดตาม</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Telemetry Monitor */}
         {isTracking && (
@@ -309,24 +398,41 @@ export default function DriverJobPage({ params }: { params: Promise<{ id: string
 
       {/* Control Panel */}
       <footer className="p-6 bg-slate-900 border-t border-slate-800 rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.3)]">
-        {!isTracking ? (
+        {!trip.driverId ? (
           <button 
-            onClick={startTracking}
-            className="w-full h-16 bg-emerald-500 hover:bg-emerald-400 rounded-3xl flex items-center justify-center gap-3 shadow-[0_8px_30px_rgba(16,185,129,0.3)] transition-all active:scale-95 group"
+            disabled={isAccepting}
+            onClick={acceptJob}
+            className="w-full h-16 bg-blue-600 hover:bg-blue-500 rounded-3xl flex items-center justify-center gap-3 shadow-[0_8px_30px_rgba(37,99,235,0.3)] transition-all active:scale-95"
           >
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-               <Play className="text-white fill-white" size={20} />
-            </div>
-            <span className="text-lg font-black text-slate-950 uppercase tracking-widest">Start Mission Tracking</span>
+            {isAccepting ? <Loader2 className="animate-spin" /> : <Play className="fill-white" size={20} />}
+            <span className="text-lg font-black text-white uppercase tracking-widest">Accept Job Now</span>
           </button>
+        ) : !isTracking ? (
+          <div className="space-y-4">
+             <button 
+                onClick={startTracking}
+                className="w-full h-16 bg-emerald-500 hover:bg-emerald-400 rounded-3xl flex items-center justify-center gap-3 shadow-[0_8px_30px_rgba(16,185,129,0.3)] transition-all active:scale-95 group"
+              >
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                   <Play className="text-white fill-white" size={20} />
+                </div>
+                <span className="text-lg font-black text-slate-950 uppercase tracking-widest">Start Mission Tracking</span>
+              </button>
+              <button 
+                onClick={() => alert('Camera feature coming soon: Capture POD/Video')}
+                className="w-full h-12 bg-slate-800 rounded-2xl flex items-center justify-center gap-2 text-slate-400 font-bold text-xs uppercase tracking-widest"
+              >
+                <Activity size={14} /> Upload Delivery Video
+              </button>
+          </div>
         ) : (
           <div className="flex gap-4">
              <button 
-              disabled
-              className="flex-1 h-16 bg-slate-800 rounded-3xl flex items-center justify-center gap-3 opacity-50"
+              onClick={completeJob}
+              className="flex-1 h-16 bg-emerald-500 rounded-3xl flex items-center justify-center gap-3 shadow-[0_8px_30px_rgba(16,185,129,0.3)]"
             >
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></div>
-              <span className="text-sm font-black text-emerald-500 uppercase tracking-widest">Tracking Live</span>
+              <ShieldCheck className="text-slate-950" size={20} />
+              <span className="text-sm font-black text-slate-950 uppercase tracking-widest">Finish Mission</span>
             </button>
             <button 
               onClick={stopTracking}

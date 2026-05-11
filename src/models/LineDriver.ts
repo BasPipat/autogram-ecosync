@@ -46,6 +46,14 @@ export interface ILineDriver extends Document {
   reviewNote?: string;
   approvedAt?: Date;
   rejectedAt?: Date;
+
+  // CFO Relevant Fields
+  vehicleType?: string;
+  engineSize?: string;
+  fuelType?: string;
+  cargoTypeCapability?: string[]; // e.g. ['ตู้', 'พื้นเรียบ']
+  
+  geoPoint?: { type: string, coordinates: number[] }; // GeoJSON for $near sorting
   createdAt: Date;
   updatedAt: Date;
 }
@@ -100,7 +108,19 @@ const LineDriverSchema = new Schema<ILineDriver>({
   reviewNote: { type: String, trim: true },
   approvedAt: { type: Date },
   rejectedAt: { type: Date },
+  
+  vehicleType: { type: String },
+  engineSize: { type: String },
+  fuelType: { type: String },
+  cargoTypeCapability: { type: [String], default: [] },
+  
+  geoPoint: {
+    type: { type: String, enum: ['Point'], default: 'Point' },
+    coordinates: { type: [Number], default: [0, 0] }
+  }
 }, { timestamps: true });
+
+LineDriverSchema.index({ geoPoint: '2dsphere' });
 
 LineDriverSchema.index({ status: 1, updatedAt: -1 });
 

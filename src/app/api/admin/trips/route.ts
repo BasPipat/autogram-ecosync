@@ -59,6 +59,15 @@ export async function POST(req: NextRequest) {
       data.companyName = token.companyName;
     }
 
+    // Extract coordinates for GeoJSON indexing
+    const originMatch = data.originMapUrl?.match(/q=([\d.-]+),([\d.-]+)/);
+    if (originMatch) {
+      data.originLocation = {
+        type: 'Point',
+        coordinates: [parseFloat(originMatch[2]), parseFloat(originMatch[1])] // [lng, lat] for MongoDB 2dsphere
+      };
+    }
+
     const createdTrips = [];
 
     for (let i = 0; i < count; i++) {

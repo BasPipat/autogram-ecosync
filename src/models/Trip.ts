@@ -41,11 +41,16 @@ export interface ITrip extends Document {
   destinationContactPhone?: string;
   
   originPin?: IMapPin;
+  originLocation?: { type: string, coordinates: number[] }; // GeoJSON for $near sorting
   destinationPin?: IMapPin;
   vehicleCount?: number; 
   distance?: number; 
   weight?: number;   
   carbon: number;    
+
+  cargoType?: 'ตู้' | 'พื้นเรียบ';
+  cargoName?: string;
+  isPublic?: boolean;
 
   vehicleType?: string;     
   licensePlate?: string;    
@@ -155,7 +160,16 @@ const TripSchema = new Schema({
   companyName: { type: String }, 
   customerName: { type: String },
   podImageUrl: { type: String }, 
+  cargoType: { type: String, enum: ['ตู้', 'พื้นเรียบ'], default: 'ตู้' },
+  cargoName: { type: String },
+  isPublic: { type: Boolean, default: false, index: true },
+  originLocation: {
+    type: { type: String, enum: ['Point'], default: 'Point' },
+    coordinates: { type: [Number], default: [0, 0] }
+  }
 }, { timestamps: true });
+
+TripSchema.index({ originLocation: '2dsphere' });
 
 TripSchema.index({ companyId: 1, createdAt: -1 });
 TripSchema.index({ driverId: 1, createdAt: -1 });

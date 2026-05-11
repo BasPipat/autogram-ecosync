@@ -74,6 +74,10 @@ interface ILineDriver {
   sharedTruckId?: string;
   gpsConsentStatus: string;
   lastLocation?: { latitude: number; longitude: number; address?: string; updatedAt: string } | null;
+  vehicleType?: string;
+  engineSize?: string;
+  fuelType?: string;
+  cargoTypeCapability?: string[];
   documents: ILineDriverDocument[];
 }
 
@@ -836,7 +840,7 @@ export default function ManageUsersPage() {
         <table className="w-full text-left min-w-[1150px]">
           <thead>
             <tr style={{ background: 'var(--bg-base)' }}>
-              {['LINE', 'สถานะ', 'เอกสาร', 'ข้อมูลติดต่อ', 'ผูกรถร่วม', 'ตรวจสอบ'].map(h => (
+              {['LINE', 'สถานะ', 'ข้อมูลรถ/CFO', 'เอกสาร', 'ข้อมูลติดต่อ', 'ผูกรถร่วม', 'ตรวจสอบ'].map(h => (
                 <th key={h} className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider"
                   style={{ color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border)' }}>
                   {h}
@@ -873,6 +877,17 @@ export default function ManageUsersPage() {
                       }}>
                       {driver.status}
                     </span>
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <div className="flex flex-col gap-1 text-[11px]">
+                      <div className="font-bold text-slate-700 flex items-center gap-1">
+                        <Truck size={12} className="text-blue-500" /> {driver.vehicleType || '-'}
+                      </div>
+                      <div className="text-slate-500 flex items-center gap-1">
+                        <Fuel size={12} className="text-emerald-500" /> {driver.fuelType || '-'} ({driver.engineSize || '-'})
+                      </div>
+                    </div>
                   </td>
 
                   <td className="px-4 py-3">

@@ -44,6 +44,9 @@ export default function ManageTripsPage() {
     scheduledDestinationDate: getTomorrowString(), scheduledDestinationTime: '', destinationContactName: '', destinationContactPhone: '',
     distance: '', weight: '', carbon: '', companyName: '', customerName: '',
     vehicleCount: 1,
+    cargoType: 'ตู้' as 'ตู้' | 'พื้นเรียบ',
+    cargoName: '',
+    isPublic: false,
   };
 
   const [form, setForm] = useState(initialFormState);
@@ -378,7 +381,10 @@ export default function ManageTripsPage() {
           vehicleCount: form.vehicleCount,
           distance: Number(form.distance), weight: Number(form.weight), carbon: Number(form.carbon),
           companyName: currentUser?.role === 'owner' ? form.companyName : currentUser?.companyName,
-          customerName: form.customerName
+          customerName: form.customerName,
+          cargoType: form.cargoType,
+          cargoName: form.cargoName,
+          isPublic: form.isPublic
         }),
       });
 
@@ -414,6 +420,9 @@ export default function ManageTripsPage() {
       distance: trip.distance || '', weight: trip.weight || '', carbon: trip.carbon || '', 
       companyName: trip.companyName || '', customerName: trip.customerName || '',
       vehicleCount: trip.vehicleCount || 1,
+      cargoType: trip.cargoType || 'ตู้',
+      cargoName: trip.cargoName || '',
+      isPublic: trip.isPublic || false,
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -520,6 +529,7 @@ export default function ManageTripsPage() {
               <th className="p-4 font-bold">ลูกค้า / บริษัท</th>
               <th className="p-4 font-bold w-1/3">เส้นทาง</th>
               <th className="p-4 font-bold text-center">รถ / ระยะ / น้ำหนัก</th>
+              <th className="p-4 font-bold">ประเภทงาน/สินค้า</th>
               <th className="p-4 font-bold">คาร์บอน</th>
               <th className="p-4 font-bold">ทะเบียนรถ/คนขับ</th>
               <th className="p-4 font-bold">สถานะ</th>
@@ -571,6 +581,13 @@ export default function ManageTripsPage() {
                       <span className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded">{trip.vehicleCount || 1} คัน</span>
                       <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{trip.distance || 0} km</span>
                       <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded">{trip.weight || 0} tons</span>
+                    </div>
+                  </td>
+
+                  <td className="p-4">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">{trip.cargoType || 'ตู้'}</span>
+                      <span className="text-[10px] text-slate-500 italic truncate max-w-[100px]">{trip.cargoName || '-'}</span>
                     </div>
                   </td>
 
@@ -750,6 +767,24 @@ export default function ManageTripsPage() {
                     <div>
                       <label className="block text-[11px] font-bold text-green-600 uppercase mb-1 flex items-center gap-1"><Leaf size={12} /> คาร์บอน (kgCO2e)</label>
                       <input type="number" step="0.01" required placeholder="ผลลัพธ์..." className="w-full p-2.5 bg-green-100 border border-green-300 rounded-lg text-sm outline-none font-bold text-green-800" value={form.carbon} onChange={e => setForm({ ...form, carbon: e.target.value })} />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">ประเภทตู้/งาน</label>
+                      <select className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.cargoType} onChange={e => setForm({ ...form, cargoType: e.target.value as any })}>
+                        <option value="ตู้">งานตู้ (Container)</option>
+                        <option value="พื้นเรียบ">งานพื้นเรียบ (Flatbed)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">ระบุชื่อสินค้า</label>
+                      <input type="text" placeholder="เช่น เม็ดพลาสติก, เหล็กเส้น" className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.cargoName} onChange={e => setForm({ ...form, cargoName: e.target.value })} />
+                    </div>
+                    <div className="flex items-center gap-3 h-[42px]">
+                      <input type="checkbox" id="isPublic" className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" checked={form.isPublic} onChange={e => setForm({ ...form, isPublic: e.target.checked })} />
+                      <label htmlFor="isPublic" className="text-sm font-bold text-emerald-700 cursor-pointer">เปิดงานเป็นสาธารณะ (Shared Truck)</label>
                     </div>
                   </div>
 
