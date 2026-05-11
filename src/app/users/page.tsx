@@ -7,6 +7,7 @@ import { DRIVER_DOCUMENT_LABELS } from '@/lib/line-driver-flow';
 import {
   CalendarDays,
   ExternalLink,
+  Fuel,
   IdCard,
   Loader2,
   Pencil,
@@ -72,6 +73,7 @@ interface ILineDriver {
   bankAccountNumber?: string;
   bankAccountName?: string;
   sharedTruckId?: string;
+  licensePlate?: string;
   gpsConsentStatus: string;
   lastLocation?: { latitude: number; longitude: number; address?: string; updatedAt: string } | null;
   vehicleType?: string;
