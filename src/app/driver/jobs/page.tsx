@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { 
-  Truck, MapPin, Navigation, Package, 
+import {
+  Truck, MapPin, Navigation, Package,
   ChevronRight, Search, Filter, Loader2,
   AlertCircle, Info
 } from 'lucide-react';
@@ -14,10 +14,10 @@ function JobBoardContent() {
   const searchParams = useSearchParams();
   const lineUserId = searchParams.get('lineUserId');
   const router = useRouter();
-  
+
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [location, setLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const fetchJobs = async (lat?: number, lng?: number) => {
@@ -83,7 +83,7 @@ function JobBoardContent() {
           <p className="text-slate-500 text-sm font-medium mb-8">
             เฉพาะ System Owner และคนขับรถที่มีสิทธิ์เข้าถึงเท่านั้นที่จะเห็นหน้านี้
           </p>
-          <button 
+          <button
             onClick={() => router.push('/dashboard')}
             className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-sm shadow-lg shadow-slate-200"
           >
@@ -104,7 +104,7 @@ function JobBoardContent() {
               <Search size={24} className="text-emerald-600" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-slate-800 tracking-tight">ตลาดหางาน</h1>
+              <h1 className="text-xl font-black text-slate-800 tracking-tight">Load Board</h1>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Public Job Marketplace</p>
             </div>
           </div>
@@ -190,7 +190,7 @@ function JobBoardContent() {
                 </div>
               </div>
 
-              <button 
+              <button
                 onClick={() => window.location.href = `/driver/trips/${job._id}?lineUserId=${lineUserId || ''}`}
                 className="w-full py-3.5 bg-slate-900 text-white rounded-2xl font-black text-xs shadow-lg shadow-slate-200 flex items-center justify-center gap-2"
               >
