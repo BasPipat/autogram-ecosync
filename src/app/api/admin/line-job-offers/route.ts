@@ -123,30 +123,6 @@ function jobOfferFlex(offer: IJobOffer): FlexMessage {
         contents: [
           { type: 'text', text: `${offer.origin} → ${offer.destination}`, weight: 'bold', size: 'md', wrap: true },
           
-          // Location Map Section
-          {
-            type: 'box',
-            layout: 'vertical',
-            spacing: 'sm',
-            margin: 'md',
-            contents: [
-              {
-                type: 'button',
-                action: { type: 'uri', label: '📍 แผนที่จุดรับสินค้า (Origin)', uri: originUrl },
-                style: 'secondary',
-                height: 'sm',
-                color: '#3B82F6'
-              },
-              {
-                type: 'button',
-                action: { type: 'uri', label: '🏁 แผนที่จุดส่งสินค้า (Dest)', uri: destUrl },
-                style: 'secondary',
-                height: 'sm',
-                color: '#10B981'
-              }
-            ]
-          },
-
           { type: 'separator', margin: 'lg' },
 
           { type: 'text', text: `ราคาเสนอหลังหัก 1%: ${formatCurrency(offer.driverPrice)}`, color: '#059669', weight: 'bold', size: 'sm', margin: 'md' },
