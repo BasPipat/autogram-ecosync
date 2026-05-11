@@ -5,7 +5,7 @@ import { signOut, useSession } from 'next-auth/react';
 import { useState } from 'react';
 import {
   Menu, X, LayoutDashboard, Truck, Leaf, FileBarChart,
-  Settings, Users, LogOut, ChevronRight, Calculator
+  Settings, Users, LogOut, ChevronRight, Calculator, Search
 } from 'lucide-react';
 
 const NAV_ITEMS = [
