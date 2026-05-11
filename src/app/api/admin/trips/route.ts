@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json([]); 
       }
     }
-    const trips = await Trip.find(query).sort({ createdAt: -1 });
+    const trips = await Trip.find(query).select('-locationHistory').sort({ createdAt: -1 });
     return NextResponse.json(trips);
   } catch {
     return NextResponse.json({ error: 'ดึงข้อมูลไม่สำเร็จ' }, { status: 500 });

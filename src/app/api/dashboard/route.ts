@@ -38,7 +38,7 @@ export async function GET() {
       : 0;
 
     // 2. Fetch Recent Trips
-    const recentTrips = await Trip.find().sort({ createdAt: -1 }).limit(5).lean();
+    const recentTrips = await Trip.find().select('-locationHistory').sort({ createdAt: -1 }).limit(5).lean();
     const tripIds = recentTrips.map(t => t.tripId);
 
     // BUG-01: Fix N+1 Query - Batch fetch related data

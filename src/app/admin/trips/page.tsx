@@ -4,8 +4,8 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import SidebarLayout from '@/components/SidebarLayout';
-import { Truck, MapPin, Leaf, PlusCircle, ExternalLink, MapPinned, X, Route, Package, Edit2, Trash2 } from 'lucide-react';
-import { GoogleMap, LoadScript, Marker, Autocomplete } from '@react-google-maps/api';
+import { Truck, MapPin, Leaf, PlusCircle, ExternalLink, MapPinned, X, Route, Package, Edit2, Trash2, Loader2 } from 'lucide-react';
+import { useJsApiLoader, GoogleMap, Marker, Autocomplete } from '@react-google-maps/api';
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 const mapContainerStyle = { width: '100%', height: '400px', borderRadius: 'var(--radius-lg)' };
@@ -13,6 +13,12 @@ const defaultCenter = { lat: 13.7563, lng: 100.5018 };
 const libraries: ("places")[] = ["places"];
 
 export default function ManageTripsPage() {
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries: libraries as any,
+  });
+
   const [trips, setTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { data: session, status } = useSession();
@@ -140,10 +146,10 @@ export default function ManageTripsPage() {
 
   // 🟢 Effect: คำนวณระยะทางอัตโนมัติ
   useEffect(() => {
-    if (form.originMapUrl && form.destinationMapUrl && (window as any).google) {
+    if (typeof window !== 'undefined' && (window as any).google && form.originMapUrl && form.destinationMapUrl) {
       calculateDistance();
     }
-  }, [form.originMapUrl, form.destinationMapUrl]);
+  }, [form.originMapUrl, form.destinationMapUrl, isLoaded]);
 
   // 🟢 Effect: คำนวณคาร์บอนอัตโนมัติ (รวมจำนวนรถ)
   useEffect(() => {
@@ -214,7 +220,7 @@ export default function ManageTripsPage() {
       service.getDistanceMatrix({
         origins: [origin],
         destinations: [dest],
-        travelMode: (window as any).google.maps.TravelMode.DRIVING,
+        travelMode: typeof window !== 'undefined' && (window as any).google ? (window as any).google.maps.TravelMode.DRIVING : 'DRIVING',
       }, (response: any, status: string) => {
         if (status === 'OK' && response && response.rows[0].elements[0].status === 'OK') {
           const distKm = (response.rows[0].elements[0].distance.value / 1000).toFixed(2);
@@ -237,7 +243,7 @@ export default function ManageTripsPage() {
     setMarkerPos({ lat, lng });
     setSelectedPlaceName('กำลังดึงชื่อสถานที่...');
 
-    if ((window as any).google) {
+    if (typeof window !== 'undefined' && (window as any).google) {
       const geocoder = new (window as any).google.maps.Geocoder();
       geocoder.geocode({ location: { lat, lng } }, (results: any, status: string) => {
         if (status === 'OK' && results && results[0]) {
@@ -618,7 +624,6 @@ export default function ManageTripsPage() {
         {historicalLocations.map(loc => <option key={loc} value={loc} />)}
       </datalist>
 
-      <LoadScript googleMapsApiKey={GOOGLE_MAPS_API_KEY} libraries={libraries} language="th" region="TH">
         <div className="p-6" style={{ background: 'var(--bg-base)' }}>
           <div className="flex items-center gap-3 mb-6 animate-fade-in">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #EFF6FF, #DBEAFE)' }}>
@@ -786,19 +791,28 @@ export default function ManageTripsPage() {
                 <button onClick={() => setMapModal({ isOpen: false, target: '' })} className="p-1 hover:bg-slate-200 rounded-full text-slate-400 transition-colors"><X size={20} /></button>
               </div>
 
-              <div className="p-4 bg-slate-100 flex flex-col gap-3">
-                <Autocomplete onLoad={(auto) => autocompleteRef.current = auto} onPlaceChanged={onPlaceChanged}>
-                  <div className="relative">
-                    <span className="absolute left-3 top-3.5 text-slate-400"><MapPin size={18} /></span>
-                    <input type="text" placeholder="พิมพ์ชื่อสถานที่ที่ต้องการค้นหา..." className="w-full pl-10 p-3 border border-slate-300 rounded-lg shadow-sm text-sm outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-700" />
+              <div className="p-4 bg-slate-100 flex flex-col gap-3 min-h-[460px] justify-center">
+                {!isLoaded ? (
+                  <div className="flex flex-col items-center justify-center py-20 gap-4 text-slate-400">
+                    <Loader2 className="animate-spin text-blue-500" size={32} />
+                    <p className="text-sm font-bold uppercase tracking-widest">Loading Map Engine...</p>
                   </div>
-                </Autocomplete>
+                ) : (
+                  <>
+                    <Autocomplete onLoad={(auto) => autocompleteRef.current = auto} onPlaceChanged={onPlaceChanged}>
+                      <div className="relative">
+                        <span className="absolute left-3 top-3.5 text-slate-400"><MapPin size={18} /></span>
+                        <input type="text" placeholder="พิมพ์ชื่อสถานที่ที่ต้องการค้นหา..." className="w-full pl-10 p-3 border border-slate-300 rounded-lg shadow-sm text-sm outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-700" />
+                      </div>
+                    </Autocomplete>
 
-                <div className="mt-2 border border-slate-200 rounded-lg overflow-hidden shadow-inner">
-                  <GoogleMap mapContainerStyle={mapContainerStyle} center={mapCenter} zoom={markerPos ? 16 : 10} onClick={handleMapClick}>
-                    {markerPos && <Marker position={markerPos} />}
-                  </GoogleMap>
-                </div>
+                    <div className="mt-2 border border-slate-200 rounded-lg overflow-hidden shadow-inner">
+                      <GoogleMap mapContainerStyle={mapContainerStyle} center={mapCenter} zoom={markerPos ? 16 : 10} onClick={handleMapClick}>
+                        {markerPos && <Marker position={markerPos} />}
+                      </GoogleMap>
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="p-4 border-t border-slate-100 flex justify-between items-center bg-white">
@@ -813,7 +827,7 @@ export default function ManageTripsPage() {
             </div>
           </div>
         )}
-      </LoadScript>
+        </div>
     </SidebarLayout>
   );
 }
