@@ -71,6 +71,7 @@ export default function Dashboard() {
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    libraries: ['places'],
   });
 
   const [isTracking, setIsTracking] = useState(false);

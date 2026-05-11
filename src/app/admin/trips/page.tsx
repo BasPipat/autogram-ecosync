@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import SidebarLayout from '@/components/SidebarLayout';
-import { Truck, MapPin, Leaf, PlusCircle, ExternalLink, MapPinned, X, Route, Package, Edit2, Trash2, Loader2 } from 'lucide-react';
+import { Truck, MapPin, Leaf, PlusCircle, ExternalLink, MapPinned, X, Route, Package, Edit2, Trash2 } from 'lucide-react';
 import { useJsApiLoader, GoogleMap, Marker, Autocomplete } from '@react-google-maps/api';
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
@@ -791,28 +791,19 @@ export default function ManageTripsPage() {
                 <button onClick={() => setMapModal({ isOpen: false, target: '' })} className="p-1 hover:bg-slate-200 rounded-full text-slate-400 transition-colors"><X size={20} /></button>
               </div>
 
-              <div className="p-4 bg-slate-100 flex flex-col gap-3 min-h-[460px] justify-center">
-                {!isLoaded ? (
-                  <div className="flex flex-col items-center justify-center py-20 gap-4 text-slate-400">
-                    <Loader2 className="animate-spin text-blue-500" size={32} />
-                    <p className="text-sm font-bold uppercase tracking-widest">Loading Map Engine...</p>
+              <div className="p-4 bg-slate-100 flex flex-col gap-3">
+                <Autocomplete onLoad={(auto) => autocompleteRef.current = auto} onPlaceChanged={onPlaceChanged}>
+                  <div className="relative">
+                    <span className="absolute left-3 top-3.5 text-slate-400"><MapPin size={18} /></span>
+                    <input type="text" placeholder="พิมพ์ชื่อสถานที่ที่ต้องการค้นหา..." className="w-full pl-10 p-3 border border-slate-300 rounded-lg shadow-sm text-sm outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-700" />
                   </div>
-                ) : (
-                  <>
-                    <Autocomplete onLoad={(auto) => autocompleteRef.current = auto} onPlaceChanged={onPlaceChanged}>
-                      <div className="relative">
-                        <span className="absolute left-3 top-3.5 text-slate-400"><MapPin size={18} /></span>
-                        <input type="text" placeholder="พิมพ์ชื่อสถานที่ที่ต้องการค้นหา..." className="w-full pl-10 p-3 border border-slate-300 rounded-lg shadow-sm text-sm outline-none focus:ring-2 focus:ring-blue-500 font-medium text-slate-700" />
-                      </div>
-                    </Autocomplete>
+                </Autocomplete>
 
-                    <div className="mt-2 border border-slate-200 rounded-lg overflow-hidden shadow-inner">
-                      <GoogleMap mapContainerStyle={mapContainerStyle} center={mapCenter} zoom={markerPos ? 16 : 10} onClick={handleMapClick}>
-                        {markerPos && <Marker position={markerPos} />}
-                      </GoogleMap>
-                    </div>
-                  </>
-                )}
+                <div className="mt-2 border border-slate-200 rounded-lg overflow-hidden shadow-inner">
+                  <GoogleMap mapContainerStyle={mapContainerStyle} center={mapCenter} zoom={markerPos ? 16 : 10} onClick={handleMapClick}>
+                    {markerPos && <Marker position={markerPos} />}
+                  </GoogleMap>
+                </div>
               </div>
 
               <div className="p-4 border-t border-slate-100 flex justify-between items-center bg-white">
@@ -827,7 +818,6 @@ export default function ManageTripsPage() {
             </div>
           </div>
         )}
-        </div>
     </SidebarLayout>
   );
 }
