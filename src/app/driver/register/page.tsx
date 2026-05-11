@@ -17,9 +17,9 @@ export default function DriverRegistrationPage() {
   const [form, setForm] = useState({
     displayName: '',
     phone: '',
-    vehicleType: '6-Wheel',
+    vehicleType: 'Trailer 22W',
     fuelType: 'Diesel B7',
-    engineSize: '5,000cc',
+    engineSize: '12,000cc',
     licensePlate: '',
     idCardUrl: '',
     licenseUrl: '',
@@ -38,10 +38,16 @@ export default function DriverRegistrationPage() {
     );
   };
 
-  const handleUpload = (field: string) => {
-    // Placeholder for upload logic
-    const url = prompt('Please paste document image URL (Simulation):');
-    if (url) setForm({ ...form, [field]: url });
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Simulate upload - in a real app, you'd upload to S3/Cloudinary here
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setForm({ ...form, [field]: reader.result as string });
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async () => {
@@ -83,7 +89,13 @@ export default function DriverRegistrationPage() {
             ข้อมูลของคุณถูกส่งเข้าระบบแล้ว เจ้าหน้าที่จะตรวจสอบเอกสารและแจ้งผลการอนุมัติผ่าน LINE โดยเร็วที่สุด
           </p>
           <button 
-            onClick={() => window.close()}
+            onClick={() => {
+              if (typeof window !== 'undefined' && (window as any).liff) {
+                (window as any).liff.closeWindow();
+              } else {
+                window.close();
+              }
+            }}
             className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-sm shadow-lg shadow-slate-200"
           >
             ปิดหน้านี้
@@ -192,6 +204,11 @@ export default function DriverRegistrationPage() {
                 <h2 className="text-sm font-black text-slate-800 uppercase tracking-tighter">ข้อมูลรถและพลังงาน (CFO Metrics)</h2>
               </div>
 
+              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 mb-2">
+                <p className="text-[11px] font-black text-blue-800">📢 ประกาศรับสมัคร</p>
+                <p className="text-[10px] font-bold text-blue-600 mt-0.5">ปัจจุบันระบบเปิดรับเฉพาะกลุ่มรถเทรลเลอร์เท่านั้น</p>
+              </div>
+
               <div>
                 <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">ประเภทรถที่ใช้งาน</label>
                 <select 
@@ -199,10 +216,11 @@ export default function DriverRegistrationPage() {
                   value={form.vehicleType}
                   onChange={(e) => setForm({...form, vehicleType: e.target.value})}
                 >
-                  <option value="Pickup 4W">รถกระบะ 4 ล้อ</option>
-                  <option value="6-Wheel">รถบรรทุก 6 ล้อ</option>
-                  <option value="10-Wheel">รถบรรทุก 10 ล้อ</option>
+                  <option value="Trailer 22W">รถพ่วง/เทรลเลอร์ 22 ล้อ</option>
                   <option value="Trailer 18W">รถพ่วง/เทรลเลอร์ 18 ล้อ</option>
+                  <option value="10-Wheel">รถบรรทุก 10 ล้อ</option>
+                  <option value="6-Wheel">รถบรรทุก 6 ล้อ</option>
+                  <option value="Pickup 4W">รถกระบะ 4 ล้อ</option>
                 </select>
               </div>
 
@@ -224,7 +242,7 @@ export default function DriverRegistrationPage() {
                   <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">ขนาดเครื่องยนต์</label>
                   <input 
                     type="text" 
-                    placeholder="เช่น 5,000cc"
+                    placeholder="เช่น 12,000cc"
                     className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700"
                     value={form.engineSize}
                     onChange={(e) => setForm({...form, engineSize: e.target.value})}
@@ -269,49 +287,67 @@ export default function DriverRegistrationPage() {
                 <h2 className="text-sm font-black text-slate-800 uppercase tracking-tighter">เอกสารยืนยันตัวตน (Verification)</h2>
               </div>
 
+              <p className="text-[11px] font-bold text-slate-400 bg-slate-50 p-4 rounded-2xl border border-slate-100 italic leading-relaxed">
+                💡 สามารถข้ามขั้นตอนนี้และส่งเอกสารผ่านทาง LINE แชทได้หากไม่สะดวกอัปโหลดในขณะนี้
+              </p>
+
               {/* ID Card Upload */}
-              <div 
-                onClick={() => handleUpload('idCardUrl')}
-                className={`relative overflow-hidden rounded-[28px] border-2 border-dashed p-8 text-center transition-all cursor-pointer ${form.idCardUrl ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200 hover:border-blue-400'}`}
-              >
-                {form.idCardUrl ? (
-                  <div className="flex flex-col items-center">
-                    <CheckCircle size={32} className="text-emerald-500 mb-2" />
-                    <p className="text-sm font-black text-emerald-700">อัปโหลดบัตรประชาชนแล้ว</p>
-                    <p className="text-[10px] text-emerald-600 font-bold mt-1">คลิกเพื่ออัปโหลดใหม่</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center">
-                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
-                      <Camera size={24} className="text-slate-400" />
+              <label className="block">
+                <input 
+                  type="file" 
+                  accept="image/*,application/pdf"
+                  className="hidden" 
+                  onChange={(e) => handleFileChange(e, 'idCardUrl')} 
+                />
+                <div 
+                  className={`relative overflow-hidden rounded-[28px] border-2 border-dashed p-8 text-center transition-all cursor-pointer ${form.idCardUrl ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200 hover:border-blue-400'}`}
+                >
+                  {form.idCardUrl ? (
+                    <div className="flex flex-col items-center">
+                      <CheckCircle size={32} className="text-emerald-500 mb-2" />
+                      <p className="text-sm font-black text-emerald-700">เลือกรูปบัตรประชาชนแล้ว</p>
+                      <p className="text-[10px] text-emerald-600 font-bold mt-1">คลิกเพื่อเปลี่ยนไฟล์</p>
                     </div>
-                    <p className="text-sm font-black text-slate-700">ถ่ายรูปบัตรประชาชน</p>
-                    <p className="text-[11px] text-slate-400 font-medium mt-1">ต้องเห็นเลขบัตรและชื่อที่ชัดเจน</p>
-                  </div>
-                )}
-              </div>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
+                        <Camera size={24} className="text-slate-400" />
+                      </div>
+                      <p className="text-sm font-black text-slate-700">อัปโหลดบัตรประชาชน</p>
+                      <p className="text-[11px] text-slate-400 font-medium mt-1">รูปภาพ หรือ PDF (ถ้ามี)</p>
+                    </div>
+                  )}
+                </div>
+              </label>
 
               {/* Driving License Upload */}
-              <div 
-                onClick={() => handleUpload('licenseUrl')}
-                className={`relative overflow-hidden rounded-[28px] border-2 border-dashed p-8 text-center transition-all cursor-pointer ${form.licenseUrl ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200 hover:border-blue-400'}`}
-              >
-                {form.licenseUrl ? (
-                  <div className="flex flex-col items-center">
-                    <CheckCircle size={32} className="text-emerald-500 mb-2" />
-                    <p className="text-sm font-black text-emerald-700">อัปโหลดใบขับขี่แล้ว</p>
-                    <p className="text-[10px] text-emerald-600 font-bold mt-1">คลิกเพื่ออัปโหลดใหม่</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center">
-                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
-                      <ShieldCheck size={24} className="text-slate-400" />
+              <label className="block">
+                <input 
+                  type="file" 
+                  accept="image/*,application/pdf"
+                  className="hidden" 
+                  onChange={(e) => handleFileChange(e, 'licenseUrl')} 
+                />
+                <div 
+                  className={`relative overflow-hidden rounded-[28px] border-2 border-dashed p-8 text-center transition-all cursor-pointer ${form.licenseUrl ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200 hover:border-blue-400'}`}
+                >
+                  {form.licenseUrl ? (
+                    <div className="flex flex-col items-center">
+                      <CheckCircle size={32} className="text-emerald-500 mb-2" />
+                      <p className="text-sm font-black text-emerald-700">เลือกรูปใบขับขี่แล้ว</p>
+                      <p className="text-[10px] text-emerald-600 font-bold mt-1">คลิกเพื่อเปลี่ยนไฟล์</p>
                     </div>
-                    <p className="text-sm font-black text-slate-700">ถ่ายรูปใบขับขี่รถบรรทุก</p>
-                    <p className="text-[11px] text-slate-400 font-medium mt-1">ตรวจสอบวันหมดอายุให้เรียบร้อย</p>
-                  </div>
-                )}
-              </div>
+                  ) : (
+                    <div className="flex flex-col items-center">
+                      <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
+                        <ShieldCheck size={24} className="text-slate-400" />
+                      </div>
+                      <p className="text-sm font-black text-slate-700">อัปโหลดใบขับขี่รถบรรทุก</p>
+                      <p className="text-[11px] text-slate-400 font-medium mt-1">รูปภาพ หรือ PDF (ถ้ามี)</p>
+                    </div>
+                  )}
+                </div>
+              </label>
 
               {error && (
                 <div className="bg-red-50 border border-red-100 rounded-2xl p-4 flex items-center gap-3 text-red-700 animate-bounce-subtle">
@@ -328,7 +364,7 @@ export default function DriverRegistrationPage() {
                   ย้อนกลับ
                 </button>
                 <button 
-                  disabled={loading || !form.idCardUrl || !form.licenseUrl}
+                  disabled={loading}
                   onClick={handleSubmit}
                   className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-black text-sm shadow-lg shadow-slate-200 flex items-center justify-center gap-2 transition-all active:scale-95"
                 >
