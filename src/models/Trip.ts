@@ -5,16 +5,20 @@ interface IMapPin {
   lng: number;
   address?: string;
   googleMapsUrl?: string;
+  speed?: number; // Added for CFO calculation
+  heading?: number; // Added for visual direction
+  timestamp?: number; // Client-side timestamp
 }
 
 interface IGpsSession {
-  source: 'line_oa';
+  source: 'line_oa' | 'web_platform';
   status: 'inactive' | 'active' | 'stopped';
   isTracking: boolean;
   startedAt?: Date;
   stoppedAt?: Date;
   lastPingAt?: Date;
-  currentPin?: IMapPin; // Added for live tracking
+  currentPin?: IMapPin; 
+  locationHistory?: IMapPin[]; // Breadcrumbs for actual distance calculation
 }
 
 export interface ITrip extends Document {
@@ -77,16 +81,20 @@ const MapPinSchema = new Schema<IMapPin>({
   lng: { type: Number, required: true },
   address: { type: String },
   googleMapsUrl: { type: String },
+  speed: { type: Number },
+  heading: { type: Number },
+  timestamp: { type: Number },
 }, { _id: false });
 
 const GpsSessionSchema = new Schema<IGpsSession>({
-  source: { type: String, enum: ['line_oa'], default: 'line_oa' },
+  source: { type: String, enum: ['line_oa', 'web_platform'], default: 'line_oa' },
   status: { type: String, enum: ['inactive', 'active', 'stopped'], default: 'inactive' },
   isTracking: { type: Boolean, default: false },
   startedAt: { type: Date },
   stoppedAt: { type: Date },
   lastPingAt: { type: Date },
-  currentPin: { type: MapPinSchema }, // Added for live tracking
+  currentPin: { type: MapPinSchema },
+  locationHistory: { type: [MapPinSchema], default: [] },
 }, { _id: false });
 
 const TripSchema = new Schema({
