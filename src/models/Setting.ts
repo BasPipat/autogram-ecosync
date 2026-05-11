@@ -34,6 +34,8 @@ export interface ISetting extends Document {
   effectiveFrom: Date;
   effectiveTo?: Date;
   isActive: boolean;
+  lineRichMenuIdDefault?: string;
+  lineRichMenuIdDriver?: string;
 }
 
 const VehicleTypeSchema = new Schema<IFuelEfficiencyByVehicleType>({
@@ -73,6 +75,8 @@ const SettingSchema = new Schema<ISetting>({
   effectiveFrom: { type: Date, default: Date.now },
   effectiveTo: { type: Date },
   isActive: { type: Boolean, default: true },
+  lineRichMenuIdDefault: { type: String, trim: true },
+  lineRichMenuIdDriver: { type: String, trim: true },
 }, { timestamps: true });
 
 SettingSchema.index({ key: 1, scope: 1, companyId: 1, effectiveFrom: -1 });

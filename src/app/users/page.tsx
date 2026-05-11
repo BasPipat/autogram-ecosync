@@ -21,6 +21,7 @@ import {
   UserPlus,
   WalletCards,
   X,
+  RefreshCw
 } from 'lucide-react';
 
 interface IUser {
@@ -373,6 +374,24 @@ export default function ManageUsersPage() {
       }
     } catch {
       alert('เกิดข้อผิดพลาด');
+    }
+  };
+
+  const handleSyncLineMenu = async (lineUserId: string) => {
+    try {
+      const res = await fetch('/api/admin/setup-rich-menu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'link', lineUserId }),
+      });
+      if (res.ok) {
+        alert('เชื่อมต่อ Rich Menu สำเร็จ');
+      } else {
+        const d = await res.json();
+        alert(d.error || 'ซิงค์ไม่สำเร็จ');
+      }
+    } catch {
+      alert('ระบบขัดข้อง');
     }
   };
 
@@ -981,21 +1000,20 @@ export default function ManageUsersPage() {
                       >
                         ไม่ผ่าน
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => handleAiAnalyze(driver.lineUserId)}
-                        disabled={!!analyzingLineUserId}
-                        className="py-1.5 px-3 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
-                        style={{ background: '#F0FDFA', color: '#0D9488', border: '1px solid #CCFBF1' }}
-                        title="ใช้ AI วิเคราะห์เอกสารและกรอกข้อมูลอัตโนมัติ"
-                      >
-                        {analyzingLineUserId === driver.lineUserId ? (
-                          <Loader2 className="animate-spin" size={12} />
-                        ) : (
-                          <Sparkles size={12} />
-                        )}
-                        AI วิเคราะห์
+                         AI วิเคราะห์
                       </button>
+                      {driver.status === 'approved' && (
+                        <button
+                          type="button"
+                          onClick={() => handleSyncLineMenu(driver.lineUserId)}
+                          className="py-1.5 px-3 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all"
+                          style={{ background: '#F0F9FF', color: '#0284C7', border: '1px solid #E0F2FE' }}
+                          title="อัปเดตเมนู LINE ให้เป็นแบบคนขับรถ"
+                        >
+                          <RefreshCw size={12} />
+                          Sync LINE Menu
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
