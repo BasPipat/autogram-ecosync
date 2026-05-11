@@ -6,11 +6,14 @@ import {
   ChevronRight, Search, Filter, Loader2,
   AlertCircle, Info
 } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 function JobBoardContent() {
+  const { data: session, status } = useSession();
   const searchParams = useSearchParams();
   const lineUserId = searchParams.get('lineUserId');
+  const router = useRouter();
   
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +58,41 @@ function JobBoardContent() {
     } else {
       fetchJobs();
     }
-  }, []);
+  }, [lineUserId]);
+
+  // Authorization Check
+  const isSystemOwner = session?.user?.role === 'system_owner';
+  const isAuthorized = isSystemOwner || !!lineUserId;
+
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 className="animate-spin text-emerald-500" size={32} />
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="bg-white rounded-[32px] p-10 shadow-xl max-w-md w-full text-center">
+          <div className="w-20 h-20 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-6 text-rose-500">
+            <AlertCircle size={40} />
+          </div>
+          <h1 className="text-xl font-black text-slate-800 mb-2">Access Denied</h1>
+          <p className="text-slate-500 text-sm font-medium mb-8">
+            เฉพาะ System Owner และคนขับรถที่มีสิทธิ์เข้าถึงเท่านั้นที่จะเห็นหน้านี้
+          </p>
+          <button 
+            onClick={() => router.push('/dashboard')}
+            className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-sm shadow-lg shadow-slate-200"
+          >
+            กลับหน้าหลัก
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 pb-10">
