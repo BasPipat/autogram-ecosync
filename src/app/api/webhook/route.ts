@@ -843,6 +843,9 @@ async function handleEvent(event: WebhookEvent) {
       const config = await Setting.findOne({ key: 'line_config', scope: 'global' });
       if (driver.status === 'approved') {
         if (config?.lineRichMenuIdDriver) {
+          await getLineClient().unlinkRichMenuFromUser(lineUserId).catch((unlinkError: any) => {
+            console.warn('Failed to unlink existing Rich Menu on follow:', unlinkError);
+          });
           await getLineClient().linkRichMenuToUser(lineUserId, config.lineRichMenuIdDriver);
         }
       } else {
