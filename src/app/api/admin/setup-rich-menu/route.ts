@@ -24,52 +24,26 @@ export async function GET() {
       await lineClient.deleteRichMenu(menu.richMenuId);
     }
 
-    // 1. Create PUBLIC RICH MENU (Not used as default anymore, but kept for manual linking if needed)
-    const publicMenu: any = {
-      size: { width: 2500, height: 1686 },
-      selected: false,
-      name: 'Public Neon Menu V7',
-      chatBarText: 'ลงทะเบียน',
-      areas: [
-        { bounds: { x: 0, y: 0, width: 2500, height: 1686 }, action: { type: 'uri', uri: `https://liff.line.me/${liffId}/driver/register` } }
-      ]
-    };
-
-    // 2. Create DRIVER RICH MENU
+    // 1. Create DRIVER RICH MENU (This is the only one we need)
     const driverMenu: any = {
       size: { width: 2500, height: 1686 },
       selected: true,
       name: 'Driver Neon Menu V7 Final',
       chatBarText: 'เมนูคนขับรถ',
       areas: [
-        // Top Left: My Mission
         { bounds: { x: 0, y: 0, width: 1250, height: 843 }, action: { type: 'uri', uri: `https://liff.line.me/${liffId}/driver/my-mission` } },
-        // Top Right: Load Board
         { bounds: { x: 1250, y: 0, width: 1250, height: 843 }, action: { type: 'uri', uri: `https://liff.line.me/${liffId}/driver/jobs` } },
-        // Bottom Left: Profile
         { bounds: { x: 0, y: 843, width: 1250, height: 843 }, action: { type: 'uri', uri: `https://liff.line.me/${liffId}/driver/profile` } },
-        // Bottom Right: Support
         { bounds: { x: 1250, y: 843, width: 1250, height: 843 }, action: { type: 'message', text: 'ติดต่อเจ้าหน้าที่' } }
       ]
     };
 
-    const publicId = await lineClient.createRichMenu(publicMenu);
     const driverId = await lineClient.createRichMenu(driverMenu);
 
-    // Upload Images using Raw Fetch and fs.readFileSync
-    const publicImgBuffer = fs.readFileSync(path.join(process.cwd(), 'public/assets/line/rich-menu-unverified-v7.jpg'));
+    // 2. Upload Driver Image (2500x1686)
     const driverImgBuffer = fs.readFileSync(path.join(process.cwd(), 'public/assets/line/rich-menu-driver-v7.jpg'));
 
-    await fetch(`https://api-data.line.me/v2/bot/richmenu/${publicId}/content`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${lineConfig.channelAccessToken}`,
-        'Content-Type': 'image/jpeg'
-      },
-      body: publicImgBuffer
-    });
-
-    await fetch(`https://api-data.line.me/v2/bot/richmenu/${driverId}/content`, {
+    const uploadRes = await fetch(`https://api-data.line.me/v2/bot/richmenu/${driverId}/content`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${lineConfig.channelAccessToken}`,
@@ -78,21 +52,24 @@ export async function GET() {
       body: driverImgBuffer
     });
 
-    // DO NOT SET DEFAULT RICH MENU - Per user request, new users should have no menu
-    // await lineClient.setDefaultRichMenu(publicId);
+    if (!uploadRes.ok) {
+      const errorText = await uploadRes.text();
+      throw new Error(`Driver Image Upload Failed: ${errorText}`);
+    }
 
+    // 3. Update Database with the new ID
     await Setting.findOneAndUpdate(
       { key: 'line_config', scope: 'global' },
       { 
-        lineRichMenuIdDefault: publicId,
+        lineRichMenuIdDefault: '', // No default menu for new users
         lineRichMenuIdDriver: driverId,
-        standardReference: 'LINE CONFIG V7 NEON LIFF FINAL NO-DEFAULT',
+        standardReference: 'LINE CONFIG V7 NEON DRIVER-ONLY',
         isActive: true
       },
       { upsert: true }
     );
 
-    return NextResponse.json({ success: true, publicId, driverId, info: 'Cleanup and Setup completed. Default menu removed.' });
+    return NextResponse.json({ success: true, driverId, info: 'Cleanup and Setup completed. Only Driver menu created.' });
   } catch (err: any) {
     console.error('Setup Error:', err);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
