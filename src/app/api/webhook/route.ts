@@ -227,44 +227,176 @@ function documentReceivedMessage(label: string, missingLabels: string[], readyFo
 
 function jobOfferBubble(offer: IJobOffer) {
   return {
-    type: 'bubble' as const,
+    type: 'bubble',
+    size: 'mega',
     header: {
-      type: 'box' as const,
-      layout: 'vertical' as const,
-      backgroundColor: '#10B981',
+      type: 'box',
+      layout: 'vertical',
       contents: [
-        { type: 'text' as const, text: 'งานพร้อมรับ', color: '#ffffff', weight: 'bold' as const, size: 'md' as const },
-        { type: 'text' as const, text: offer.tripCode, color: '#D1FAE5', size: 'xs' as const, margin: 'sm' as const },
+        { type: 'text', text: '🚚 มีงานใหม่เสนอให้พี่ครับ', weight: 'bold', color: '#ffffff', size: 'sm' },
+        { type: 'text', text: offer.tripCode, weight: 'bold', color: '#ffffff', size: 'xl', margin: 'md' }
       ],
+      backgroundColor: '#0ea5e9'
     },
     body: {
-      type: 'box' as const,
-      layout: 'vertical' as const,
-      spacing: 'md' as const,
-      contents: [
-        { type: 'text' as const, text: `${offer.origin} → ${offer.destination}`, wrap: true, weight: 'bold' as const, size: 'md' as const },
-        { type: 'text' as const, text: `ราคาเสนอ: ${currency(offer.driverPrice)}`, color: '#059669', weight: 'bold' as const, size: 'sm' as const },
-        { type: 'text' as const, text: 'ราคาแสดงหลังหัก 1%', color: '#94A3B8', size: 'xs' as const },
-      ],
-    },
-    footer: {
-      type: 'box' as const,
-      layout: 'vertical' as const,
+      type: 'box',
+      layout: 'vertical',
       contents: [
         {
-          type: 'button' as const,
-          style: 'primary' as const,
-          color: '#10B981',
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            { type: 'text', text: 'ต้นทาง', size: 'xs', color: '#94a3b8', flex: 2 },
+            { type: 'text', text: offer.origin, size: 'sm', color: '#334155', flex: 8, wrap: true }
+          ]
+        },
+        {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            { type: 'text', text: 'ปลายทาง', size: 'xs', color: '#94a3b8', flex: 2 },
+            { type: 'text', text: offer.destination, size: 'sm', color: '#334155', flex: 8, wrap: true }
+          ],
+          margin: 'md'
+        },
+        {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            { type: 'text', text: 'ค่าเที่ยว', size: 'xs', color: '#94a3b8', flex: 2 },
+            { type: 'text', text: currency(offer.driverPrice), size: 'sm', color: '#0ea5e9', weight: 'bold', flex: 8 }
+          ],
+          margin: 'md'
+        }
+      ]
+    },
+    footer: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'button',
           action: {
-            type: 'postback' as const,
+            type: 'postback',
             label: 'รับงานนี้',
             data: `action=accept_job&offerId=${offer._id.toString()}`,
             displayText: `รับงาน ${offer.tripCode}`,
           },
+          style: 'primary',
+          color: '#0ea5e9',
         },
       ],
     },
   };
+}
+
+function jobBoardFlex(offers: IJobOffer[]): FlexMessage {
+  return {
+    type: 'flex',
+    altText: 'มีงานพร้อมรับ',
+    contents: {
+      type: 'carousel',
+      contents: offers.slice(0, 10).map(jobOfferBubble),
+    },
+  };
+}
+
+function jobDetailMessage(offer: IJobOffer, truck: ISharedTruck): Message[] {
+  return [
+    {
+      type: 'text',
+      text: [
+        'รับงานสำเร็จครับ',
+        `รหัสงาน: ${offer.tripCode}`,
+        `เส้นทาง: ${offer.origin} → ${offer.destination}`,
+        `ราคา: ${currency(offer.driverPrice)}`,
+        `ทะเบียนหัว: ${truck.headPlateNumber}`,
+        `ทะเบียนหาง: ${truck.tailPlateNumber || '-'}`,
+        '',
+        offer.originMapUrl ? `📌 พิกัดต้นทาง: ${offer.originMapUrl}` : '',
+        offer.destinationMapUrl ? `📌 พิกัดปลายทาง: ${offer.destinationMapUrl}` : '',
+        '',
+        'เมื่อเริ่มเดินทาง พิมพ์ "เริ่มงาน"',
+        'เมื่อส่งของเสร็จ พิมพ์ "ส่งของเสร็จ"',
+        'แล้วถ่ายรูปส่งงานครับ',
+      ].filter(Boolean).join('\n'),
+    },
+  ];
+}
+
+async function acceptJob(lineUserId: string, offerId: string, replyToken: string) {
+  if (!mongoose.Types.ObjectId.isValid(offerId)) {
+    await getLineClient().replyMessage(replyToken, { type: 'text', text: 'ไม่พบข้อมูลงานนี้ครับ' });
+    return;
+  }
+
+  const driver = await getOrCreateDriver(lineUserId);
+  if (driver.status !== 'approved') {
+    await getLineClient().replyMessage(replyToken, { type: 'text', text: 'เอกสารยังไม่ผ่านการตรวจสอบ จึงยังรับงานไม่ได้ครับ' });
+    return;
+  }
+
+  // Check if driver already has an active trip
+  if (driver.activeTripId) {
+    await getLineClient().replyMessage(replyToken, { 
+      type: 'text', 
+      text: 'พี่มีงานที่กำลังดำเนินการอยู่ครับ กรุณาปิดงานเดิมให้เรียบร้อยก่อนจึงจะรับงานใหม่ได้ครับ' 
+    });
+    return;
+  }
+
+  const truck = driver.sharedTruckId
+    ? await SharedTruck.findById(driver.sharedTruckId)
+    : await SharedTruck.findOne({ lineUserId });
+
+  if (!truck) {
+    await getLineClient().replyMessage(replyToken, { type: 'text', text: 'ยังไม่พบข้อมูลรถร่วมที่ผูกกับ LINE นี้ กรุณาให้ทีมงานตรวจสอบก่อนรับงานครับ' });
+    return;
+  }
+
+  const now = new Date();
+  const offer = await JobOffer.findOneAndUpdate(
+    {
+      _id: offerId,
+      status: 'open',
+      $or: [{ expiresAt: { $exists: false } }, { expiresAt: { $gte: now } }],
+    },
+    {
+      status: 'accepted',
+      acceptedAt: now,
+      acceptedByLineUserId: lineUserId,
+      acceptedSharedTruckId: truck._id,
+      acceptedDriverName: `${truck.driverFirstName} ${truck.driverLastName}`,
+      acceptedHeadPlateNumber: truck.headPlateNumber,
+      acceptedTailPlateNumber: truck.tailPlateNumber,
+    },
+    { new: true }
+  );
+
+  if (!offer) {
+    await getLineClient().replyMessage(replyToken, { type: 'text', text: 'งานนี้ถูกคนอื่นรับไปแล้ว หรือหมดเวลารับงานแล้วครับ' });
+    return;
+  }
+
+  await Trip.findByIdAndUpdate(offer.tripId, {
+    sharedTruckId: truck._id,
+    lineUserId,
+    licensePlate: truck.headPlateNumber,
+    tailLicensePlate: truck.tailPlateNumber,
+    driverName: `${truck.driverFirstName} ${truck.driverLastName}`,
+    acceptedFreightPrice: offer.driverPrice,
+    lineAssignmentStatus: 'accepted',
+    lineJobOfferId: offer._id,
+    lineAcceptedAt: now,
+  });
+
+  await LineDriver.findOneAndUpdate({ lineUserId }, {
+    activeTripId: offer.tripId,
+    activeJobOfferId: offer._id,
+    pendingDocumentType: undefined,
+  });
+
+  await getLineClient().replyMessage(replyToken, jobDetailMessage(offer, truck));
 }
 
 function tripBoardFlex(trips: any[]): any {
