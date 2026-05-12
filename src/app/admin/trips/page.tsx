@@ -460,6 +460,20 @@ export default function ManageTripsPage() {
     }
   };
 
+  const handleDeleteTrip = async (id: string) => {
+    if (!confirm('คุณต้องการลบงานนี้ใช่หรือไม่?')) return;
+    try {
+      const res = await fetch(`/api/admin/trips/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        alert('ลบงานเรียบร้อยแล้ว');
+        fetchInitialData();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'เกิดข้อผิดพลาดในการลบงาน');
+      }
+    } catch { alert('ระบบขัดข้อง'); }
+  };
+
   const [fuelPrice, setFuelPrice] = useState<number>(39.94);
 
   const fetchFuelPrice = async () => {
