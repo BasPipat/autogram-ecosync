@@ -6,6 +6,7 @@ import {
   UploadCloud, CheckCircle, Loader2, MapPin, 
   AlertCircle, ChevronRight, Camera
 } from 'lucide-react';
+import liff from '@line/liff';
 
 export default function DriverRegistrationPage() {
   const [step, setStep] = useState(1);
@@ -13,6 +14,8 @@ export default function DriverRegistrationPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [gpsStatus, setGpsStatus] = useState<'pending' | 'granted' | 'denied'>('pending');
+  const [lineUserId, setLineUserId] = useState<string | null>(null);
+  const [liffLoading, setLiffLoading] = useState(true);
 
   const [form, setForm] = useState({
     displayName: '',
@@ -24,6 +27,42 @@ export default function DriverRegistrationPage() {
     idCardUrl: '',
     licenseUrl: '',
   });
+
+  useEffect(() => {
+    const initLiff = async () => {
+      try {
+        const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
+        if (!liffId) {
+          setError('LIFF ID is not configured');
+          setLiffLoading(false);
+          return;
+        }
+
+        await liff.init({ liffId });
+        
+        if (!liff.isLoggedIn()) {
+          liff.login();
+          return;
+        }
+
+        const profile = await liff.getProfile();
+        setLineUserId(profile.userId);
+        
+        // Also check if user ID is in URL (for testing)
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlId = urlParams.get('lineUserId');
+        if (urlId) setLineUserId(urlId);
+
+      } catch (err: any) {
+        console.error('LIFF Init Error:', err);
+        setError('Failed to initialize LINE connection. Please use LINE app.');
+      } finally {
+        setLiffLoading(false);
+      }
+    };
+
+    initLiff();
+  }, []);
 
   // Request GPS Permission early as per requirement
   const requestGps = () => {
@@ -51,11 +90,16 @@ export default function DriverRegistrationPage() {
   };
 
   const handleSubmit = async () => {
+    if (!lineUserId) {
+      setError('ไม่พบ LINE User ID กรุณาเข้าใช้งานผ่าน LINE OA เท่านั้น');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      // API call to register driver
-      const res = await fetch('/api/driver/register', {
+      // API call to register driver - passing lineUserId in query string as expected by API
+      const res = await fetch(`/api/driver/register?lineUserId=${lineUserId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -101,6 +145,15 @@ export default function DriverRegistrationPage() {
             ปิดหน้านี้
           </button>
         </div>
+      </div>
+    );
+  }
+
+  if (liffLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6">
+        <Loader2 size={40} className="text-blue-600 animate-spin mb-4" />
+        <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">กำลังเชื่อมต่อ LINE...</p>
       </div>
     );
   }

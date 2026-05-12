@@ -10,11 +10,9 @@ export async function POST(req: NextRequest) {
       licensePlate, idCardUrl, licenseUrl, gpsStatus 
     } = data;
 
-    // In a real LIFF scenario, we would get lineUserId from the headers or token
-    // For now, we'll try to find by phone or create a new one if testing via browser
-    // Ideally, the URL would contain ?lineUserId=xxx
+    // Extract lineUserId from query or body
     const { searchParams } = new URL(req.url);
-    const lineUserId = searchParams.get('lineUserId');
+    const lineUserId = searchParams.get('lineUserId') || data.lineUserId;
 
     await connectToDatabase();
 
