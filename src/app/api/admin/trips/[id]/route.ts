@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { Trip } from '@/models/Trip';
 import mongoose from 'mongoose';
 import { getSessionToken, isInternalRole } from '@/lib/access';
+import { LineDriver } from '@/models/LineDriver';
 
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -52,6 +53,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (destCoords) {
       data.destinationLocation = { type: 'Point', coordinates: [destCoords.lng, destCoords.lat] };
       data.destinationPin = { ...destCoords, googleMapsUrl: data.destinationMapUrl };
+    }
+
+    // If unassigning a driver, clear their activeTripId in LineDriver
+    if (data.lineUserId === null) {
+      const oldTrip = await Trip.findOne(query).select('lineUserId');
+      if (oldTrip?.lineUserId) {
+        await LineDriver.findOneAndUpdate(
+          { lineUserId: oldTrip.lineUserId },
+          { $set: { activeTripId: undefined } }
+        );
+      }
     }
 
     const updatedTrip = await Trip.findOneAndUpdate(query, { $set: data }, { new: true });

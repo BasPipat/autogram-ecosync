@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import SidebarLayout from '@/components/SidebarLayout';
-import { Truck, MapPin, Leaf, PlusCircle, ExternalLink, MapPinned, X, Route, Package, Edit2, Trash2 } from 'lucide-react';
+import { Truck, MapPin, Leaf, PlusCircle, ExternalLink, MapPinned, X, Route, Package, Edit2, Trash2, UserMinus } from 'lucide-react';
 import { useJsApiLoader, GoogleMap, Marker, Autocomplete } from '@react-google-maps/api';
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
@@ -427,18 +427,37 @@ export default function ManageTripsPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDeleteTrip = async (id: string) => {
-    if (!confirm('คุณต้องการลบงานนี้ใช่หรือไม่?')) return;
+  const handleCancelAssignment = async (trip: any) => {
+    if (!confirm(`คุณต้องการยกเลิกการจัดรถและคนขับสำหรับงาน ${trip.tripId} ใช่หรือไม่?\n(งานจะกลับไปอยู่ในสถานะ "รอจัดสรร")`)) return;
+    
     try {
-      const res = await fetch(`/api/admin/trips/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/trips/${trip._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          licensePlate: '',
+          driverName: '',
+          sharedTruckId: null,
+          lineUserId: null,
+          lineAssignmentStatus: 'none',
+          acceptedFreightPrice: 0,
+          lineJobOfferId: null,
+          lineAcceptedAt: null,
+          driverId: null,
+          truckMasterId: null
+        }),
+      });
+
       if (res.ok) {
-        alert('ลบงานเรียบร้อยแล้ว');
-        setTrips(prev => prev.filter(t => t._id !== id));
+        alert('ยกเลิกการจัดรถเรียบร้อยแล้ว');
+        fetchInitialData();
       } else {
         const data = await res.json();
-        alert(data.error || 'เกิดข้อผิดพลาดในการลบงาน');
+        alert(data.error || 'เกิดข้อผิดพลาด');
       }
-    } catch { alert('ระบบขัดข้อง'); }
+    } catch {
+      alert('ระบบขัดข้อง');
+    }
   };
 
   const [fuelPrice, setFuelPrice] = useState<number>(39.94);
@@ -617,8 +636,14 @@ export default function ManageTripsPage() {
                         <Edit2 size={16} />
                       </button>
                       {currentUser?.role === 'system_owner' && (
+                      {currentUser?.role === 'system_owner' && !trip.licensePlate && (
                         <button type="button" onClick={() => handleSendToSharedTrucks(trip)} className="text-slate-400 hover:text-emerald-600 transition-colors" title="ส่งงานให้รถร่วม">
                           <Truck size={16} />
+                        </button>
+                      )}
+                      {(trip.licensePlate || trip.driverName) && (
+                        <button type="button" onClick={() => handleCancelAssignment(trip)} className="text-slate-400 hover:text-orange-500 transition-colors" title="ยกเลิกการจัดรถ/คนขับ">
+                          <UserMinus size={16} />
                         </button>
                       )}
                       <button type="button" onClick={() => handleDeleteTrip(trip._id)} className="text-slate-400 hover:text-red-500 transition-colors" title="ลบงาน">
