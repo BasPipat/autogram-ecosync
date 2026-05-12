@@ -34,14 +34,14 @@ export async function POST(req: NextRequest) {
     if (action === 'setup') {
       const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
       const liffBaseUrl = liffId ? `https://liff.line.me/${liffId}` : '';
-      const registerUrl = liffBaseUrl ? `${liffBaseUrl}/driver/register` : 'https://eco-sync.vercel.app/driver/register';
+      const registerUrl = liffBaseUrl ? `${liffBaseUrl}/driver/register` : 'https://autogram-ecosync.vercel.app/driver/register';
 
-      // 1. Create PUBLIC RICH MENU (Restricted - 4 Areas but only 1 active URI)
+      // 1. Create PUBLIC RICH MENU (Restricted - Highlight 'กดส่งเอกสาร')
       const publicMenu = {
         size: { width: 2500, height: 1686 },
         selected: true,
-        name: 'Public Restricted Menu',
-        chatBarText: 'ลงทะเบียนใช้งาน',
+        name: 'Public Restricted Menu V2',
+        chatBarText: 'กดเพื่อส่งเอกสาร',
         areas: [
           // Top Left: Restricted
           {
@@ -58,10 +58,10 @@ export async function POST(req: NextRequest) {
             bounds: { x: 0, y: 843, width: 1250, height: 843 },
             action: { type: 'message', text: 'บัญชีของคุณอยู่ระหว่างการตรวจสอบเอกสารครับ\n\nพิมพ์ "สถานะ" เพื่อตรวจสอบครับ' }
           },
-          // Bottom Right: Register (Active)
+          // Bottom Right: Submit Docs (Personalized via Webhook)
           {
             bounds: { x: 1250, y: 843, width: 1250, height: 843 },
-            action: { type: 'uri', uri: registerUrl }
+            action: { type: 'message', text: 'กดส่งเอกสาร' }
           }
         ]
       };
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
       const driverMenu = {
         size: { width: 2500, height: 1686 },
         selected: true,
-        name: 'Driver Hub Menu',
+        name: 'Driver Hub Menu V2',
         chatBarText: 'เมนูคนขับรถ',
         areas: [
           // Top Left: My Mission
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
             bounds: { x: 0, y: 0, width: 1250, height: 843 },
             action: { 
               type: 'uri', 
-              uri: liffBaseUrl ? `${liffBaseUrl}/driver/my-mission` : 'https://eco-sync.vercel.app/driver/my-mission' 
+              uri: liffBaseUrl ? `${liffBaseUrl}/driver/my-mission` : 'https://autogram-ecosync.vercel.app/driver/my-mission' 
             }
           },
           // Top Right: Load Board
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
             bounds: { x: 1250, y: 0, width: 1250, height: 843 },
             action: { 
               type: 'uri', 
-              uri: liffBaseUrl ? `${liffBaseUrl}/driver/jobs` : 'https://eco-sync.vercel.app/driver/jobs' 
+              uri: liffBaseUrl ? `${liffBaseUrl}/driver/jobs` : 'https://autogram-ecosync.vercel.app/driver/jobs' 
             }
           },
           // Bottom Left: Profile
@@ -94,13 +94,13 @@ export async function POST(req: NextRequest) {
             bounds: { x: 0, y: 843, width: 1250, height: 843 },
             action: { 
               type: 'uri', 
-              uri: liffBaseUrl ? `${liffBaseUrl}/driver/profile` : 'https://eco-sync.vercel.app/driver/profile' 
+              uri: liffBaseUrl ? `${liffBaseUrl}/driver/profile` : 'https://autogram-ecosync.vercel.app/driver/profile' 
             }
           },
-          // Bottom Right: Register (Update docs)
+          // Bottom Right: Update Docs
           {
             bounds: { x: 1250, y: 843, width: 1250, height: 843 },
-            action: { type: 'uri', uri: registerUrl }
+            action: { type: 'message', text: 'กดส่งเอกสาร' }
           }
         ]
       };
@@ -111,9 +111,9 @@ export async function POST(req: NextRequest) {
       // @ts-ignore
       const driverId = await lineClient.createRichMenu(driverMenu);
 
-      // Upload Images (Using relative paths from root)
-      const publicImgPath = './public/assets/line/rich-menu-unverified.png';
-      const driverImgPath = './public/assets/line/rich-menu-driver.jpg';
+      // Upload Images (Using new premium V3 Neon images)
+      const publicImgPath = './public/assets/line/rich-menu-unverified-v3.png';
+      const driverImgPath = './public/assets/line/rich-menu-driver-v3.png';
 
       if (fs.existsSync(publicImgPath)) {
         await lineClient.setRichMenuImage(publicId, fs.readFileSync(publicImgPath));
@@ -136,8 +136,7 @@ export async function POST(req: NextRequest) {
         { 
           lineRichMenuIdDefault: publicId,
           lineRichMenuIdDriver: driverId,
-          standardReference: 'LINE CONFIG',
-          emissionFactorKgCo2PerLiter: 0,
+          standardReference: 'LINE CONFIG V3',
           isActive: true
         },
         { upsert: true }

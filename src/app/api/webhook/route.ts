@@ -107,43 +107,64 @@ function onboardingMenuMessage(): TextMessage {
   };
 }
 
-function welcomeMessages(): Message[] {
+function welcomeMessages(lineUserId: string): Message[] {
+  const registerUrl = `https://autogram-ecosync.vercel.app/driver/register?lineUserId=${lineUserId}`;
+  
   return [
     {
       type: 'text',
       text: [
         'สวัสดีครับ ยินดีต้อนรับสู่ระบบรถร่วม Autogram EcoSync 🚛✨',
         'เพื่อให้คุณพร้อมรับงานและดูราคาค่าเที่ยวผ่าน LINE OA ได้ รบกวนทำตามขั้นตอนง่ายๆ ดังนี้ครับ:',
-        '1️⃣ กดปุ่ม "ลงทะเบียน" ที่เมนูด้านล่าง เพื่อสร้างโปรไฟล์และข้อมูลรถของคุณในระบบ',
-        '2️⃣ เมื่อลงทะเบียนในเว็บเสร็จแล้ว ให้กลับมาที่แชทนี้ แล้วพิมพ์คำว่า "ส่งเอกสาร"',
-        '3️⃣ ส่งรูปถ่ายเอกสาร เข้ามาในแชทให้ครบถ้วน ดังนี้ครับ:',
-        '🔸 สำเนาบัตรประชาชน',
-        '🔸 ใบอนุญาตขับขี่',
-        '🔸 สำเนาทะเบียนรถ',
-        '🔸 กรมธรรม์ประกันภัยรถ',
-        '🔸 กรมธรรม์ประกันสินค้า',
-        '🔸 หน้าสมุดบัญชีธนาคาร',
-        '4️⃣ เมื่ออัปโหลดรูปครบแล้ว ให้พิมพ์หรือกดคำว่า "ตรวจสอบข้อมูล"',
-        'ทางแอดมินจะรีบตรวจสอบ เมื่อผ่านแล้วระบบจะเปิดให้คุณกดเข้าไปดูงานใน "ดูงาน (Load Board)" ได้ทันทีครับ 🚀',
+        '1️⃣ กดปุ่ม "ลงทะเบียน" เพื่อสร้างโปรไฟล์และข้อมูลรถของคุณในระบบ',
+        '2️⃣ เมื่อลงทะเบียนในเว็บเสร็จแล้ว ให้ส่งรูปถ่ายเอกสารเข้ามาในแชทนี้ให้ครบถ้วนครับ',
       ].join('\n'),
-      quickReply: {
-        items: [
-          {
-            type: 'action',
-            action: {
-              type: 'postback',
-              label: 'ตรวจสอบข้อมูล',
-              data: 'action=analyze_onboarding',
-              displayText: 'ตรวจสอบข้อมูลที่ส่งมา',
-            },
-          },
-        ],
-      },
     },
+    {
+      type: 'flex',
+      altText: 'ปุ่มลงทะเบียนและส่งเอกสาร',
+      contents: {
+        type: 'bubble',
+        body: {
+          type: 'box',
+          layout: 'vertical',
+          contents: [
+            {
+              type: 'text',
+              text: 'เริ่มต้นใช้งาน',
+              weight: 'bold',
+              size: 'xl',
+              color: '#1e293b'
+            },
+            {
+              type: 'text',
+              text: 'กรุณากดปุ่มด้านล่างเพื่อลงทะเบียนและส่งเอกสารครับ',
+              size: 'sm',
+              color: '#64748b',
+              margin: 'md',
+              wrap: true
+            },
+            {
+              type: 'button',
+              action: {
+                type: 'uri',
+                label: '📝 ลงทะเบียน / ส่งเอกสาร',
+                uri: registerUrl
+              },
+              style: 'primary',
+              color: '#2563eb',
+              margin: 'xl',
+              height: 'sm'
+            }
+          ]
+        }
+      }
+    }
   ];
 }
 
-function welcomeBackMessages(driver: ILineDriver): Message[] {
+function welcomeBackMessages(driver: ILineDriver, lineUserId: string): Message[] {
+  const missionUrl = `https://autogram-ecosync.vercel.app/driver/my-mission?lineUserId=${lineUserId}`;
   return [
     {
       type: 'text',
@@ -151,9 +172,33 @@ function welcomeBackMessages(driver: ILineDriver): Message[] {
         `สวัสดีครับพี่ ${driver.displayName || ''} ยินดีต้อนรับกลับครับ! 🚛✨`,
         '',
         'บัญชีรถร่วมของคุณยังคงมีสถานะ "อนุมัติ" และพร้อมรับงานได้ทันทีครับ',
-        'คุณสามารถกดดูงานที่ปุ่ม "ดูงาน" ที่เมนูด้านล่างได้เลยครับ',
+        'คุณสามารถกดดูงานที่ปุ่ม "ดูงาน" ที่เมน้านล่างได้เลยครับ',
       ].join('\n'),
     },
+    {
+      type: 'flex',
+      altText: 'เข้าสู่หน้างานของฉัน',
+      contents: {
+        type: 'bubble',
+        body: {
+          type: 'box',
+          layout: 'vertical',
+          contents: [
+            {
+              type: 'button',
+              action: {
+                type: 'uri',
+                label: '🚚 ไปที่หน้างานของฉัน',
+                uri: missionUrl
+              },
+              style: 'primary',
+              color: '#059669',
+              height: 'sm'
+            }
+          ]
+        }
+      }
+    }
   ];
 }
 
@@ -870,8 +915,8 @@ async function handleEvent(event: WebhookEvent) {
     }
     
     const messages = driver.status === 'approved' 
-      ? welcomeBackMessages(driver)
-      : welcomeMessages();
+      ? welcomeBackMessages(driver, lineUserId)
+      : welcomeMessages(lineUserId);
       
     await getLineClient().replyMessage(event.replyToken, messages);
     return;
