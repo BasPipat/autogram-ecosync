@@ -608,7 +608,7 @@ async function acceptTripDirectly(lineUserId: string, tripId: string, replyToken
       acceptedSharedTruckId: truck._id,
       acceptedDriverName: `${truck.driverFirstName} ${truck.driverLastName}`,
       acceptedHeadPlateNumber: truck.headPlateNumber,
-      acceptedTailPlateNumber: truck.tailLicensePlate,
+      acceptedTailPlateNumber: truck.tailPlateNumber,
     });
   }
 
