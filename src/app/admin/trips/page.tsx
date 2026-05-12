@@ -635,7 +635,6 @@ export default function ManageTripsPage() {
                       <button type="button" onClick={() => handleEditClick(trip)} className="text-slate-400 hover:text-blue-600 transition-colors" title="แก้ไขงาน">
                         <Edit2 size={16} />
                       </button>
-                      {currentUser?.role === 'system_owner' && (
                       {currentUser?.role === 'system_owner' && !trip.licensePlate && (
                         <button type="button" onClick={() => handleSendToSharedTrucks(trip)} className="text-slate-400 hover:text-emerald-600 transition-colors" title="ส่งงานให้รถร่วม">
                           <Truck size={16} />
