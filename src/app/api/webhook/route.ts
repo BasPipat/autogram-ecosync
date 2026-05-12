@@ -611,7 +611,7 @@ async function saveMediaDocument(
 ) {
   const driver = await getOrCreateDriver(lineUserId);
 
-  if (driver.status === 'approved' && !driver.activeTripId && !driver.pendingDocumentType) {
+  if (driver.status === 'approved' && !driver.activeTripId) {
     // Treat this as a vehicle document update request
     const documentType = 'vehicle_update';
     
