@@ -60,83 +60,66 @@ export async function POST(req: NextRequest) {
           },
           // Bottom Right: Submit Docs (Personalized via Webhook)
           {
-            bounds: { x: 1250, y: 843, width: 1250, height: 843 },
-            action: { type: 'message', text: 'กดส่งเอกสาร' }
-          }
+
+      // 1. Create PUBLIC RICH MENU
+      const publicMenu: any = {
+        size: { width: 2500, height: 1686 },
+        selected: true,
+        name: 'Public Neon Menu V7',
+        chatBarText: 'กดเพื่อลงทะเบียน',
+        areas: [
+          // Top Left: My Mission -> Register
+          { bounds: { x: 0, y: 0, width: 1250, height: 843 }, action: { type: 'uri', uri: `https://liff.line.me/${liffId}/driver/register` } },
+          // Top Right: Load Board -> Register
+          { bounds: { x: 1250, y: 0, width: 1250, height: 843 }, action: { type: 'uri', uri: `https://liff.line.me/${liffId}/driver/register` } },
+          // Bottom Left: Profile -> Register
+          { bounds: { x: 0, y: 843, width: 1250, height: 843 }, action: { type: 'uri', uri: `https://liff.line.me/${liffId}/driver/register` } },
+          // Bottom Right: Register (Main)
+          { bounds: { x: 1250, y: 843, width: 1250, height: 843 }, action: { type: 'uri', uri: `https://liff.line.me/${liffId}/driver/register` } }
         ]
       };
 
-      // 2. Create DRIVER RICH MENU (Full - 4 Buttons)
-      const driverMenu = {
+      // 2. Create DRIVER RICH MENU
+      const driverMenu: any = {
         size: { width: 2500, height: 1686 },
         selected: true,
-        name: 'Driver Hub Menu V2',
+        name: 'Driver Neon Menu V7',
         chatBarText: 'เมนูคนขับรถ',
         areas: [
           // Top Left: My Mission
-          {
-            bounds: { x: 0, y: 0, width: 1250, height: 843 },
-            action: { 
-              type: 'uri', 
-              uri: liffBaseUrl ? `${liffBaseUrl}/driver/my-mission` : 'https://autogram-ecosync.vercel.app/driver/my-mission' 
-            }
-          },
+          { bounds: { x: 0, y: 0, width: 1250, height: 843 }, action: { type: 'uri', uri: `https://liff.line.me/${liffId}/driver/my-mission` } },
           // Top Right: Load Board
-          {
-            bounds: { x: 1250, y: 0, width: 1250, height: 843 },
-            action: { 
-              type: 'uri', 
-              uri: liffBaseUrl ? `${liffBaseUrl}/driver/jobs` : 'https://autogram-ecosync.vercel.app/driver/jobs' 
-            }
-          },
+          { bounds: { x: 1250, y: 0, width: 1250, height: 843 }, action: { type: 'uri', uri: `https://liff.line.me/${liffId}/driver/jobs` } },
           // Bottom Left: Profile
-          {
-            bounds: { x: 0, y: 843, width: 1250, height: 843 },
-            action: { 
-              type: 'message', 
-              text: 'ดูโปรไฟล์'
-            }
-          },
-          // Bottom Right: Update Docs
-          {
-            bounds: { x: 1250, y: 843, width: 1250, height: 843 },
-            action: { type: 'message', text: 'กดส่งเอกสาร' }
-          }
+          { bounds: { x: 0, y: 843, width: 1250, height: 843 }, action: { type: 'uri', uri: `https://liff.line.me/${liffId}/driver/profile` } },
+          // Bottom Right: Support
+          { bounds: { x: 1250, y: 843, width: 1250, height: 843 }, action: { type: 'message', text: 'ติดต่อเจ้าหน้าที่' } }
         ]
       };
 
-      // Register Menus with LINE
-      // @ts-ignore
       const publicId = await lineClient.createRichMenu(publicMenu);
-      // @ts-ignore
       const driverId = await lineClient.createRichMenu(driverMenu);
 
-      // Upload Images (Using new premium V6 optimized JPEGs)
-      const publicImgPath = './public/assets/line/rich-menu-unverified-v6.jpg';
-      const driverImgPath = './public/assets/line/rich-menu-driver-v6.jpg';
+      // Use the new PNG images we just uploaded
+      const publicImgPath = path.join(process.cwd(), 'public/assets/line/rich-menu-unverified-v7.png');
+      const driverImgPath = path.join(process.cwd(), 'public/assets/line/rich-menu-driver-v7.png');
 
       if (fs.existsSync(publicImgPath)) {
         await lineClient.setRichMenuImage(publicId, fs.readFileSync(publicImgPath));
-      } else {
-        console.warn('Public image not found at:', publicImgPath);
       }
-      
       if (fs.existsSync(driverImgPath)) {
         await lineClient.setRichMenuImage(driverId, fs.readFileSync(driverImgPath));
-      } else {
-        console.warn('Driver image not found at:', driverImgPath);
       }
 
-      // Set Public as Default
       await lineClient.setDefaultRichMenu(publicId);
 
-      // Save to Settings
+      // 4. Update Settings in Database
       await Setting.findOneAndUpdate(
         { key: 'line_config', scope: 'global' },
         { 
           lineRichMenuIdDefault: publicId,
           lineRichMenuIdDriver: driverId,
-          standardReference: 'LINE CONFIG V5 NEON',
+          standardReference: 'LINE CONFIG V7 NEON LIFF',
           isActive: true
         },
         { upsert: true }
