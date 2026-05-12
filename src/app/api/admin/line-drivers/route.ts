@@ -202,11 +202,7 @@ export async function PUT(req: NextRequest) {
         }
       } catch (e: any) {
         console.error('Failed to update LINE Rich Menu or send push message:', e);
-        return NextResponse.json({ 
-          message: 'อัปเดตในระบบสำเร็จ แต่ไม่สามารถเชื่อมต่อกับ LINE ได้',
-          error: e.message,
-          driver: serializeDriver(driver, []) 
-        }, { status: 200 }); // Still 200 because DB was updated
+        // We continue to update SharedTruck even if LINE fails
       }
     }
 
@@ -221,7 +217,53 @@ export async function PUT(req: NextRequest) {
     }
 
     return NextResponse.json({ message: 'อัปเดตสถานะคนขับสำเร็จ', driver: serializeDriver(driver, []) });
-  } catch {
+  } catch (error) {
+    console.error('Update driver error:', error);
     return NextResponse.json({ error: 'อัปเดตสถานะคนขับไม่สำเร็จ' }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const auth = await requireInternal(req);
+    if ('response' in auth) return auth.response;
+
+    const { searchParams } = new URL(req.url);
+    const lineUserId = searchParams.get('lineUserId');
+
+    if (!lineUserId) {
+      return NextResponse.json({ error: 'ไม่พบ LINE User ID' }, { status: 400 });
+    }
+
+    await connectToDatabase();
+
+    // 1. LINE Sync: Unlink Rich Menu (Only for real LINE IDs)
+    try {
+      if (lineUserId.startsWith('U')) {
+        const { getLineClient } = await import('@/lib/line');
+        await getLineClient().unlinkRichMenuFromUser(lineUserId);
+      }
+    } catch (lineError) {
+      console.warn('LINE Unlink skipped or failed (User might be blocked or ID is dummy):', lineError);
+    }
+
+    // 2. Data Fetch: Find driver before deletion to handle relations
+    const driver = await LineDriver.findOne({ lineUserId });
+    
+    // 3. Cascade Delete: Documents
+    await DriverDocument.deleteMany({ lineUserId });
+    
+    // 4. Cascade Delete: SharedTruck (Only if it's a placeholder linked to this driver)
+    if (driver?.sharedTruckId) {
+      await SharedTruck.deleteOne({ _id: driver.sharedTruckId, lineUserId });
+    }
+
+    // 5. Final Delete: LineDriver
+    await LineDriver.deleteOne({ lineUserId });
+
+    return NextResponse.json({ message: 'ลบข้อมูลคนขับและเอกสารที่เกี่ยวข้องสำเร็จ' });
+  } catch (error) {
+    console.error('Delete driver error:', error);
+    return NextResponse.json({ error: 'ลบข้อมูลไม่สำเร็จ' }, { status: 500 });
   }
 }

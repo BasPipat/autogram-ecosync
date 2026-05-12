@@ -569,6 +569,28 @@ export default function ManageUsersPage() {
     }
   };
 
+  const handleDeleteLineDriver = async (lineUserId: string, displayName: string) => {
+    if (!confirm(`คุณต้องการลบคนขับ "${displayName}" และเอกสารทั้งหมดออกถาวรใช่หรือไม่?\n(การกระทำนี้ไม่สามารถย้อนคืนได้)`)) return;
+
+    try {
+      const res = await fetch(`/api/admin/line-drivers?lineUserId=${encodeURIComponent(lineUserId)}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'ลบไม่สำเร็จ');
+        return;
+      }
+
+      // Optimistic UI Update
+      setLineDrivers(prev => prev.filter(d => d.lineUserId !== lineUserId));
+      fetchSharedTrucks(); 
+      
+    } catch (error) {
+      alert('ระบบขัดข้องขณะลบข้อมูล');
+    }
+  };
+
   const renderTabButton = (tab: ActiveTab, label: string, icon: typeof Shield) => {
     const active = visibleActiveTab === tab;
     const Icon = icon;
@@ -980,6 +1002,14 @@ export default function ManageUsersPage() {
                         style={{ color: '#DC2626', border: '1px solid #FECACA' }}
                       >
                         ไม่ผ่าน
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteLineDriver(driver.lineUserId, driver.displayName || 'ไม่ระบุชื่อ')}
+                        className="py-1.5 px-3 rounded-lg text-[11px] font-bold hover:bg-rose-100 transition-colors"
+                        style={{ color: '#DC2626', border: '1px solid #FECACA' }}
+                      >
+                        ลบข้อมูล
                       </button>
                       <button
                         type="button"
