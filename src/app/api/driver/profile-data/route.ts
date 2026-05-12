@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
       pictureUrl: driver.pictureUrl,
       phone: driver.phone || truck?.driverPhone,
       status: driver.status,
-      vehicleType: truck?.vehicleType,
+      vehicleType: truck?.vehicleInsuranceType,
       licensePlate: truck?.headPlateNumber,
     });
   } catch (error: any) {
