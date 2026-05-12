@@ -34,25 +34,39 @@ export async function POST(req: NextRequest) {
     if (action === 'setup') {
       const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
       const liffBaseUrl = liffId ? `https://liff.line.me/${liffId}` : '';
+      const registerUrl = liffBaseUrl ? `${liffBaseUrl}/driver/register` : 'https://eco-sync.vercel.app/driver/register';
 
-      // 1. Create PUBLIC RICH MENU (1 Button)
+      // 1. Create PUBLIC RICH MENU (Restricted - 4 Areas but only 1 active URI)
       const publicMenu = {
         size: { width: 2500, height: 1686 },
         selected: true,
-        name: 'Public Register Menu',
-        chatBarText: 'ลงทะเบียน',
+        name: 'Public Restricted Menu',
+        chatBarText: 'ลงทะเบียนใช้งาน',
         areas: [
+          // Top Left: Restricted
           {
-            bounds: { x: 0, y: 0, width: 2500, height: 1686 },
-            action: { 
-              type: 'uri', 
-              uri: liffBaseUrl ? `${liffBaseUrl}/driver/register` : 'https://eco-sync.vercel.app/driver/register' 
-            }
+            bounds: { x: 0, y: 0, width: 1250, height: 843 },
+            action: { type: 'message', text: 'บัญชีของคุณอยู่ระหว่างการตรวจสอบเอกสารครับ\n\nพิมพ์ "สถานะ" เพื่อตรวจสอบความคืบหน้า หรือพิมพ์ "ติดต่อเจ้าหน้าที่" ครับ' }
+          },
+          // Top Right: Restricted
+          {
+            bounds: { x: 1250, y: 0, width: 1250, height: 843 },
+            action: { type: 'message', text: 'บัญชีของคุณอยู่ระหว่างการตรวจสอบเอกสารครับ เมื่อผ่านแล้วจะสามารถกดดูงานตรงนี้ได้ทันที\n\nพิมพ์ "สถานะ" เพื่อตรวจสอบครับ' }
+          },
+          // Bottom Left: Restricted
+          {
+            bounds: { x: 0, y: 843, width: 1250, height: 843 },
+            action: { type: 'message', text: 'บัญชีของคุณอยู่ระหว่างการตรวจสอบเอกสารครับ\n\nพิมพ์ "สถานะ" เพื่อตรวจสอบครับ' }
+          },
+          // Bottom Right: Register (Active)
+          {
+            bounds: { x: 1250, y: 843, width: 1250, height: 843 },
+            action: { type: 'uri', uri: registerUrl }
           }
         ]
       };
 
-      // 2. Create DRIVER RICH MENU (4 Buttons)
+      // 2. Create DRIVER RICH MENU (Full - 4 Buttons)
       const driverMenu = {
         size: { width: 2500, height: 1686 },
         selected: true,
@@ -86,10 +100,7 @@ export async function POST(req: NextRequest) {
           // Bottom Right: Register (Update docs)
           {
             bounds: { x: 1250, y: 843, width: 1250, height: 843 },
-            action: { 
-              type: 'uri', 
-              uri: liffBaseUrl ? `${liffBaseUrl}/driver/register` : 'https://eco-sync.vercel.app/driver/register' 
-            }
+            action: { type: 'uri', uri: registerUrl }
           }
         ]
       };
@@ -100,15 +111,20 @@ export async function POST(req: NextRequest) {
       // @ts-ignore
       const driverId = await lineClient.createRichMenu(driverMenu);
 
-      // Upload Images
-      const publicImgPath = 'C:\\Users\\l3asp\\.gemini\\antigravity\\brain\\f81690e1-3856-4ef7-992f-0462670ae43f\\public_rich_menu_mockup_1778519785946.png';
-      const driverImgPath = 'C:\\Users\\l3asp\\.gemini\\antigravity\\brain\\f81690e1-3856-4ef7-992f-0462670ae43f\\driver_rich_menu_mockup_1778518436703.png';
+      // Upload Images (Using relative paths from root)
+      const publicImgPath = './public/assets/line/rich-menu-unverified.png';
+      const driverImgPath = './public/assets/line/rich-menu-driver.jpg';
 
       if (fs.existsSync(publicImgPath)) {
         await lineClient.setRichMenuImage(publicId, fs.readFileSync(publicImgPath));
+      } else {
+        console.warn('Public image not found at:', publicImgPath);
       }
+      
       if (fs.existsSync(driverImgPath)) {
         await lineClient.setRichMenuImage(driverId, fs.readFileSync(driverImgPath));
+      } else {
+        console.warn('Driver image not found at:', driverImgPath);
       }
 
       // Set Public as Default

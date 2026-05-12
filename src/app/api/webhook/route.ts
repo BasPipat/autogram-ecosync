@@ -19,6 +19,7 @@ import { JobOffer, IJobOffer } from '@/models/JobOffer';
 import { SharedTruck, ISharedTruck } from '@/models/SharedTruck';
 import { Trip } from '@/models/Trip';
 import { analyzeDriverDocuments } from '@/lib/gemini';
+import { Setting } from '@/models/Setting';
 
 const PAYMENT_NOTIFY_LINE_USER_ID = process.env.LINE_PAYMENT_NOTIFY_USER_ID || process.env.LINE_ADMIN_USER_ID || '';
 
@@ -835,7 +836,20 @@ async function handleEvent(event: WebhookEvent) {
   if (!lineUserId || event.mode === 'standby') return;
 
   if (event.type === 'follow') {
-    await getOrCreateDriver(lineUserId);
+    const driver = await getOrCreateDriver(lineUserId);
+    
+    // Sync Rich Menu if already approved
+    if (driver.status === 'approved') {
+      try {
+        const config = await Setting.findOne({ key: 'line_config', scope: 'global' });
+        if (config?.lineRichMenuIdDriver) {
+          await getLineClient().linkRichMenuToUser(lineUserId, config.lineRichMenuIdDriver);
+        }
+      } catch (e) {
+        console.error('Failed to sync Rich Menu on follow:', e);
+      }
+    }
+    
     await getLineClient().replyMessage(event.replyToken, welcomeMessages());
     return;
   }

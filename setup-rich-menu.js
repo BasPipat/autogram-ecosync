@@ -38,7 +38,7 @@ const URL_PROFILE = `${BASE_URL}/driver/profile`;
 const URL_REGISTER = `${BASE_URL}/driver/register`;
 
 // 🔴 ใส่ไอดีของคุณเพื่อทดสอบทันที
-const TEST_LINE_USER_ID = 'U3a957f2f1c94167563f5888c8fd03817'; 
+const TEST_LINE_USER_ID = ''; 
 
 const headers = {
   'Authorization': `Bearer ${LINE_ACCESS_TOKEN}`,
