@@ -2,7 +2,6 @@
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const mongoose = require('mongoose');
 
 // --- Helper: Read .env.local ---
 function getEnv(key) {
@@ -24,140 +23,115 @@ function getEnv(key) {
 }
 
 const LINE_ACCESS_TOKEN = getEnv('LINE_CHANNEL_ACCESS_TOKEN'); 
-const MONGODB_URI = getEnv('MONGODB_URI');
-const IMAGE_DRIVER = './public/assets/line/rich-menu-driver.jpg';
-const IMAGE_UNVERIFIED = './public/assets/line/rich-menu-unverified.jpg';
+const IMAGE_PATH = './driver_rich_menu_mockup_fixed.jpg'; 
 
 if (!LINE_ACCESS_TOKEN) {
-  console.error("❌ ไม่พบ LINE_CHANNEL_ACCESS_TOKEN");
+  console.error("❌ ไม่พบ LINE_CHANNEL_ACCESS_TOKEN ใน .env.local");
   process.exit(1);
 }
+
+// 🔴 เปลี่ยนเป็น URL ตรงของ Vercel ตามคำแนะนำของคุณ
+const BASE_URL = 'https://autogram-ecosync.vercel.app';
+const URL_MY_MISSION = `${BASE_URL}/driver/my-mission`;
+const URL_JOBS = `${BASE_URL}/driver/jobs`;
+const URL_PROFILE = `${BASE_URL}/driver/profile`;
+const URL_REGISTER = `${BASE_URL}/driver/register`;
+
+// 🔴 ใส่ไอดีของคุณเพื่อทดสอบทันที
+const TEST_LINE_USER_ID = ''; 
 
 const headers = {
   'Authorization': `Bearer ${LINE_ACCESS_TOKEN}`,
   'Content-Type': 'application/json',
 };
 
-const BASE_URL = 'https://autogram-ecosync.vercel.app';
-const URL_REGISTER = `${BASE_URL}/driver/register`;
-
-// 1. Create PUBLIC RESTRICTED MENU
-const publicMenuData = {
+const richMenuData = {
   size: { width: 2500, height: 1686 },
   selected: true,
-  name: "Public Restricted Menu",
-  chatBarText: "ลงทะเบียนใช้งาน",
+  name: "Driver Hub Main Menu - V2",
+  chatBarText: "เมนูคนขับรถ 🚛",
   areas: [
     {
-      bounds: { x: 0, y: 0, width: 1250, height: 843 },
-      action: { type: "message", text: "บัญชีของคุณอยู่ระหว่างการตรวจสอบเอกสารครับ\n\nพิมพ์ \"สถานะ\" เพื่อตรวจสอบความคืบหน้าครับ" }
+      bounds: { x: 0, y: 0, width: 1250, height: 843 }, // ซ้ายบน
+      action: { type: "uri", uri: URL_MY_MISSION }
     },
     {
-      bounds: { x: 1250, y: 0, width: 1250, height: 843 },
-      action: { type: "message", text: "บัญชีของคุณอยู่ระหว่างการตรวจสอบเอกสารครับ เมื่อผ่านแล้วจะสามารถกดดูงานตรงนี้ได้ทันที" }
+      bounds: { x: 1250, y: 0, width: 1250, height: 843 }, // ขวาบน
+      action: { type: "uri", uri: URL_JOBS }
     },
     {
-      bounds: { x: 0, y: 843, width: 1250, height: 843 },
-      action: { type: "message", text: "บัญชีของคุณอยู่ระหว่างการตรวจสอบเอกสารครับ" }
+      bounds: { x: 0, y: 843, width: 1250, height: 843 }, // ซ้ายล่าง
+      action: { type: "uri", uri: URL_PROFILE }
     },
     {
-      bounds: { x: 1250, y: 843, width: 1250, height: 843 },
+      bounds: { x: 1250, y: 843, width: 1250, height: 843 }, // ขวาล่าง
       action: { type: "uri", uri: URL_REGISTER }
     }
   ]
 };
 
-// 2. Create DRIVER MAIN MENU
-const driverMenuData = {
-  size: { width: 2500, height: 1686 },
-  selected: true,
-  name: "Driver Main Menu",
-  chatBarText: "เมนูคนขับรถ 🚛",
-  areas: [
-    { bounds: { x: 0, y: 0, width: 1250, height: 843 }, action: { type: "uri", uri: `${BASE_URL}/driver/my-mission` } },
-    { bounds: { x: 1250, y: 0, width: 1250, height: 843 }, action: { type: "uri", uri: `${BASE_URL}/driver/jobs` } },
-    { bounds: { x: 0, y: 843, width: 1250, height: 843 }, action: { type: "uri", uri: `${BASE_URL}/driver/profile` } },
-    { bounds: { x: 1250, y: 843, width: 1250, height: 843 }, action: { type: "uri", uri: URL_REGISTER } }
-  ]
-};
-
-async function setup() {
+async function cleanupRichMenus() {
   try {
-    console.log("--- เริ่มการตั้งค่า Rich Menu ---");
-
-    // Clear old menus
-    const listRes = await axios.get('https://api.line.me/v2/bot/richmenu/list', { headers });
-    for (const menu of listRes.data.richmenus || []) {
+    console.log("--- เริ่มการล้างเมนูเก่า ---");
+    const res = await axios.get('https://api.line.me/v2/bot/richmenu/list', { headers });
+    const menus = res.data.richmenus || [];
+    console.log(`- พบเมนูเดิม ${menus.length} รายการ`);
+    
+    for (const menu of menus) {
+      console.log(`- กำลังลบ: ${menu.richMenuId} (${menu.name})`);
       await axios.delete(`https://api.line.me/v2/bot/richmenu/${menu.richMenuId}`, { headers });
     }
-    console.log("✅ ล้างเมนูเก่าเรียบร้อย");
-
-    // Create Menus
-    const publicRes = await axios.post('https://api.line.me/v2/bot/richmenu', publicMenuData, { headers });
-    const publicId = publicRes.data.richMenuId;
-    console.log(`✅ สร้าง Restricted Menu สำเร็จ: ${publicId}`);
-
-    const driverRes = await axios.post('https://api.line.me/v2/bot/richmenu', driverMenuData, { headers });
-    const driverId = driverRes.data.richMenuId;
-    console.log(`✅ สร้าง Driver Menu สำเร็จ: ${driverId}`);
-
-    // Upload Images
-    await axios.post(`https://api-data.line.me/v2/bot/richmenu/${publicId}/content`, fs.readFileSync(IMAGE_UNVERIFIED), {
-      headers: { ...headers, 'Content-Type': 'image/jpeg' }
-    });
-    console.log("✅ อัปโหลดรูปภาพ Restricted Menu สำเร็จ");
-
-    await axios.post(`https://api-data.line.me/v2/bot/richmenu/${driverId}/content`, fs.readFileSync(IMAGE_DRIVER), {
-      headers: { ...headers, 'Content-Type': 'image/jpeg' }
-    });
-    console.log("✅ อัปโหลดรูปภาพ Driver Menu สำเร็จ");
-
-    // Set Default
-    await axios.post(`https://api.line.me/v2/bot/user/all/richmenu/${publicId}`, {}, { headers });
-    console.log("✅ ตั้งค่า Restricted Menu เป็น Default เรียบร้อย");
-
-    // Update DB
-    if (MONGODB_URI) {
-      console.log("\n--- กำลังอัปเดตข้อมูลลง Database ---");
-      await mongoose.connect(MONGODB_URI);
-      const Setting = mongoose.model('Setting', new mongoose.Schema({
-        key: String,
-        lineRichMenuIdDefault: String,
-        lineRichMenuIdDriver: String,
-        isActive: Boolean
-      }), 'settings');
-
-      await Setting.findOneAndUpdate(
-        { key: 'line_config' },
-        { 
-          lineRichMenuIdDefault: publicId,
-          lineRichMenuIdDriver: driverId,
-          isActive: true
-        },
-        { upsert: true }
-      );
-      
-      // Link Menu for already approved drivers
-      const LineDriver = mongoose.model('LineDriver', new mongoose.Schema({
-        lineUserId: String,
-        status: String
-      }), 'linedrivers');
-      
-      const approvedDrivers = await LineDriver.find({ status: 'approved' });
-      console.log(`- พบคนขับที่ได้รับการอนุมัติแล้ว ${approvedDrivers.length} คน กำลัง Sync เมนู...`);
-      
-      for (const driver of approvedDrivers) {
-        await axios.post(`https://api.line.me/v2/bot/user/${driver.lineUserId}/richmenu/${driverId}`, {}, { headers });
-      }
-      
-      await mongoose.disconnect();
-      console.log("✅ อัปเดต Database และ Sync คนขับเก่าเรียบร้อย!");
-    }
-
-    console.log("\n🚀 ทุกอย่างเสร็จสมบูรณ์! ลองเช็คใน LINE ได้เลยครับ");
+    console.log("✅ ล้างเมนูเก่าเรียบร้อย!");
   } catch (err) {
-    console.error("❌ เกิดข้อผิดพลาด:", err.response?.data || err.message);
+    console.error("⚠️ ล้างเมนูไม่สำเร็จ (อาจไม่มีเมนูให้ลบ):", err.message);
   }
 }
 
-setup();
+async function setupRichMenu() {
+  try {
+    await cleanupRichMenus();
+
+    console.log("\n--- เริ่มการติดตั้ง Rich Menu ใหม่ ---");
+    console.log("1. กำลังสร้างโครงสร้าง Rich Menu...");
+    const createRes = await axios.post('https://api.line.me/v2/bot/richmenu', richMenuData, { headers });
+    const richMenuId = createRes.data.richMenuId;
+    console.log(`✅ สร้างสำเร็จ! ID: ${richMenuId}`);
+
+    console.log("2. กำลังอัปโหลดรูปภาพใหม่ (Clean Version)...");
+    if (!fs.existsSync(IMAGE_PATH)) {
+      console.error(`❌ ไม่พบไฟล์รูปภาพที่ ${IMAGE_PATH}`);
+      return;
+    }
+    const imageBuffer = fs.readFileSync(IMAGE_PATH);
+    await axios.post(`https://api-data.line.me/v2/bot/richmenu/${richMenuId}/content`, imageBuffer, {
+      headers: {
+        ...headers,
+        'Content-Type': 'image/jpeg'
+      }
+    });
+    console.log("✅ อัปโหลดรูปภาพสำเร็จ!");
+
+    console.log("3. กำลังตั้งค่า Rich Menu...");
+    if (TEST_LINE_USER_ID) {
+      console.log(`- กำลังเชื่อมต่อกับ User: ${TEST_LINE_USER_ID}`);
+      await axios.post(`https://api.line.me/v2/bot/user/${TEST_LINE_USER_ID}/richmenu/${richMenuId}`, {}, { headers });
+      console.log("✅ เชื่อมต่อเฉพาะบุคคลสำเร็จ!");
+    } else {
+      console.log("- กำลังตั้งค่าให้เป็นเมนูเริ่มต้น (Default) สำหรับทุกคน...");
+      await axios.post(`https://api.line.me/v2/bot/user/all/richmenu/${richMenuId}`, {}, { headers });
+      console.log("✅ ตั้งค่าเริ่มต้นสำเร็จ!");
+    }
+    
+    console.log("\n🚀 ทุกอย่างเสร็จสิ้น! ลองเช็คใน LINE ได้เลยครับ");
+
+  } catch (error) {
+    console.error("❌ เกิดข้อผิดพลาด:");
+    if (error.response) {
+      console.error(JSON.stringify(error.response.data, null, 2));
+    } else {
+      console.error(error.message);
+    }
+  }
+}
+
+setupRichMenu();

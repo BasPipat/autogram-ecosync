@@ -36,15 +36,21 @@ export async function POST(req: NextRequest) {
     // I'll add them to tempAnalysisResult or a new field if needed.
     // For now, let's just store the core info.
 
-    if (!lineUserId || !lineUserId.startsWith('U')) {
-      return NextResponse.json({ error: 'ไม่พบข้อมูล LINE User ID กรุณาลงทะเบียนผ่านช่องทาง LINE เท่านั้น' }, { status: 400 });
+    if (lineUserId) {
+      await LineDriver.findOneAndUpdate(
+        { lineUserId },
+        { $set: updateData },
+        { upsert: true, new: true }
+      );
+    } else {
+      // Fallback: Create by phone if no lineUserId (e.g. direct link)
+      // We might need a dummy lineUserId for testing if unique constraint exists
+      await LineDriver.findOneAndUpdate(
+        { phone },
+        { $set: { ...updateData, lineUserId: `web-${Date.now()}` } },
+        { upsert: true, new: true }
+      );
     }
-
-    await LineDriver.findOneAndUpdate(
-      { lineUserId },
-      { $set: updateData },
-      { upsert: true, new: true }
-    );
 
     return NextResponse.json({ message: 'Registration submitted successfully' });
   } catch (error: any) {

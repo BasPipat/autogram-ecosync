@@ -838,20 +838,21 @@ async function handleEvent(event: WebhookEvent) {
   if (event.type === 'follow') {
     const driver = await getOrCreateDriver(lineUserId);
     
+    // Sync Rich Menu based on approval status
     try {
       const config = await Setting.findOne({ key: 'line_config', scope: 'global' });
-      
-      // Sync Rich Menu based on current database status
-      if (driver.status === 'approved' && config?.lineRichMenuIdDriver) {
-        // Approved -> Link the Full Menu
-        await getLineClient().linkRichMenuToUser(lineUserId, config.lineRichMenuIdDriver);
+      if (driver.status === 'approved') {
+        if (config?.lineRichMenuIdDriver) {
+          await getLineClient().linkRichMenuToUser(lineUserId, config.lineRichMenuIdDriver);
+        }
       } else {
-        // Not approved (pending, rejected, suspended, new) -> Unlink to use Global Default
+        // For new, pending, or rejected drivers: 
+        // Explicitly unlink to force them to use the Default (Restricted) menu
         await getLineClient().unlinkRichMenuFromUser(lineUserId);
       }
     } catch (e) {
-      console.error('Failed to sync Rich Menu on follow event:', e);
-      // We continue to send welcome message even if rich menu sync fails
+      console.error('Failed to sync Rich Menu on follow:', e);
+      // We don't fail the whole event, just log the error
     }
     
     await getLineClient().replyMessage(event.replyToken, welcomeMessages());
