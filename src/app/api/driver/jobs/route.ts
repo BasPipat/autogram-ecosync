@@ -18,16 +18,12 @@ export async function GET(req: NextRequest) {
       driver = await LineDriver.findOne({ lineUserId });
     }
 
-    // 2. Query Public Jobs (Unassigned trips)
+    // 2. Query Public Jobs (ANY trip without a truck/driver assigned)
     let query: any = { 
-      // Ensure it's not already assigned to a plate or a user
       $and: [
         { $or: [{ licensePlate: { $exists: false } }, { licensePlate: null }, { licensePlate: '' }] },
         { $or: [{ lineUserId: { $exists: false } }, { lineUserId: null }, { lineUserId: '' }] }
-      ],
-      // Only show active/pending jobs
-      status: { $in: ['Pending', 'No POD'] },
-      lineAssignmentStatus: { $in: ['none', null] }
+      ]
     };
 
     let trips;
