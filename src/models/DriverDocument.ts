@@ -35,6 +35,7 @@ const documentTypes: DriverDocumentType[] = [
   'delivery_documents_video',
   'onboarding_media',
   'onboarding_text',
+  'vehicle_update',
 ];
 
 const DriverDocumentSchema = new Schema<IDriverDocument>({
