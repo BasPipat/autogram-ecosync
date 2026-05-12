@@ -143,6 +143,20 @@ function welcomeMessages(): Message[] {
   ];
 }
 
+function welcomeBackMessages(driver: ILineDriver): Message[] {
+  return [
+    {
+      type: 'text',
+      text: [
+        `สวัสดีครับพี่ ${driver.displayName || ''} ยินดีต้อนรับกลับครับ! 🚛✨`,
+        '',
+        'บัญชีรถร่วมของคุณยังคงมีสถานะ "อนุมัติ" และพร้อมรับงานได้ทันทีครับ',
+        'คุณสามารถกดดูงานที่ปุ่ม "ดูงาน" ที่เมนูด้านล่างได้เลยครับ',
+      ].join('\n'),
+    },
+  ];
+}
+
 function documentReceivedMessage(label: string, missingLabels: string[], readyForReview: boolean): Message[] {
   if (readyForReview) {
     return [
@@ -843,9 +857,7 @@ async function handleEvent(event: WebhookEvent) {
       const config = await Setting.findOne({ key: 'line_config', scope: 'global' });
       if (driver.status === 'approved') {
         if (config?.lineRichMenuIdDriver) {
-          await getLineClient().unlinkRichMenuFromUser(lineUserId).catch((unlinkError: any) => {
-            console.warn('Failed to unlink existing Rich Menu on follow:', unlinkError);
-          });
+          // Link directly to overwrite (No unlink before as per user request to avoid race condition)
           await getLineClient().linkRichMenuToUser(lineUserId, config.lineRichMenuIdDriver);
         }
       } else {
@@ -855,10 +867,13 @@ async function handleEvent(event: WebhookEvent) {
       }
     } catch (e) {
       console.error('Failed to sync Rich Menu on follow:', e);
-      // We don't fail the whole event, just log the error
     }
     
-    await getLineClient().replyMessage(event.replyToken, welcomeMessages());
+    const messages = driver.status === 'approved' 
+      ? welcomeBackMessages(driver)
+      : welcomeMessages();
+      
+    await getLineClient().replyMessage(event.replyToken, messages);
     return;
   }
 

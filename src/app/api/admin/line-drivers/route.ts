@@ -196,23 +196,25 @@ export async function PUT(req: NextRequest) {
 
           if (nextStatus === 'approved') {
             lineStatus = "";
-            // Action A: Reset any existing menu binding then link the driver menu
+            console.log('Driver Rich Menu ID:', config?.lineRichMenuIdDriver);
+
             if (config?.lineRichMenuIdDriver) {
               try {
-                await lineClient.unlinkRichMenuFromUser(lineUserId).catch((unlinkError: any) => {
-                  console.warn('Rich Menu unlink before approve failed:', unlinkError);
-                });
+                // Link directly without unlinking first to prevent race conditions or default menu fallback
                 await lineClient.linkRichMenuToUser(lineUserId, config.lineRichMenuIdDriver);
                 lineStatus = "✅ สลับ Rich Menu สำเร็จ";
               } catch (e: any) {
                 console.error('Rich Menu Switch Fail:', e);
-                lineStatus = "❌ สลับเมนูไม่สำเร็จ (ID อาจจะผิดหรือผู้ใช้งานไม่มีสิทธิ์)";
+                // Return explicit error to UI as requested
+                return NextResponse.json({ 
+                  error: `สลับเมนูไม่สำเร็จเพราะ ID เมนูไม่ถูกต้อง (${config.lineRichMenuIdDriver})` 
+                }, { status: 400 });
               }
             } else {
-              lineStatus = "⚠️ ข้ามการสลับเมนู (ไม่พบ Driver Rich Menu ID ในระบบ)";
+              return NextResponse.json({ error: '⚠️ ไม่พบ Driver Rich Menu ID ในระบบ (line_config)' }, { status: 400 });
             }
 
-            // Action B: Push Message (Always try even if menu fails)
+            // Action B: Push Message (Only if menu linking succeeded)
             try {
               await lineClient.pushMessage(lineUserId, {
                 type: 'text',
