@@ -820,10 +820,6 @@ export default function ManageTripsPage() {
                       <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">ระบุชื่อสินค้า</label>
                       <input type="text" placeholder="เช่น เม็ดพลาสติก, เหล็กเส้น" className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.cargoName} onChange={e => setForm({ ...form, cargoName: e.target.value })} />
                     </div>
-                    <div className="flex items-center gap-3 h-[42px]">
-                      <input type="checkbox" id="isPublic" className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" checked={form.isPublic} onChange={e => setForm({ ...form, isPublic: e.target.checked })} />
-                      <label htmlFor="isPublic" className="text-sm font-bold text-emerald-700 cursor-pointer">เปิดงานเป็นสาธารณะ (Shared Truck)</label>
-                    </div>
                   </div>
 
                   <div className="mt-4">
