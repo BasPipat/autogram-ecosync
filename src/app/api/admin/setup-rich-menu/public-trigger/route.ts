@@ -4,7 +4,7 @@ import { Client } from '@line/bot-sdk';
 import fs from 'fs';
 import path from 'path';
 import { connectToDatabase } from '@/lib/mongodb';
-import Setting from '@/models/Setting';
+import { Setting } from '@/models/Setting';
 
 const lineConfig = {
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
