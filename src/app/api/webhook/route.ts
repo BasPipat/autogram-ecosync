@@ -108,7 +108,8 @@ function onboardingMenuMessage(): TextMessage {
 }
 
 function welcomeMessages(lineUserId: string): Message[] {
-  const registerUrl = `https://autogram-ecosync.vercel.app/driver/register?lineUserId=${lineUserId}`;
+  const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || '2010054204-bv5oRtcL';
+  const registerUrl = `https://liff.line.me/${liffId}/driver/register`;
   
   return [
     {

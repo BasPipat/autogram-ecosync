@@ -1,0 +1,25 @@
+
+<!DOCTYPE html>
+<html>
+<body>
+  <canvas id="canvas" width="2500" height="1686"></canvas>
+  <script>
+    async function resize(src) {
+      const img = new Image();
+      img.src = src;
+      await new Promise(r => img.onload = r);
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      // Fill background black first
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, 2500, 1686);
+      // Draw image scaled to fit
+      ctx.drawImage(img, 0, 0, 2500, 1686);
+      const data = canvas.toDataURL('image/jpeg', 0.9);
+      console.log('---RESULT_START---');
+      console.log(data);
+      console.log('---RESULT_END---');
+    }
+  </script>
+</body>
+</html>
