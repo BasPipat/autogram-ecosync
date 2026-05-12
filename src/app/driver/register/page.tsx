@@ -46,6 +46,7 @@ export default function DriverRegistrationPage() {
         }
 
         const profile = await liff.getProfile();
+        console.log('LIFF Profile fetched:', profile);
         setLineUserId(profile.userId);
         
         // Also check if user ID is in URL (for testing)
@@ -90,8 +91,10 @@ export default function DriverRegistrationPage() {
   };
 
   const handleSubmit = async () => {
-    if (!lineUserId) {
-      setError('ไม่พบ LINE User ID กรุณาเข้าใช้งานผ่าน LINE OA เท่านั้น');
+    console.log('Submitting registration. lineUserId state:', lineUserId);
+    
+    if (!lineUserId || lineUserId === 'undefined' || lineUserId === 'null') {
+      setError('ไม่พบ LINE User ID กรุณาเข้าใช้งานผ่าน LINE OA เท่านั้น (Frontend Check)');
       return;
     }
 

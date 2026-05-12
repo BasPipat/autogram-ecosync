@@ -13,6 +13,9 @@ export async function POST(req: NextRequest) {
     // Extract lineUserId from query or body
     const { searchParams } = new URL(req.url);
     const lineUserId = searchParams.get('lineUserId') || data.lineUserId;
+    
+    console.log('API Driver Register received lineUserId:', lineUserId);
+    console.log('API Driver Register all data keys:', Object.keys(data));
 
     await connectToDatabase();
 
@@ -34,7 +37,8 @@ export async function POST(req: NextRequest) {
     // I'll add them to tempAnalysisResult or a new field if needed.
     // For now, let's just store the core info.
 
-    if (!lineUserId || lineUserId.startsWith('web-')) {
+    if (!lineUserId || lineUserId === 'undefined' || lineUserId === 'null' || lineUserId.startsWith('web-')) {
+      console.error('Invalid lineUserId detected:', lineUserId);
       return NextResponse.json({ 
         error: 'กรุณาเข้าใช้งานผ่าน LINE OA เท่านั้น (ไม่พบ LINE User ID ที่ถูกต้อง)' 
       }, { status: 400 });
