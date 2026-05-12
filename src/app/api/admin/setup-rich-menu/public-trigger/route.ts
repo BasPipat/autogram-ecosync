@@ -90,6 +90,12 @@ export async function GET() {
 
     return NextResponse.json({ success: true, publicId, driverId });
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error('Setup Error:', err);
+    return NextResponse.json({ 
+      success: false, 
+      error: err.message, 
+      stack: err.stack,
+      details: err.response?.data || 'No response data'
+    }, { status: 500 });
   }
 }
