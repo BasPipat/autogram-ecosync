@@ -53,16 +53,26 @@ export async function GET() {
 
     if (publicImgRes.ok) {
       const buffer = Buffer.from(await publicImgRes.arrayBuffer());
-      await lineClient.setRichMenuImage(publicId, buffer, 'image/jpeg');
-    } else {
-      throw new Error(`Failed to fetch public image: ${publicImgRes.status}`);
+      await fetch(`https://api-data.line.me/v2/bot/richmenu/${publicId}/content`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${lineConfig.channelAccessToken}`,
+          'Content-Type': 'image/jpeg'
+        },
+        body: buffer
+      });
     }
 
     if (driverImgRes.ok) {
       const buffer = Buffer.from(await driverImgRes.arrayBuffer());
-      await lineClient.setRichMenuImage(driverId, buffer, 'image/jpeg');
-    } else {
-      throw new Error(`Failed to fetch driver image: ${driverImgRes.status}`);
+      await fetch(`https://api-data.line.me/v2/bot/richmenu/${driverId}/content`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${lineConfig.channelAccessToken}`,
+          'Content-Type': 'image/jpeg'
+        },
+        body: buffer
+      });
     }
 
     await lineClient.setDefaultRichMenu(publicId);
