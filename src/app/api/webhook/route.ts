@@ -227,62 +227,62 @@ function documentReceivedMessage(label: string, missingLabels: string[], readyFo
 
 function jobOfferBubble(offer: IJobOffer) {
   return {
-    type: 'bubble',
-    size: 'mega',
+    type: 'bubble' as const,
+    size: 'mega' as const,
     header: {
-      type: 'box',
-      layout: 'vertical',
+      type: 'box' as const,
+      layout: 'vertical' as const,
       contents: [
-        { type: 'text', text: '🚚 มีงานใหม่เสนอให้พี่ครับ', weight: 'bold', color: '#ffffff', size: 'sm' },
-        { type: 'text', text: offer.tripCode, weight: 'bold', color: '#ffffff', size: 'xl', margin: 'md' }
+        { type: 'text' as const, text: '🚚 มีงานใหม่เสนอให้พี่ครับ', weight: 'bold' as const, color: '#ffffff', size: 'sm' as const },
+        { type: 'text' as const, text: offer.tripCode, weight: 'bold' as const, color: '#ffffff', size: 'xl' as const, margin: 'md' as const }
       ],
       backgroundColor: '#0ea5e9'
     },
     body: {
-      type: 'box',
-      layout: 'vertical',
+      type: 'box' as const,
+      layout: 'vertical' as const,
       contents: [
         {
-          type: 'box',
-          layout: 'horizontal',
+          type: 'box' as const,
+          layout: 'horizontal' as const,
           contents: [
-            { type: 'text', text: 'ต้นทาง', size: 'xs', color: '#94a3b8', flex: 2 },
-            { type: 'text', text: offer.origin, size: 'sm', color: '#334155', flex: 8, wrap: true }
+            { type: 'text' as const, text: 'ต้นทาง', size: 'xs' as const, color: '#94a3b8', flex: 2 },
+            { type: 'text' as const, text: offer.origin, size: 'sm' as const, color: '#334155', flex: 8, wrap: true }
           ]
         },
         {
-          type: 'box',
-          layout: 'horizontal',
+          type: 'box' as const,
+          layout: 'horizontal' as const,
           contents: [
-            { type: 'text', text: 'ปลายทาง', size: 'xs', color: '#94a3b8', flex: 2 },
-            { type: 'text', text: offer.destination, size: 'sm', color: '#334155', flex: 8, wrap: true }
+            { type: 'text' as const, text: 'ปลายทาง', size: 'xs' as const, color: '#94a3b8', flex: 2 },
+            { type: 'text' as const, text: offer.destination, size: 'sm' as const, color: '#334155', flex: 8, wrap: true }
           ],
-          margin: 'md'
+          margin: 'md' as const
         },
         {
-          type: 'box',
-          layout: 'horizontal',
+          type: 'box' as const,
+          layout: 'horizontal' as const,
           contents: [
-            { type: 'text', text: 'ค่าเที่ยว', size: 'xs', color: '#94a3b8', flex: 2 },
-            { type: 'text', text: currency(offer.driverPrice), size: 'sm', color: '#0ea5e9', weight: 'bold', flex: 8 }
+            { type: 'text' as const, text: 'ค่าเที่ยว', size: 'xs' as const, color: '#94a3b8', flex: 2 },
+            { type: 'text' as const, text: currency(offer.driverPrice), size: 'sm' as const, color: '#0ea5e9', weight: 'bold' as const, flex: 8 }
           ],
-          margin: 'md'
+          margin: 'md' as const
         }
       ]
     },
     footer: {
-      type: 'box',
-      layout: 'vertical',
+      type: 'box' as const,
+      layout: 'vertical' as const,
       contents: [
         {
-          type: 'button',
+          type: 'button' as const,
           action: {
-            type: 'postback',
+            type: 'postback' as const,
             label: 'รับงานนี้',
             data: `action=accept_job&offerId=${offer._id.toString()}`,
             displayText: `รับงาน ${offer.tripCode}`,
           },
-          style: 'primary',
+          style: 'primary' as const,
           color: '#0ea5e9',
         },
       ],
@@ -292,10 +292,10 @@ function jobOfferBubble(offer: IJobOffer) {
 
 function jobBoardFlex(offers: IJobOffer[]): FlexMessage {
   return {
-    type: 'flex',
+    type: 'flex' as const,
     altText: 'มีงานพร้อมรับ',
     contents: {
-      type: 'carousel',
+      type: 'carousel' as const,
       contents: offers.slice(0, 10).map(jobOfferBubble),
     },
   };
@@ -304,7 +304,7 @@ function jobBoardFlex(offers: IJobOffer[]): FlexMessage {
 function jobDetailMessage(offer: IJobOffer, truck: ISharedTruck): Message[] {
   return [
     {
-      type: 'text',
+      type: 'text' as const,
       text: [
         'รับงานสำเร็จครับ',
         `รหัสงาน: ${offer.tripCode}`,
@@ -336,7 +336,6 @@ async function acceptJob(lineUserId: string, offerId: string, replyToken: string
     return;
   }
 
-  // Check if driver already has an active trip
   if (driver.activeTripId) {
     await getLineClient().replyMessage(replyToken, { 
       type: 'text', 
@@ -399,12 +398,12 @@ async function acceptJob(lineUserId: string, offerId: string, replyToken: string
   await getLineClient().replyMessage(replyToken, jobDetailMessage(offer, truck));
 }
 
-function tripBoardFlex(trips: any[]): any {
+function tripBoardFlex(trips: any[]): FlexMessage {
   return {
-    type: 'flex',
+    type: 'flex' as const,
     altText: 'มีงานว่างพร้อมรับ',
     contents: {
-      type: 'carousel',
+      type: 'carousel' as const,
       contents: trips.slice(0, 10).map(tripBubble),
     },
   };
@@ -412,71 +411,71 @@ function tripBoardFlex(trips: any[]): any {
 
 function tripBubble(trip: any) {
   return {
-    type: 'bubble',
-    size: 'mega',
+    type: 'bubble' as const,
+    size: 'mega' as const,
     header: {
-      type: 'box',
-      layout: 'vertical',
+      type: 'box' as const,
+      layout: 'vertical' as const,
       contents: [
-        { type: 'text', text: '🚚 มีงานว่างพร้อมรับ', weight: 'bold', color: '#ffffff', size: 'sm' },
-        { type: 'text', text: trip.tripId, weight: 'bold', color: '#ffffff', size: 'xl', margin: 'md' }
+        { type: 'text' as const, text: '🚚 มีงานว่างพร้อมรับ', weight: 'bold' as const, color: '#ffffff', size: 'sm' as const },
+        { type: 'text' as const, text: trip.tripId, weight: 'bold' as const, color: '#ffffff', size: 'xl' as const, margin: 'md' as const }
       ],
       backgroundColor: '#0ea5e9'
     },
     body: {
-      type: 'box',
-      layout: 'vertical',
+      type: 'box' as const,
+      layout: 'vertical' as const,
       contents: [
         {
-          type: 'box',
-          layout: 'horizontal',
+          type: 'box' as const,
+          layout: 'horizontal' as const,
           contents: [
-            { type: 'text', text: 'ต้นทาง', size: 'xs', color: '#94a3b8', flex: 2 },
-            { type: 'text', text: trip.origin, size: 'sm', color: '#334155', flex: 8, wrap: true }
+            { type: 'text' as const, text: 'ต้นทาง', size: 'xs' as const, color: '#94a3b8', flex: 2 },
+            { type: 'text' as const, text: trip.origin, size: 'sm' as const, color: '#334155', flex: 8, wrap: true }
           ]
         },
         {
-          type: 'box',
-          layout: 'horizontal',
+          type: 'box' as const,
+          layout: 'horizontal' as const,
           contents: [
-            { type: 'text', text: 'ปลายทาง', size: 'xs', color: '#94a3b8', flex: 2 },
-            { type: 'text', text: trip.destination, size: 'sm', color: '#334155', flex: 8, wrap: true }
+            { type: 'text' as const, text: 'ปลายทาง', size: 'xs' as const, color: '#94a3b8', flex: 2 },
+            { type: 'text' as const, text: trip.destination, size: 'sm' as const, color: '#334155', flex: 8, wrap: true }
           ],
-          margin: 'md'
+          margin: 'md' as const
         },
         {
-          type: 'box',
-          layout: 'horizontal',
+          type: 'box' as const,
+          layout: 'horizontal' as const,
           contents: [
-            { type: 'text', text: 'สินค้า', size: 'xs', color: '#94a3b8', flex: 2 },
-            { type: 'text', text: trip.cargoName || '-', size: 'sm', color: '#334155', flex: 8, wrap: true }
+            { type: 'text' as const, text: 'สินค้า', size: 'xs' as const, color: '#94a3b8', flex: 2 },
+            { type: 'text' as const, text: trip.cargoName || '-', size: 'sm' as const, color: '#334155', flex: 8, wrap: true }
           ],
-          margin: 'md'
+          margin: 'md' as const
         },
         {
-          type: 'box',
-          layout: 'horizontal',
+          type: 'box' as const,
+          layout: 'horizontal' as const,
           contents: [
-            { type: 'text', text: 'น้ำหนัก', size: 'xs', color: '#94a3b8', flex: 2 },
-            { type: 'text', text: `${trip.weight || '-'} ตัน`, size: 'sm', color: '#334155', flex: 8 }
+            { type: 'text' as const, text: 'น้ำหนัก', size: 'xs' as const, color: '#94a3b8', flex: 2 },
+            { type: 'text' as const, text: `${trip.weight || '-'} ตัน`, size: 'sm' as const, color: '#334155', flex: 8 }
           ],
-          margin: 'md'
+          margin: 'md' as const
         }
       ]
     },
     footer: {
-      type: 'box',
-      layout: 'vertical',
+      type: 'box' as const,
+      layout: 'vertical' as const,
       contents: [
         {
-          type: 'button',
+          type: 'button' as const,
           action: {
-            type: 'postback',
+            type: 'postback' as const,
             label: 'รับงานนี้',
             data: `action=acceptTrip&tripId=${trip._id}`,
             displayText: `ขอกดรับงาน ${trip.tripId}`
           },
-          style: 'primary',
+          style: 'primary' as const,
           color: '#0ea5e9'
         }
       ]
