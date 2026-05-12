@@ -111,9 +111,9 @@ export async function POST(req: NextRequest) {
       // @ts-ignore
       const driverId = await lineClient.createRichMenu(driverMenu);
 
-      // Upload Images (Using new premium V3 Neon images)
-      const publicImgPath = './public/assets/line/rich-menu-unverified-v3.png';
-      const driverImgPath = './public/assets/line/rich-menu-driver-v3.png';
+      // Upload Images (Using new premium V6 optimized JPEGs)
+      const publicImgPath = './public/assets/line/rich-menu-unverified-v6.jpg';
+      const driverImgPath = './public/assets/line/rich-menu-driver-v6.jpg';
 
       if (fs.existsSync(publicImgPath)) {
         await lineClient.setRichMenuImage(publicId, fs.readFileSync(publicImgPath));
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
         { 
           lineRichMenuIdDefault: publicId,
           lineRichMenuIdDriver: driverId,
-          standardReference: 'LINE CONFIG V3',
+          standardReference: 'LINE CONFIG V4 NEON',
           isActive: true
         },
         { upsert: true }
