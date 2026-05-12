@@ -14,7 +14,8 @@ export type DriverDocumentType =
   | 'pod_image'
   | 'delivery_documents_video'
   | 'onboarding_media'
-  | 'onboarding_text';
+  | 'onboarding_text'
+  | 'vehicle_update';
 
 export type LineDriverStatus = 'new' | 'awaiting_documents' | 'under_review' | 'approved' | 'rejected' | 'suspended';
 
@@ -93,6 +94,7 @@ const LineDriverSchema = new Schema<ILineDriver>({
       'delivery_documents_video',
       'onboarding_media',
       'onboarding_text',
+      'vehicle_update',
     ],
   },
   phone: { type: String, trim: true },
