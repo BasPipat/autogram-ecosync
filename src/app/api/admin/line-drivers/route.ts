@@ -8,7 +8,6 @@ import { DriverDocument, IDriverDocument } from '@/models/DriverDocument';
 import { SharedTruck } from '@/models/SharedTruck';
 import { Setting } from '@/models/Setting';
 
-
 type UpdateLineDriverBody = {
   lineUserId?: unknown;
   status?: unknown;
@@ -29,7 +28,6 @@ async function requireInternal(req: NextRequest) {
     return { response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
   }
 
-  // Allow system_owner, owner, admin, and operator to view drivers
   const allowedRoles = ['system_owner', 'owner', 'admin', 'operator'];
   if (!token.role || !allowedRoles.includes(token.role)) {
     return { response: NextResponse.json({ error: 'เฉพาะผู้ดูแลระบบเท่านั้น' }, { status: 403 }) };
@@ -122,6 +120,8 @@ export async function PUT(req: NextRequest) {
     }
 
     await connectToDatabase();
+    
+    // 1. Prepare Update Data
     const updateData: Partial<ILineDriver> = {
       status: nextStatus,
       reviewNote: text(body.reviewNote),
@@ -131,17 +131,16 @@ export async function PUT(req: NextRequest) {
       updateData.approvedAt = new Date();
       updateData.rejectedAt = undefined;
       updateData.pendingDocumentType = undefined;
-    }
-    if (nextStatus === 'rejected') {
+    } else if (nextStatus === 'rejected') {
       updateData.rejectedAt = new Date();
     }
 
     let finalSharedTruckId = sharedTruckId;
 
+    // 2. Handle Placeholder Truck
     if (body.createPlaceholderTruck && nextStatus === 'approved' && !finalSharedTruckId) {
       const existingDriver = await LineDriver.findOne({ lineUserId });
       if (existingDriver && !existingDriver.sharedTruckId) {
-        // Create placeholder truck
         const placeholderTruck = await SharedTruck.create({
           lineUserId,
           onboardingStatus: 'approved',
@@ -149,7 +148,7 @@ export async function PUT(req: NextRequest) {
           gpsConsentAt: existingDriver.gpsConsentAt || new Date(),
           headPlateNumber: `[รอระบุ]-${lineUserId.slice(-4)}`,
           tailPlateNumber: '[รอระบุ]',
-          compulsoryInsuranceExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days default
+          compulsoryInsuranceExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           vehicleInsuranceType: 'ไม่มีประกัน',
           cargoInsuranceAmount: 0,
           driverFirstName: existingDriver.displayName || 'คนขับ',
@@ -168,44 +167,13 @@ export async function PUT(req: NextRequest) {
       updateData.sharedTruckId = new mongoose.Types.ObjectId(finalSharedTruckId);
     }
 
+    // 3. Update Database (Driver)
     const driver = await LineDriver.findOneAndUpdate({ lineUserId }, updateData, { new: true });
     if (!driver) {
       return NextResponse.json({ error: 'ไม่พบคนขับ LINE' }, { status: 404 });
     }
 
-    // --- LINE Rich Menu Management ---
-    if (nextStatus === 'approved' || nextStatus === 'suspended' || nextStatus === 'rejected') {
-      try {
-        const { getLineClient } = await import('@/lib/line');
-        const lineClient = getLineClient();
-        const config = await Setting.findOne({ key: 'line_config', scope: 'global' });
-        
-        if (lineUserId.startsWith('web-')) {
-          console.warn(`Skipping LINE integration for dummy ID: ${lineUserId}`);
-          // We still allow the DB update to proceed, but we won't try to call LINE
-        } else if (nextStatus === 'approved' && config?.lineRichMenuIdDriver) {
-          await lineClient.linkRichMenuToUser(lineUserId, config.lineRichMenuIdDriver);
-          
-          // Send push message if approved
-          await lineClient.pushMessage(lineUserId, {
-            type: 'text',
-            text: 'ยินดีด้วยครับ! บัญชีรถร่วมของคุณได้รับการอนุมัติเรียบร้อยแล้ว ตอนนี้คุณสามารถเริ่มรับงานผ่านทาง LINE OA ได้ทันทีครับ\n\nพิมพ์ "ดูงาน" เพื่อตรวจสอบงานที่เปิดรับอยู่ครับ',
-          });
-        } else if ((nextStatus === 'suspended' || nextStatus === 'rejected')) {
-          await lineClient.unlinkRichMenuFromUser(lineUserId);
-          
-          const statusText = nextStatus === 'suspended' ? 'ถูกระงับการใช้งานชั่วคราว' : 'ไม่ผ่านการอนุมัติ';
-          await lineClient.pushMessage(lineUserId, {
-            type: 'text',
-            text: `ขออภัยครับ บัญชีของคุณ${statusText} กรุณาติดต่อเจ้าหน้าที่เพื่อสอบถามรายละเอียดเพิ่มเติมครับ`,
-          });
-        }
-      } catch (e: any) {
-        console.error('Failed to update LINE Rich Menu or send push message:', e);
-        // We continue to update SharedTruck even if LINE fails
-      }
-    }
-
+    // 4. Update Database (SharedTruck)
     if (finalSharedTruckId) {
       await SharedTruck.findByIdAndUpdate(finalSharedTruckId, {
         lineUserId,
@@ -216,7 +184,36 @@ export async function PUT(req: NextRequest) {
       });
     }
 
-    return NextResponse.json({ message: 'อัปเดตสถานะคนขับสำเร็จ', driver: serializeDriver(driver, []) });
+    // 5. LINE API Section (Nested try/catch, NO early return)
+    if (nextStatus === 'approved' || nextStatus === 'suspended' || nextStatus === 'rejected') {
+      try {
+        if (!lineUserId.startsWith('web-')) {
+          const { getLineClient } = await import('@/lib/line');
+          const lineClient = getLineClient();
+          const config = await Setting.findOne({ key: 'line_config', scope: 'global' });
+
+          if (nextStatus === 'approved' && config?.lineRichMenuIdDriver) {
+            await lineClient.linkRichMenuToUser(lineUserId, config.lineRichMenuIdDriver);
+            await lineClient.pushMessage(lineUserId, {
+              type: 'text',
+              text: 'ยินดีด้วยครับ! บัญชีรถร่วมของคุณได้รับการอนุมัติเรียบร้อยแล้ว ตอนนี้คุณสามารถเริ่มรับงานผ่านทาง LINE OA ได้ทันทีครับ\n\nพิมพ์ "ดูงาน" เพื่อตรวจสอบงานที่เปิดรับอยู่ครับ',
+            });
+          } else if (nextStatus === 'suspended' || nextStatus === 'rejected') {
+            await lineClient.unlinkRichMenuFromUser(lineUserId);
+            const statusText = nextStatus === 'suspended' ? 'ถูกระงับการใช้งานชั่วคราว' : 'ไม่ผ่านการอนุมัติ';
+            await lineClient.pushMessage(lineUserId, {
+              type: 'text',
+              text: `ขออภัยครับ บัญชีของคุณ${statusText} กรุณาติดต่อเจ้าหน้าที่เพื่อสอบถามรายละเอียดเพิ่มเติมครับ`,
+            });
+          }
+        }
+      } catch (lineError) {
+        console.warn('LINE API Failed, but DB update will proceed:', lineError);
+      }
+    }
+
+    // 6. Final Response
+    return NextResponse.json({ message: 'อัปเดตสถานะสำเร็จ', driver: serializeDriver(driver, []) });
   } catch (error) {
     console.error('Update driver error:', error);
     return NextResponse.json({ error: 'อัปเดตสถานะคนขับไม่สำเร็จ' }, { status: 500 });
@@ -237,31 +234,25 @@ export async function DELETE(req: NextRequest) {
 
     await connectToDatabase();
 
-    // 1. LINE Sync: Unlink Rich Menu (Only for real LINE IDs)
     try {
       if (lineUserId.startsWith('U')) {
         const { getLineClient } = await import('@/lib/line');
         await getLineClient().unlinkRichMenuFromUser(lineUserId);
       }
     } catch (lineError) {
-      console.warn('LINE Unlink skipped or failed (User might be blocked or ID is dummy):', lineError);
+      console.warn('LINE Unlink failed or skipped:', lineError);
     }
 
-    // 2. Data Fetch: Find driver before deletion to handle relations
     const driver = await LineDriver.findOne({ lineUserId });
-    
-    // 3. Cascade Delete: Documents
     await DriverDocument.deleteMany({ lineUserId });
     
-    // 4. Cascade Delete: SharedTruck (Only if it's a placeholder linked to this driver)
     if (driver?.sharedTruckId) {
       await SharedTruck.deleteOne({ _id: driver.sharedTruckId, lineUserId });
     }
 
-    // 5. Final Delete: LineDriver
     await LineDriver.deleteOne({ lineUserId });
 
-    return NextResponse.json({ message: 'ลบข้อมูลคนขับและเอกสารที่เกี่ยวข้องสำเร็จ' });
+    return NextResponse.json({ message: 'ลบข้อมูลสำเร็จ' });
   } catch (error) {
     console.error('Delete driver error:', error);
     return NextResponse.json({ error: 'ลบข้อมูลไม่สำเร็จ' }, { status: 500 });
