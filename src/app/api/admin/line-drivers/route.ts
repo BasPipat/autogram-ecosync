@@ -174,7 +174,9 @@ export async function PUT(req: NextRequest) {
     }
 
     // --- LINE Rich Menu Management ---
-    if (nextStatus === 'approved' || nextStatus === 'suspended' || nextStatus === 'rejected') {
+    const isRealLineUser = lineUserId.startsWith('U');
+    
+    if (isRealLineUser && (nextStatus === 'approved' || nextStatus === 'suspended' || nextStatus === 'rejected')) {
       try {
         const { getLineClient } = await import('@/lib/line');
         const lineClient = getLineClient();
