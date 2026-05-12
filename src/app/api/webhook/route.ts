@@ -450,6 +450,9 @@ async function handleTextMessage(lineUserId: string, text: string, replyToken: s
     }
 
     if (normalized === 'ข้อมูลรถ/เอกสาร') {
+      // CLEAR any pending document type to ensure we enter the vehicle_update flow
+      await LineDriver.findOneAndUpdate({ lineUserId }, { pendingDocumentType: undefined });
+      
       await getLineClient().replyMessage(replyToken, {
         type: 'text',
         text: 'รายการเอกสารที่ต้องใช้สำหรับอัปเดตข้อมูลรถครับ:\n1️⃣ บัตรประชาชน\n2️⃣ ใบขับขี่\n3️⃣ เล่มทะเบียนรถ\n4️⃣ พรบ./ประกันภัย\n5️⃣ หน้าบัญชีธนาคาร\n\n📸 สามารถส่งรูปเอกสารเข้ามาได้เลยครับ\nเมื่อส่งครบแล้ว รบกวนกดปุ่ม "สำเร็จแล้ว" ด้านล่างครับ',
@@ -641,9 +644,10 @@ async function saveMediaDocument(
       size: content?.length,
     });
 
+    // RE-SEND the 'Success' button after EVERY file upload to keep it visible
     await getLineClient().replyMessage(replyToken, { 
       type: 'text', 
-      text: 'ได้รับไฟล์เอกสารเรียบร้อยครับ! หากส่งครบทุกอย่างแล้ว รบกวนกดปุ่ม "สำเร็จแล้ว" ด้านล่างเพื่อให้เจ้าหน้าที่เริ่มตรวจสอบนะครับ',
+      text: `✅ ได้รับไฟล์ "${fileName || 'เอกสาร'}" เรียบร้อยครับ! หากส่งครบทุกอย่างแล้ว รบกวนกดปุ่ม "สำเร็จแล้ว" ด้านล่างเพื่อให้เจ้าหน้าที่เริ่มตรวจสอบนะครับ`,
       quickReply: {
         items: [{
           type: 'action',
