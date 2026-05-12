@@ -57,7 +57,7 @@ const richMenuData = {
     },
     {
       bounds: { x: 1250, y: 0, width: 1250, height: 843 }, // ขวาบน
-      action: { type: "uri", uri: URL_JOBS }
+      action: { type: "message", text: "ดูงาน" }
     },
     {
       bounds: { x: 0, y: 843, width: 1250, height: 843 }, // ซ้ายล่าง

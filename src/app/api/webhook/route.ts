@@ -447,6 +447,22 @@ function tripBubble(trip: any) {
           type: 'box' as const,
           layout: 'horizontal' as const,
           contents: [
+            { type: 'text' as const, text: 'ราคาจ้าง', size: 'xs' as const, color: '#94a3b8', flex: 2 },
+            { 
+              type: 'text' as const, 
+              text: trip.offeredPrice ? currency(trip.offeredPrice) : 'สอบถามราคา', 
+              size: 'sm' as const, 
+              color: '#0ea5e9', 
+              weight: 'bold' as const, 
+              flex: 8 
+            }
+          ],
+          margin: 'md' as const
+        },
+        {
+          type: 'box' as const,
+          layout: 'horizontal' as const,
+          contents: [
             { type: 'text' as const, text: 'สินค้า', size: 'xs' as const, color: '#94a3b8', flex: 2 },
             { type: 'text' as const, text: trip.cargoName || '-', size: 'sm' as const, color: '#334155', flex: 8, wrap: true }
           ],
@@ -493,7 +509,6 @@ async function showAvailableJobs(lineUserId: string, replyToken: string) {
     return;
   }
 
-  // Fetch all unassigned trips (same logic as /driver/jobs)
   const trips = await Trip.find({
     $and: [
       { $or: [{ licensePlate: { $exists: false } }, { licensePlate: null }, { licensePlate: '' }] },
@@ -506,7 +521,20 @@ async function showAvailableJobs(lineUserId: string, replyToken: string) {
     return;
   }
 
-  await getLineClient().replyMessage(replyToken, tripBoardFlex(trips));
+  // Fetch all open job offers for these trips to get the prices
+  const tripIds = trips.map(t => t._id);
+  const offers = await JobOffer.find({ tripId: { $in: tripIds }, status: 'open' });
+
+  // Attach price to trip object
+  const tripsWithPrice = trips.map(trip => {
+    const offer = offers.find(o => o.tripId.toString() === trip._id.toString());
+    return {
+      ...trip.toObject(),
+      offeredPrice: offer ? offer.driverPrice : null
+    };
+  });
+
+  await getLineClient().replyMessage(replyToken, tripBoardFlex(tripsWithPrice));
 }
 
 async function acceptTripDirectly(lineUserId: string, tripId: string, replyToken: string) {
@@ -539,6 +567,11 @@ async function acceptTripDirectly(lineUserId: string, tripId: string, replyToken
   }
 
   const now = new Date();
+
+  // Find if there is an open offer for this trip
+  const offer = await JobOffer.findOne({ tripId, status: 'open' });
+  const acceptedPrice = offer ? offer.driverPrice : 0;
+
   const trip = await Trip.findOneAndUpdate(
     {
       _id: tripId,
@@ -553,8 +586,10 @@ async function acceptTripDirectly(lineUserId: string, tripId: string, replyToken
       licensePlate: truck.headPlateNumber,
       tailLicensePlate: truck.tailPlateNumber,
       driverName: `${truck.driverFirstName} ${truck.driverLastName}`,
+      acceptedFreightPrice: acceptedPrice,
       lineAssignmentStatus: 'accepted',
       lineAcceptedAt: now,
+      lineJobOfferId: offer ? offer._id : undefined,
     },
     { new: true }
   );
@@ -564,8 +599,22 @@ async function acceptTripDirectly(lineUserId: string, tripId: string, replyToken
     return;
   }
 
+  // If there was an offer, mark it as accepted
+  if (offer) {
+    await JobOffer.findByIdAndUpdate(offer._id, {
+      status: 'accepted',
+      acceptedAt: now,
+      acceptedByLineUserId: lineUserId,
+      acceptedSharedTruckId: truck._id,
+      acceptedDriverName: `${truck.driverFirstName} ${truck.driverLastName}`,
+      acceptedHeadPlateNumber: truck.headPlateNumber,
+      acceptedTailPlateNumber: truck.tailLicensePlate,
+    });
+  }
+
   await LineDriver.findOneAndUpdate({ lineUserId }, {
     activeTripId: trip._id,
+    activeJobOfferId: offer ? offer._id : undefined,
     pendingDocumentType: undefined,
   });
 
@@ -577,6 +626,7 @@ async function acceptTripDirectly(lineUserId: string, tripId: string, replyToken
         'รับงานสำเร็จครับ!',
         `รหัสงาน: ${trip.tripId}`,
         `เส้นทาง: ${trip.origin} → ${trip.destination}`,
+        `ราคาจ้าง: ${acceptedPrice > 0 ? currency(acceptedPrice) : 'รอเจ้าหน้าที่แจ้งราคา'}`,
         `ทะเบียน: ${truck.headPlateNumber}`,
         '',
         trip.originMapUrl ? `📌 พิกัดต้นทาง: ${trip.originMapUrl}` : '',
