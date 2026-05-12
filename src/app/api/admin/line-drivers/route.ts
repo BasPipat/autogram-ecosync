@@ -180,7 +180,10 @@ export async function PUT(req: NextRequest) {
         const lineClient = getLineClient();
         const config = await Setting.findOne({ key: 'line_config', scope: 'global' });
         
-        if (nextStatus === 'approved' && config?.lineRichMenuIdDriver) {
+        if (lineUserId.startsWith('web-')) {
+          console.warn(`Skipping LINE integration for dummy ID: ${lineUserId}`);
+          // We still allow the DB update to proceed, but we won't try to call LINE
+        } else if (nextStatus === 'approved' && config?.lineRichMenuIdDriver) {
           await lineClient.linkRichMenuToUser(lineUserId, config.lineRichMenuIdDriver);
           
           // Send push message if approved
@@ -197,10 +200,13 @@ export async function PUT(req: NextRequest) {
             text: `ขออภัยครับ บัญชีของคุณ${statusText} กรุณาติดต่อเจ้าหน้าที่เพื่อสอบถามรายละเอียดเพิ่มเติมครับ`,
           });
         }
-      } catch (e) {
+      } catch (e: any) {
         console.error('Failed to update LINE Rich Menu or send push message:', e);
-        // We don't fail the whole request because the DB update was successful, 
-        // but we might want to log this for admin review.
+        return NextResponse.json({ 
+          message: 'อัปเดตในระบบสำเร็จ แต่ไม่สามารถเชื่อมต่อกับ LINE ได้',
+          error: e.message,
+          driver: serializeDriver(driver, []) 
+        }, { status: 200 }); // Still 200 because DB was updated
       }
     }
 
