@@ -506,6 +506,27 @@ async function handleTextMessage(lineUserId: string, text: string, replyToken: s
     return;
   }
 
+  if (normalized === 'ดูโปรไฟล์' || normalized === 'โปรไฟล์') {
+    const profileUrl = `https://autogram-ecosync.vercel.app/driver/profile?lineUserId=${lineUserId}`;
+    await getLineClient().replyMessage(replyToken, {
+      type: 'text',
+      text: 'กดลิงก์ด้านล่างเพื่อดูโปรไฟล์ของคุณครับ 👇',
+      quickReply: {
+        items: [
+          {
+            type: 'action',
+            action: {
+              type: 'uri',
+              label: 'ดูโปรไฟล์ของฉัน',
+              uri: profileUrl
+            }
+          }
+        ]
+      }
+    });
+    return;
+  }
+
   if (normalized === 'สถานะ') {
     const progress = await onboardingProgress(lineUserId);
     await getLineClient().replyMessage(replyToken, {

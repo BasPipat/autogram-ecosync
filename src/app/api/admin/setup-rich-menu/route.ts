@@ -93,8 +93,8 @@ export async function POST(req: NextRequest) {
           {
             bounds: { x: 0, y: 843, width: 1250, height: 843 },
             action: { 
-              type: 'uri', 
-              uri: liffBaseUrl ? `${liffBaseUrl}/driver/profile` : 'https://autogram-ecosync.vercel.app/driver/profile' 
+              type: 'message', 
+              text: 'ดูโปรไฟล์'
             }
           },
           // Bottom Right: Update Docs
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
         { 
           lineRichMenuIdDefault: publicId,
           lineRichMenuIdDriver: driverId,
-          standardReference: 'LINE CONFIG V4 NEON',
+          standardReference: 'LINE CONFIG V5 NEON',
           isActive: true
         },
         { upsert: true }
