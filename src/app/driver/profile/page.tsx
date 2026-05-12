@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { User, ShieldCheck, Phone, CreditCard, ChevronRight, LogOut, Loader2, MapPin, Truck } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { User, ShieldCheck, Phone, CreditCard, ChevronRight, LogOut, Loader2, Truck } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
 interface IDriverProfile {
   displayName: string;
@@ -13,15 +13,13 @@ interface IDriverProfile {
   licensePlate?: string;
 }
 
-export default function DriverProfilePage() {
-  const router = useRouter();
+function ProfileContent() {
   const searchParams = useSearchParams();
   const [lineUserId, setLineUserId] = useState<string | null>(null);
   const [driver, setDriver] = useState<IDriverProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 1. Extract and Lock Identity from URL
     const urlId = searchParams.get('lineUserId');
     if (urlId && urlId !== 'null' && urlId !== 'undefined') {
       setLineUserId(urlId);
@@ -150,5 +148,18 @@ export default function DriverProfilePage() {
         Autogram Eco-Sync v1.1.0
       </p>
     </div>
+  );
+}
+
+export default function DriverProfilePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-slate-400">
+        <Loader2 className="animate-spin mb-4" size={32} />
+        <p className="font-bold text-sm uppercase tracking-widest">กำลังโหลด...</p>
+      </div>
+    }>
+      <ProfileContent />
+    </Suspense>
   );
 }
