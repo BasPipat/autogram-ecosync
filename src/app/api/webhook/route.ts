@@ -430,16 +430,16 @@ function tripBubble(trip: any) {
           type: 'box' as const,
           layout: 'horizontal' as const,
           contents: [
-            { type: 'text' as const, text: 'ต้นทาง', size: 'xs' as const, color: '#94a3b8', flex: 2 },
-            { type: 'text' as const, text: trip.origin, size: 'sm' as const, color: '#334155', flex: 8, wrap: true }
+            { type: 'text' as const, text: 'ต้นทาง', size: 'xs' as const, color: '#94a3b8', flex: 3 },
+            { type: 'text' as const, text: trip.origin, size: 'sm' as const, color: '#334155', flex: 7, wrap: true }
           ]
         },
         {
           type: 'box' as const,
           layout: 'horizontal' as const,
           contents: [
-            { type: 'text' as const, text: 'ปลายทาง', size: 'xs' as const, color: '#94a3b8', flex: 2 },
-            { type: 'text' as const, text: trip.destination, size: 'sm' as const, color: '#334155', flex: 8, wrap: true }
+            { type: 'text' as const, text: 'ปลายทาง', size: 'xs' as const, color: '#94a3b8', flex: 3 },
+            { type: 'text' as const, text: trip.destination, size: 'sm' as const, color: '#334155', flex: 7, wrap: true }
           ],
           margin: 'md' as const
         },
@@ -447,14 +447,13 @@ function tripBubble(trip: any) {
           type: 'box' as const,
           layout: 'horizontal' as const,
           contents: [
-            { type: 'text' as const, text: 'ราคาจ้าง', size: 'xs' as const, color: '#94a3b8', flex: 2 },
+            { type: 'text' as const, text: 'ราคาจ้าง', size: 'xs' as const, color: '#94a3b8', flex: 3 },
             { 
               type: 'text' as const, 
-              text: trip.offeredPrice ? currency(trip.offeredPrice) : 'สอบถามราคา', 
+              text: trip.basePrice ? currency(trip.basePrice) : 'สอบถามราคา', 
               size: 'sm' as const, 
-              color: '#0ea5e9', 
-              weight: 'bold' as const, 
-              flex: 8 
+              color: '#334155', 
+              flex: 7 
             }
           ],
           margin: 'md' as const
@@ -463,8 +462,24 @@ function tripBubble(trip: any) {
           type: 'box' as const,
           layout: 'horizontal' as const,
           contents: [
-            { type: 'text' as const, text: 'สินค้า', size: 'xs' as const, color: '#94a3b8', flex: 2 },
-            { type: 'text' as const, text: trip.cargoName || '-', size: 'sm' as const, color: '#334155', flex: 8, wrap: true }
+            { type: 'text' as const, text: 'รับสุทธิ (-1%)', size: 'xs' as const, color: '#0ea5e9', flex: 3, weight: 'bold' as const },
+            { 
+              type: 'text' as const, 
+              text: trip.offeredPrice ? currency(trip.offeredPrice) : '-', 
+              size: 'sm' as const, 
+              color: '#0ea5e9', 
+              weight: 'bold' as const, 
+              flex: 7 
+            }
+          ],
+          margin: 'xs' as const
+        },
+        {
+          type: 'box' as const,
+          layout: 'horizontal' as const,
+          contents: [
+            { type: 'text' as const, text: 'สินค้า', size: 'xs' as const, color: '#94a3b8', flex: 3 },
+            { type: 'text' as const, text: trip.cargoName || '-', size: 'sm' as const, color: '#334155', flex: 7, wrap: true }
           ],
           margin: 'md' as const
         },
@@ -472,8 +487,8 @@ function tripBubble(trip: any) {
           type: 'box' as const,
           layout: 'horizontal' as const,
           contents: [
-            { type: 'text' as const, text: 'น้ำหนัก', size: 'xs' as const, color: '#94a3b8', flex: 2 },
-            { type: 'text' as const, text: `${trip.weight || '-'} ตัน`, size: 'sm' as const, color: '#334155', flex: 8 }
+            { type: 'text' as const, text: 'น้ำหนัก', size: 'xs' as const, color: '#94a3b8', flex: 3 },
+            { type: 'text' as const, text: `${trip.weight || '-'} ตัน`, size: 'sm' as const, color: '#334155', flex: 7 }
           ],
           margin: 'md' as const
         }
@@ -530,6 +545,7 @@ async function showAvailableJobs(lineUserId: string, replyToken: string) {
     const offer = offers.find(o => o.tripId.toString() === trip._id.toString());
     return {
       ...trip.toObject(),
+      basePrice: offer ? offer.basePrice : null,
       offeredPrice: offer ? offer.driverPrice : null
     };
   });
