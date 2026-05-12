@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Setting } from '@/models/Setting';
+import { LineDriver } from '@/models/LineDriver';
 
 const lineConfig = {
   channelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
@@ -63,13 +64,34 @@ export async function GET() {
       { 
         lineRichMenuIdDefault: '', // No default menu for new users
         lineRichMenuIdDriver: driverId,
-        standardReference: 'LINE CONFIG V7 NEON DRIVER-ONLY',
+        standardReference: 'LINE CONFIG V7 NEON DRIVER-ONLY FINAL AUTO-SYNC',
         isActive: true
       },
       { upsert: true }
     );
 
-    return NextResponse.json({ success: true, driverId, info: 'Cleanup and Setup completed. Only Driver menu created.' });
+    // 4. AUTO-SYNC: Re-link all approved drivers to the new Rich Menu
+    const approvedDrivers = await LineDriver.find({ status: 'approved' }).select('lineUserId');
+    const syncResults = { total: approvedDrivers.length, success: 0, fail: 0 };
+
+    for (const driver of approvedDrivers) {
+      if (driver.lineUserId && driver.lineUserId.startsWith('U')) {
+        try {
+          await lineClient.linkRichMenuToUser(driver.lineUserId, driverId);
+          syncResults.success++;
+        } catch (e) {
+          console.error(`Failed to link menu for ${driver.lineUserId}:`, e);
+          syncResults.fail++;
+        }
+      }
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      driverId, 
+      syncResults,
+      info: `Cleanup, Setup, and Auto-Sync for ${syncResults.success} drivers completed.` 
+    });
   } catch (err: any) {
     console.error('Setup Error:', err);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });

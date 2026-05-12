@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Setting } from '@/models/Setting';
+import { LineDriver } from '@/models/LineDriver';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,13 +35,13 @@ export async function GET() {
     const driverMenu: any = {
       size: { width: 2500, height: 1686 },
       selected: true,
-      name: 'Driver Neon V7 Final',
+      name: 'Driver Neon V7 Final Auto-Sync',
       chatBarText: 'เมนูคนขับรถ',
       areas: [
         { bounds: { x: 0, y: 0, width: 1250, height: 843 }, action: { type: 'uri', uri: `https://liff.line.me/${liffId}/driver/my-mission` } },
         { bounds: { x: 1250, y: 0, width: 1250, height: 843 }, action: { type: 'uri', uri: `https://liff.line.me/${liffId}/driver/jobs` } },
         { bounds: { x: 0, y: 843, width: 1250, height: 843 }, action: { type: 'uri', uri: `https://liff.line.me/${liffId}/driver/profile` } },
-        { bounds: { x: 1250, y: 843, width: 1250, height: 843 }, action: { type: 'message', text: 'ติดต่อเจ้าหน้าที่' } }
+        { bounds: { x: 1250, y: 843, width: 1250, height: 843 }, action: { type: 'message', text: 'ข้อมูลรถ/เอกสาร' } }
       ]
     };
     const driverId = await lineClient.createRichMenu(driverMenu);
@@ -65,13 +66,35 @@ export async function GET() {
       { 
         lineRichMenuIdDefault: '',
         lineRichMenuIdDriver: driverId,
-        standardReference: 'LINE CONFIG V7 NEON DRIVER-ONLY FINAL',
+        standardReference: 'LINE CONFIG V7 NEON DRIVER-ONLY FINAL AUTO-SYNC',
         isActive: true
       },
       { upsert: true }
     );
 
-    return NextResponse.json({ success: true, driverId, steps });
+    // 4. AUTO-SYNC
+    steps.push('Synchronizing all approved drivers');
+    const approvedDrivers = await LineDriver.find({ status: 'approved' }).select('lineUserId');
+    let successCount = 0;
+
+    for (const driver of approvedDrivers) {
+      if (driver.lineUserId && driver.lineUserId.startsWith('U')) {
+        try {
+          await lineClient.linkRichMenuToUser(driver.lineUserId, driverId);
+          successCount++;
+        } catch (e) {
+          console.error(`Sync fail for ${driver.lineUserId}:`, e);
+        }
+      }
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      driverId, 
+      syncedCount: successCount,
+      totalApproved: approvedDrivers.length,
+      steps 
+    });
   } catch (err: any) {
     return NextResponse.json({ 
       success: false, 
