@@ -267,38 +267,89 @@ function jobOfferBubble(offer: IJobOffer) {
   };
 }
 
-function jobBoardFlex(offers: IJobOffer[]): FlexMessage {
+function tripBoardFlex(trips: any[]): any {
   return {
     type: 'flex',
-    altText: 'มีงานพร้อมรับ',
+    altText: 'มีงานว่างพร้อมรับ',
     contents: {
       type: 'carousel',
-      contents: offers.slice(0, 10).map(jobOfferBubble),
+      contents: trips.slice(0, 10).map(tripBubble),
     },
   };
 }
 
-function jobDetailMessage(offer: IJobOffer, truck: ISharedTruck): Message[] {
-  return [
-    {
-      type: 'text',
-      text: [
-        'รับงานสำเร็จครับ',
-        `รหัสงาน: ${offer.tripCode}`,
-        `เส้นทาง: ${offer.origin} → ${offer.destination}`,
-        `ราคา: ${currency(offer.driverPrice)}`,
-        `ทะเบียนหัว: ${truck.headPlateNumber}`,
-        `ทะเบียนหาง: ${truck.tailPlateNumber || '-'}`,
-        '',
-        offer.originMapUrl ? `📌 พิกัดต้นทาง: ${offer.originMapUrl}` : '',
-        offer.destinationMapUrl ? `📌 พิกัดปลายทาง: ${offer.destinationMapUrl}` : '',
-        '',
-        'เมื่อเริ่มเดินทาง พิมพ์ "เริ่มงาน"',
-        'เมื่อส่งของเสร็จ พิมพ์ "ส่งของเสร็จ"',
-        'แล้วถ่ายรูปส่งงานครับ',
-      ].filter(Boolean).join('\n'),
+function tripBubble(trip: any) {
+  return {
+    type: 'bubble',
+    size: 'mega',
+    header: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        { type: 'text', text: '🚚 มีงานว่างพร้อมรับ', weight: 'bold', color: '#ffffff', size: 'sm' },
+        { type: 'text', text: trip.tripId, weight: 'bold', color: '#ffffff', size: 'xl', margin: 'md' }
+      ],
+      backgroundColor: '#0ea5e9'
     },
-  ];
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            { type: 'text', text: 'ต้นทาง', size: 'xs', color: '#94a3b8', flex: 2 },
+            { type: 'text', text: trip.origin, size: 'sm', color: '#334155', flex: 8, wrap: true }
+          ]
+        },
+        {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            { type: 'text', text: 'ปลายทาง', size: 'xs', color: '#94a3b8', flex: 2 },
+            { type: 'text', text: trip.destination, size: 'sm', color: '#334155', flex: 8, wrap: true }
+          ],
+          margin: 'md'
+        },
+        {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            { type: 'text', text: 'สินค้า', size: 'xs', color: '#94a3b8', flex: 2 },
+            { type: 'text', text: trip.cargoName || '-', size: 'sm', color: '#334155', flex: 8, wrap: true }
+          ],
+          margin: 'md'
+        },
+        {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            { type: 'text', text: 'น้ำหนัก', size: 'xs', color: '#94a3b8', flex: 2 },
+            { type: 'text', text: `${trip.weight || '-'} ตัน`, size: 'sm', color: '#334155', flex: 8 }
+          ],
+          margin: 'md'
+        }
+      ]
+    },
+    footer: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'button',
+          action: {
+            type: 'postback',
+            label: 'รับงานนี้',
+            data: `action=acceptTrip&tripId=${trip._id}`,
+            displayText: `ขอกดรับงาน ${trip.tripId}`
+          },
+          style: 'primary',
+          color: '#0ea5e9'
+        }
+      ]
+    }
+  };
 }
 
 async function showAvailableJobs(lineUserId: string, replyToken: string) {
@@ -311,22 +362,24 @@ async function showAvailableJobs(lineUserId: string, replyToken: string) {
     return;
   }
 
-  const now = new Date();
-  const offers = await JobOffer.find({
-    status: 'open',
-    $or: [{ expiresAt: { $exists: false } }, { expiresAt: { $gte: now } }],
-  }).sort({ sentAt: -1 }).limit(10);
+  // Fetch all unassigned trips (same logic as /driver/jobs)
+  const trips = await Trip.find({
+    $and: [
+      { $or: [{ licensePlate: { $exists: false } }, { licensePlate: null }, { licensePlate: '' }] },
+      { $or: [{ lineUserId: { $exists: false } }, { lineUserId: null }, { lineUserId: '' }] }
+    ]
+  }).sort({ createdAt: -1 }).limit(10);
 
-  if (offers.length === 0) {
-    await getLineClient().replyMessage(replyToken, { type: 'text', text: 'ตอนนี้ยังไม่มีงานพร้อมรับครับ ระบบจะแจ้งให้อีกครั้งเมื่อมีงานใหม่' });
+  if (trips.length === 0) {
+    await getLineClient().replyMessage(replyToken, { type: 'text', text: 'ตอนนี้ยังไม่มีงานว่างพร้อมรับครับ ระบบจะแจ้งให้อีกครั้งเมื่อมีงานใหม่' });
     return;
   }
 
-  await getLineClient().replyMessage(replyToken, jobBoardFlex(offers));
+  await getLineClient().replyMessage(replyToken, tripBoardFlex(trips));
 }
 
-async function acceptJob(lineUserId: string, offerId: string, replyToken: string) {
-  if (!mongoose.Types.ObjectId.isValid(offerId)) {
+async function acceptTripDirectly(lineUserId: string, tripId: string, replyToken: string) {
+  if (!mongoose.Types.ObjectId.isValid(tripId)) {
     await getLineClient().replyMessage(replyToken, { type: 'text', text: 'ไม่พบข้อมูลงานนี้ครับ' });
     return;
   }
@@ -337,7 +390,6 @@ async function acceptJob(lineUserId: string, offerId: string, replyToken: string
     return;
   }
 
-  // Check if driver already has an active trip
   if (driver.activeTripId) {
     await getLineClient().replyMessage(replyToken, { 
       type: 'text', 
@@ -356,48 +408,54 @@ async function acceptJob(lineUserId: string, offerId: string, replyToken: string
   }
 
   const now = new Date();
-  const offer = await JobOffer.findOneAndUpdate(
+  const trip = await Trip.findOneAndUpdate(
     {
-      _id: offerId,
-      status: 'open',
-      $or: [{ expiresAt: { $exists: false } }, { expiresAt: { $gte: now } }],
+      _id: tripId,
+      $and: [
+        { $or: [{ licensePlate: { $exists: false } }, { licensePlate: null }, { licensePlate: '' }] },
+        { $or: [{ lineUserId: { $exists: false } }, { lineUserId: null }, { lineUserId: '' }] }
+      ]
     },
     {
-      status: 'accepted',
-      acceptedAt: now,
-      acceptedByLineUserId: lineUserId,
-      acceptedSharedTruckId: truck._id,
-      acceptedDriverName: `${truck.driverFirstName} ${truck.driverLastName}`,
-      acceptedHeadPlateNumber: truck.headPlateNumber,
-      acceptedTailPlateNumber: truck.tailPlateNumber,
+      sharedTruckId: truck._id,
+      lineUserId,
+      licensePlate: truck.headPlateNumber,
+      tailLicensePlate: truck.tailPlateNumber,
+      driverName: `${truck.driverFirstName} ${truck.driverLastName}`,
+      lineAssignmentStatus: 'accepted',
+      lineAcceptedAt: now,
     },
     { new: true }
   );
 
-  if (!offer) {
-    await getLineClient().replyMessage(replyToken, { type: 'text', text: 'งานนี้ถูกคนอื่นรับไปแล้ว หรือหมดเวลารับงานแล้วครับ' });
+  if (!trip) {
+    await getLineClient().replyMessage(replyToken, { type: 'text', text: 'งานนี้ถูกคนอื่นรับไปแล้วครับ' });
     return;
   }
 
-  await Trip.findByIdAndUpdate(offer.tripId, {
-    sharedTruckId: truck._id,
-    lineUserId,
-    licensePlate: truck.headPlateNumber,
-    tailLicensePlate: truck.tailPlateNumber,
-    driverName: `${truck.driverFirstName} ${truck.driverLastName}`,
-    acceptedFreightPrice: offer.driverPrice,
-    lineAssignmentStatus: 'accepted',
-    lineJobOfferId: offer._id,
-    lineAcceptedAt: now,
-  });
-
   await LineDriver.findOneAndUpdate({ lineUserId }, {
-    activeTripId: offer.tripId,
-    activeJobOfferId: offer._id,
+    activeTripId: trip._id,
     pendingDocumentType: undefined,
   });
 
-  await getLineClient().replyMessage(replyToken, jobDetailMessage(offer, truck));
+  // Simple success message based on trip data
+  await getLineClient().replyMessage(replyToken, [
+    {
+      type: 'text',
+      text: [
+        'รับงานสำเร็จครับ!',
+        `รหัสงาน: ${trip.tripId}`,
+        `เส้นทาง: ${trip.origin} → ${trip.destination}`,
+        `ทะเบียน: ${truck.headPlateNumber}`,
+        '',
+        trip.originMapUrl ? `📌 พิกัดต้นทาง: ${trip.originMapUrl}` : '',
+        trip.destinationMapUrl ? `📌 พิกัดปลายทาง: ${trip.destinationMapUrl}` : '',
+        '',
+        'เมื่อเริ่มเดินทาง พิมพ์ "เริ่มงาน"',
+        'เมื่อส่งของเสร็จ พิมพ์ "ส่งของเสร็จ"',
+      ].filter(Boolean).join('\n'),
+    }
+  ]);
 }
 
 async function saveTextDocument(driver: ILineDriver, text: string, replyToken: string) {
@@ -981,6 +1039,11 @@ async function handlePostback(lineUserId: string, data: string, replyToken: stri
 
   if (action === 'accept_job') {
     await acceptJob(lineUserId, params.get('offerId') || '', replyToken);
+    return;
+  }
+
+  if (action === 'acceptTrip') {
+    await acceptTripDirectly(lineUserId, params.get('tripId') || '', replyToken);
     return;
   }
 
