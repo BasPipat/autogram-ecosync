@@ -48,16 +48,21 @@ export async function GET() {
     const driverId = await lineClient.createRichMenu(driverMenu);
 
     const baseUrl = 'https://autogram-ecosync.vercel.app';
-    const publicImgRes = await fetch(`${baseUrl}/assets/line/rich-menu-unverified-v7.png`);
-    const driverImgRes = await fetch(`${baseUrl}/assets/line/rich-menu-driver-v7.png`);
+    const publicImgRes = await fetch(`${baseUrl}/assets/line/rich-menu-unverified-v7.jpg`);
+    const driverImgRes = await fetch(`${baseUrl}/assets/line/rich-menu-driver-v7.jpg`);
 
     if (publicImgRes.ok) {
       const buffer = Buffer.from(await publicImgRes.arrayBuffer());
-      await lineClient.setRichMenuImage(publicId, buffer);
+      await lineClient.setRichMenuImage(publicId, buffer, 'image/jpeg');
+    } else {
+      throw new Error(`Failed to fetch public image: ${publicImgRes.status}`);
     }
+
     if (driverImgRes.ok) {
       const buffer = Buffer.from(await driverImgRes.arrayBuffer());
-      await lineClient.setRichMenuImage(driverId, buffer);
+      await lineClient.setRichMenuImage(driverId, buffer, 'image/jpeg');
+    } else {
+      throw new Error(`Failed to fetch driver image: ${driverImgRes.status}`);
     }
 
     await lineClient.setDefaultRichMenu(publicId);
