@@ -16,8 +16,7 @@ const lineClient = new Client(lineConfig);
 export async function GET() {
   try {
     await connectToDatabase();
-    const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
-    if (!liffId) throw new Error('LIFF ID is missing');
+    const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || '2010054204-bv5oRtcL';
 
     // 1. Create PUBLIC RICH MENU
     const publicMenu: any = {
@@ -47,21 +46,30 @@ export async function GET() {
       ]
     };
 
-    const publicId = await lineClient.createRichMenu(publicMenu);
-    const driverId = await lineClient.createRichMenu(driverMenu);
+    const publicId = (await lineClient.createRichMenu(publicMenu));
+    const driverId = (await lineClient.createRichMenu(driverMenu));
 
-    const baseUrl = 'https://autogram-ecosync.vercel.app';
-    const publicImgRes = await fetch(`${baseUrl}/assets/line/rich-menu-unverified-v7.jpg`);
-    const driverImgRes = await fetch(`${baseUrl}/assets/line/rich-menu-driver-v7.jpg`);
+    // Upload Images using Raw Fetch and fs.readFileSync
+    const publicImgBuffer = fs.readFileSync(path.join(process.cwd(), 'public/assets/line/rich-menu-unverified-v7.jpg'));
+    const driverImgBuffer = fs.readFileSync(path.join(process.cwd(), 'public/assets/line/rich-menu-driver-v7.jpg'));
 
-    if (publicImgRes.ok) {
-      const buffer = Buffer.from(await publicImgRes.arrayBuffer());
-      await lineClient.setRichMenuImage(publicId, buffer, 'image/jpeg');
-    }
-    if (driverImgRes.ok) {
-      const buffer = Buffer.from(await driverImgRes.arrayBuffer());
-      await lineClient.setRichMenuImage(driverId, buffer, 'image/jpeg');
-    }
+    await fetch(`https://api-data.line.me/v2/bot/richmenu/${publicId}/content`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${lineConfig.channelAccessToken}`,
+        'Content-Type': 'image/jpeg'
+      },
+      body: publicImgBuffer
+    });
+
+    await fetch(`https://api-data.line.me/v2/bot/richmenu/${driverId}/content`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${lineConfig.channelAccessToken}`,
+        'Content-Type': 'image/jpeg'
+      },
+      body: driverImgBuffer
+    });
 
     await lineClient.setDefaultRichMenu(publicId);
 
@@ -70,7 +78,7 @@ export async function GET() {
       { 
         lineRichMenuIdDefault: publicId,
         lineRichMenuIdDriver: driverId,
-        standardReference: 'LINE CONFIG V7 NEON LIFF FINAL',
+        standardReference: 'LINE CONFIG V7 NEON LIFF JPEG',
         isActive: true
       },
       { upsert: true }
