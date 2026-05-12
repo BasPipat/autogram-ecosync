@@ -16,8 +16,7 @@ const lineClient = new Client(lineConfig);
 export async function GET() {
   try {
     await connectToDatabase();
-    const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
-    if (!liffId) throw new Error('LIFF ID is missing');
+    const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || '2010054204-bv5oRtcL';
 
     const publicMenu: any = {
       size: { width: 2500, height: 1686 },
