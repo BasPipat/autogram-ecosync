@@ -6,7 +6,7 @@ import {
   UploadCloud, CheckCircle, Loader2, MapPin, 
   AlertCircle, ChevronRight, Camera
 } from 'lucide-react';
-import liff from '@line/liff';
+// liff import removed
 
 export default function DriverRegistrationPage() {
   const [step, setStep] = useState(1);
@@ -29,44 +29,14 @@ export default function DriverRegistrationPage() {
   });
 
   useEffect(() => {
-    // 1. Extract from URL immediately (High Priority)
+    // Extract from URL immediately
     const urlParams = new URLSearchParams(window.location.search);
     const urlId = urlParams.get('lineUserId');
     if (urlId && urlId !== 'null' && urlId !== 'undefined') {
       console.log('Identity found in URL:', urlId);
       setLineUserId(urlId);
     }
-
-    const initLiff = async () => {
-      try {
-        const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
-        if (!liffId) {
-          console.warn('LIFF ID is not configured');
-          setLiffLoading(false);
-          return;
-        }
-
-        await liff.init({ liffId });
-        
-        if (!liff.isLoggedIn()) {
-          // If we have URL ID, we don't strictly need to force login for viewing
-          // but we'll try for profile sync
-          return;
-        }
-
-        const profile = await liff.getProfile();
-        console.log('LIFF Profile fetched:', profile);
-        if (profile.userId) setLineUserId(profile.userId);
-
-      } catch (err: any) {
-        console.error('LIFF Init Error:', err);
-        // Don't show error to user if we already have URL ID
-      } finally {
-        setLiffLoading(false);
-      }
-    };
-
-    initLiff();
+    setLiffLoading(false);
   }, []);
 
   // Request GPS Permission early as per requirement
@@ -141,13 +111,10 @@ export default function DriverRegistrationPage() {
           </p>
           <button 
             onClick={() => {
-              if (typeof window !== 'undefined' && (window as any).liff) {
-                (window as any).liff.closeWindow();
-              } else {
-                window.close();
-              }
+              // Redirect to LINE OA as the "Close" action since we don't use LIFF
+              window.location.href = 'https://line.me/R/ti/p/@943hytkx';
             }}
-            className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-sm shadow-lg shadow-slate-200"
+            className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-sm shadow-lg shadow-slate-200 transition-all active:scale-95"
           >
             ปิดหน้านี้
           </button>
