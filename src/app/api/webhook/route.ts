@@ -501,8 +501,8 @@ async function handleTextMessage(lineUserId: string, text: string, replyToken: s
     return;
   }
 
-  if (normalized === 'ลงทะเบียน' || normalized === 'ส่งเอกสาร') {
-    await getLineClient().replyMessage(replyToken, onboardingMenuMessage());
+  if (normalized === 'ลงทะเบียน' || normalized === 'ส่งเอกสาร' || normalized === 'กดส่งเอกสาร') {
+    await getLineClient().replyMessage(replyToken, welcomeMessages(lineUserId));
     return;
   }
 

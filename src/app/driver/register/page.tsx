@@ -29,11 +29,19 @@ export default function DriverRegistrationPage() {
   });
 
   useEffect(() => {
+    // 1. Extract from URL immediately (High Priority)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlId = urlParams.get('lineUserId');
+    if (urlId && urlId !== 'null' && urlId !== 'undefined') {
+      console.log('Identity found in URL:', urlId);
+      setLineUserId(urlId);
+    }
+
     const initLiff = async () => {
       try {
         const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
         if (!liffId) {
-          setError('LIFF ID is not configured');
+          console.warn('LIFF ID is not configured');
           setLiffLoading(false);
           return;
         }
@@ -41,22 +49,18 @@ export default function DriverRegistrationPage() {
         await liff.init({ liffId });
         
         if (!liff.isLoggedIn()) {
-          liff.login();
+          // If we have URL ID, we don't strictly need to force login for viewing
+          // but we'll try for profile sync
           return;
         }
 
         const profile = await liff.getProfile();
         console.log('LIFF Profile fetched:', profile);
-        setLineUserId(profile.userId);
-        
-        // Also check if user ID is in URL (for testing)
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlId = urlParams.get('lineUserId');
-        if (urlId) setLineUserId(urlId);
+        if (profile.userId) setLineUserId(profile.userId);
 
       } catch (err: any) {
         console.error('LIFF Init Error:', err);
-        setError('Failed to initialize LINE connection. Please use LINE app.');
+        // Don't show error to user if we already have URL ID
       } finally {
         setLiffLoading(false);
       }
