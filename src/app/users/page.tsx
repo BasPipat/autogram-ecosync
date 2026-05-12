@@ -193,6 +193,7 @@ export default function ManageUsersPage() {
   const [lineDriverTruckLinks, setLineDriverTruckLinks] = useState<Record<string, string>>({});
   const [lineDriversLoading, setLineDriversLoading] = useState(false);
   const [analyzingLineUserId, setAnalyzingLineUserId] = useState<string | null>(null);
+  const [approvingLineUserId, setApprovingLineUserId] = useState<string | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -545,6 +546,7 @@ export default function ManageUsersPage() {
       }
     }
 
+    setApprovingLineUserId(lineUserId);
     try {
       const res = await fetch('/api/admin/line-drivers', {
         method: 'PUT',
@@ -559,13 +561,22 @@ export default function ManageUsersPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || 'อัปเดตสถานะคนขับไม่สำเร็จ');
+        alert('❌ ' + (data.error || 'อัปเดตสถานะคนขับไม่สำเร็จ'));
         return;
       }
-      fetchLineDrivers();
-      fetchSharedTrucks();
-    } catch {
-      alert('ระบบขัดข้องขณะอัปเดตสถานะคนขับ');
+
+      // Show success message with LINE status
+      const statusText = nextStatus === 'approved' ? '✅ อนุมัติคนขับสำเร็จ' : '❌ ปฏิเสธการอนุมัติแล้ว';
+      const lineStatusText = data.lineStatus ? `\n\n📱 LINE: ${data.lineStatus}` : '';
+      alert(`${statusText}${lineStatusText}`);
+
+      await fetchLineDrivers();
+      await fetchSharedTrucks();
+    } catch (error) {
+      console.error('Line driver status update error:', error);
+      alert('❌ ระบบขัดข้องขณะอัปเดตสถานะคนขับ');
+    } finally {
+      setApprovingLineUserId(null);
     }
   };
 
@@ -588,6 +599,22 @@ export default function ManageUsersPage() {
       
     } catch (error) {
       alert('ระบบขัดข้องขณะลบข้อมูล');
+    }
+  };
+
+  const handleQuickSetup = async () => {
+    if (!confirm('ยืนยันการตั้งค่า Rich Menu ใหม่? (ระบบจะสร้างเมนูและบันทึก ID ลงฐานข้อมูลให้คุณทันที)')) return;
+    try {
+      const res = await fetch('/api/admin/setup-rich-menu', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'setup' }),
+      });
+      const data = await res.json();
+      if (res.ok) alert('✅ ตั้งค่า Rich Menu ในระบบเรียบร้อยแล้ว! ตอนนี้คุณสามารถทดสอบอนุมัติคนขับได้เลยครับ');
+      else alert(`❌ ตั้งค่าไม่สำเร็จ: ${data.error}`);
+    } catch {
+      alert('ระบบขัดข้อง');
     }
   };
 
@@ -851,14 +878,25 @@ export default function ManageUsersPage() {
           <h3 className="text-[14px] font-bold" style={{ color: 'var(--text-primary)' }}>คนขับ LINE รอตรวจ</h3>
           <p className="text-[12px]" style={{ color: 'var(--text-tertiary)' }}>{lineDrivers.length} LINE profiles</p>
         </div>
-        <button
-          type="button"
-          onClick={fetchLineDrivers}
-          className="px-3 py-2 rounded-lg text-[12px] font-semibold"
-          style={{ background: 'var(--border-light)', color: 'var(--text-secondary)' }}
-        >
-          รีเฟรช
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleQuickSetup}
+            className="px-3 py-2 rounded-lg text-[12px] font-semibold border border-slate-200 hover:bg-slate-50 transition-all"
+            style={{ color: 'var(--text-secondary)' }}
+            title="ตั้งค่า Rich Menu เริ่มต้นและบันทึก ID ลงระบบ"
+          >
+            Setup LINE
+          </button>
+          <button
+            type="button"
+            onClick={fetchLineDrivers}
+            className="px-3 py-2 rounded-lg text-[12px] font-semibold"
+            style={{ background: 'var(--border-light)', color: 'var(--text-secondary)' }}
+          >
+            รีเฟรช
+          </button>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left min-w-[1150px]">
@@ -979,26 +1017,43 @@ export default function ManageUsersPage() {
                         <button
                           type="button"
                           onClick={() => handleLineDriverStatus(driver.lineUserId, 'approved')}
-                          className="py-1.5 px-3 rounded-lg text-[11px] font-bold shadow-sm hover:shadow-md transition-all"
+                          disabled={approvingLineUserId === driver.lineUserId}
+                          className="py-1.5 px-3 rounded-lg text-[11px] font-bold shadow-sm hover:shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                           style={{ background: '#10B981', color: '#ffffff' }}
                         >
-                          อนุมัติ
+                          {approvingLineUserId === driver.lineUserId ? (
+                            <>
+                              <Loader2 size={12} className="animate-spin" />
+                              กำลังประมวลผล...
+                            </>
+                          ) : (
+                            'อนุมัติ'
+                          )}
                         </button>
                       ) : (
                         <button
                           type="button"
                           onClick={() => handleLineDriverStatus(driver.lineUserId, 'approved')}
-                          className="py-1.5 px-3 rounded-lg text-[11px] font-bold shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-1.5"
+                          disabled={approvingLineUserId === driver.lineUserId}
+                          className="py-1.5 px-3 rounded-lg text-[11px] font-bold shadow-sm hover:shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
                           style={{ background: '#F59E0B', color: '#ffffff' }}
                           title="อนุมัติทันทีและสร้างข้อมูลรถสำรองให้อัตโนมัติ"
                         >
-                          อนุมัติด่วน
+                          {approvingLineUserId === driver.lineUserId ? (
+                            <>
+                              <Loader2 size={12} className="animate-spin" />
+                              กำลังประมวลผล...
+                            </>
+                          ) : (
+                            'อนุมัติด่วน'
+                          )}
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={() => handleLineDriverStatus(driver.lineUserId, 'rejected')}
-                        className="py-1.5 px-3 rounded-lg text-[11px] font-bold hover:bg-rose-100 transition-colors"
+                        disabled={approvingLineUserId === driver.lineUserId}
+                        className="py-1.5 px-3 rounded-lg text-[11px] font-bold hover:bg-rose-100 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                         style={{ color: '#DC2626', border: '1px solid #FECACA' }}
                       >
                         ไม่ผ่าน
@@ -1006,7 +1061,8 @@ export default function ManageUsersPage() {
                       <button
                         type="button"
                         onClick={() => handleDeleteLineDriver(driver.lineUserId, driver.displayName || 'ไม่ระบุชื่อ')}
-                        className="py-1.5 px-3 rounded-lg text-[11px] font-bold hover:bg-rose-100 transition-colors"
+                        disabled={approvingLineUserId === driver.lineUserId}
+                        className="py-1.5 px-3 rounded-lg text-[11px] font-bold hover:bg-rose-100 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                         style={{ color: '#DC2626', border: '1px solid #FECACA' }}
                       >
                         ลบข้อมูล
@@ -1014,7 +1070,7 @@ export default function ManageUsersPage() {
                       <button
                         type="button"
                         onClick={() => handleAiAnalyze(driver.lineUserId)}
-                        disabled={!!analyzingLineUserId}
+                        disabled={!!analyzingLineUserId || approvingLineUserId === driver.lineUserId}
                         className="py-1.5 px-3 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
                         style={{ background: '#F0FDFA', color: '#0D9488', border: '1px solid #CCFBF1' }}
                         title="ใช้ AI วิเคราะห์เอกสารและกรอกข้อมูลอัตโนมัติ"

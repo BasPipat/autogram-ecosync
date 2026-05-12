@@ -184,7 +184,9 @@ export async function PUT(req: NextRequest) {
       });
     }
 
-    // 5. LINE API Section (Nested try/catch, NO early return)
+    // 5. LINE API Section (Nested try/catch, NO early return, Detailed Reporting)
+    let lineStatus = "ไม่ได้เชื่อมต่อ LINE";
+
     if (nextStatus === 'approved' || nextStatus === 'suspended' || nextStatus === 'rejected') {
       try {
         if (!lineUserId.startsWith('web-')) {
@@ -192,20 +194,55 @@ export async function PUT(req: NextRequest) {
           const lineClient = getLineClient();
           const config = await Setting.findOne({ key: 'line_config', scope: 'global' });
 
-          if (nextStatus === 'approved' && config?.lineRichMenuIdDriver) {
-            await lineClient.linkRichMenuToUser(lineUserId, config.lineRichMenuIdDriver);
-            await lineClient.pushMessage(lineUserId, {
-              type: 'text',
-              text: 'ยินดีด้วยครับ! บัญชีรถร่วมของคุณได้รับการอนุมัติเรียบร้อยแล้ว ตอนนี้คุณสามารถเริ่มรับงานผ่านทาง LINE OA ได้ทันทีครับ\n\nพิมพ์ "ดูงาน" เพื่อตรวจสอบงานที่เปิดรับอยู่ครับ',
-            });
+          if (nextStatus === 'approved') {
+            lineStatus = "";
+            // Action A: Link Rich Menu
+            if (config?.lineRichMenuIdDriver) {
+              try {
+                await lineClient.linkRichMenuToUser(lineUserId, config.lineRichMenuIdDriver);
+                lineStatus = "✅ สลับ Rich Menu สำเร็จ";
+              } catch (e: any) {
+                console.error('Rich Menu Switch Fail:', e);
+                lineStatus = "❌ สลับเมนูไม่สำเร็จ (ID อาจจะผิด)";
+              }
+            } else {
+              lineStatus = "⚠️ ข้ามการสลับเมนู (ไม่พบ ID ในระบบ)";
+            }
+
+            // Action B: Push Message (Always try even if menu fails)
+            try {
+              await lineClient.pushMessage(lineUserId, {
+                type: 'text',
+                text: '✅ ยินดีด้วยครับ! บัญชีรถร่วมของคุณได้รับการอนุมัติเรียบร้อยแล้ว ตอนนี้คุณสามารถเริ่มรับงานผ่านทาง LINE OA ได้ทันทีครับ\n\nพิมพ์ "ดูงาน" เพื่อตรวจสอบงานที่เปิดรับอยู่ครับ',
+              });
+              lineStatus += (lineStatus ? " + " : "") + "📨 ส่งข้อความแจ้งเตือนสำเร็จ";
+            } catch (e: any) {
+              console.error('Push Message Fail:', e);
+              lineStatus += (lineStatus ? " + " : "") + "❌ ส่งข้อความไม่สำเร็จ";
+            }
           } else if (nextStatus === 'suspended' || nextStatus === 'rejected') {
-            await lineClient.unlinkRichMenuFromUser(lineUserId);
+            // Action C: Unlink and Notify for rejection
             const statusText = nextStatus === 'suspended' ? 'ถูกระงับการใช้งานชั่วคราว' : 'ไม่ผ่านการอนุมัติ';
-            await lineClient.pushMessage(lineUserId, {
-              type: 'text',
-              text: `ขออภัยครับ บัญชีของคุณ${statusText} กรุณาติดต่อเจ้าหน้าที่เพื่อสอบถามรายละเอียดเพิ่มเติมครับ`,
-            });
+            
+            try {
+              await lineClient.unlinkRichMenuFromUser(lineUserId);
+              lineStatus = "✅ ถอน Rich Menu ออกแล้ว";
+            } catch {
+              lineStatus = "⚠️ ถอนเมนูไม่สำเร็จ (อาจไม่มีเมนูอยู่แล้ว)";
+            }
+
+            try {
+              await lineClient.pushMessage(lineUserId, {
+                type: 'text',
+                text: `❌ ขออภัยครับ บัญชีของคุณ${statusText} กรุณาติดต่อเจ้าหน้าที่เพื่อสอบถามรายละเอียดเพิ่มเติมครับ`,
+              });
+              lineStatus += " + 📨 แจ้งเตือนคนขับแล้ว";
+            } catch {
+              lineStatus += " + ❌ ส่งข้อความไม่สำเร็จ";
+            }
           }
+        } else {
+          lineStatus = "⏩ ข้าม (ID ของระบบไม่ใช่ LINE ID)";
         }
       } catch (lineError) {
         console.warn('LINE API Failed, but DB update will proceed:', lineError);
@@ -213,7 +250,11 @@ export async function PUT(req: NextRequest) {
     }
 
     // 6. Final Response
-    return NextResponse.json({ message: 'อัปเดตสถานะสำเร็จ', driver: serializeDriver(driver, []) });
+    return NextResponse.json({ 
+      message: 'อัปเดตสถานะสำเร็จ', 
+      lineStatus,
+      driver: serializeDriver(driver, []) 
+    });
   } catch (error) {
     console.error('Update driver error:', error);
     return NextResponse.json({ error: 'อัปเดตสถานะคนขับไม่สำเร็จ' }, { status: 500 });
