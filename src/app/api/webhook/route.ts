@@ -449,6 +449,32 @@ async function handleTextMessage(lineUserId: string, text: string, replyToken: s
       return;
     }
 
+    if (normalized === 'ข้อมูลรถ/เอกสาร') {
+      await getLineClient().replyMessage(replyToken, {
+        type: 'text',
+        text: 'รายการเอกสารที่ต้องใช้สำหรับอัปเดตข้อมูลรถครับ:\n1️⃣ บัตรประชาชน\n2️⃣ ใบขับขี่\n3️⃣ เล่มทะเบียนรถ\n4️⃣ พรบ./ประกันภัย\n5️⃣ หน้าบัญชีธนาคาร\n\n📸 สามารถส่งรูปเอกสารเข้ามาได้เลยครับ\nเมื่อส่งครบแล้ว รบกวนกดปุ่ม "สำเร็จแล้ว" ด้านล่างครับ',
+        quickReply: {
+          items: [{
+            type: 'action',
+            action: {
+              type: 'message',
+              label: '✅ สำเร็จแล้ว',
+              text: 'สำเร็จแล้ว'
+            }
+          }]
+        }
+      });
+      return;
+    }
+
+    if (normalized === 'สำเร็จแล้ว') {
+      await getLineClient().replyMessage(replyToken, {
+        type: 'text',
+        text: 'ขอบคุณครับ! เจ้าหน้าที่ได้รับข้อมูลแล้ว และจะดำเนินการตรวจสอบเพื่ออัปเดตข้อมูลในระบบให้เร็วที่สุดครับ 🙏'
+      });
+      return;
+    }
+
     if (normalized === 'เริ่มงาน' && driver.activeTripId) {
       await Trip.findByIdAndUpdate(driver.activeTripId, {
         lineAssignmentStatus: 'in_progress',
@@ -583,7 +609,52 @@ async function saveMediaDocument(
   const driver = await getOrCreateDriver(lineUserId);
 
   if (driver.status === 'approved' && !driver.activeTripId && !driver.pendingDocumentType) {
-    await getLineClient().replyMessage(replyToken, { type: 'text', text: 'ได้รับไฟล์แล้วครับ แต่เนื่องจากคุณได้รับการอนุมัติแล้ว และไม่มีงานที่กำลังดำเนินการอยู่ ระบบจึงไม่ได้นำไปประมวลผลครับ' });
+    // Treat this as a vehicle document update request
+    const documentType = 'vehicle_update';
+    
+    const lineClient = getLineClient();
+    let content: Buffer | undefined;
+    let mimeType: string | undefined;
+
+    try {
+      const stream = await lineClient.getMessageContent(lineMessageId);
+      const chunks: any[] = [];
+      for await (const chunk of stream) {
+        chunks.push(chunk);
+      }
+      content = Buffer.concat(chunks);
+      if (mediaType === 'image') mimeType = 'image/jpeg';
+      else if (mediaType === 'video') mimeType = 'video/mp4';
+      else if (fileName?.toLowerCase().endsWith('.pdf')) mimeType = 'application/pdf';
+    } catch (e) {
+      console.error('Failed to download vehicle update content:', e);
+    }
+
+    await DriverDocument.create({
+      lineUserId,
+      documentType,
+      mediaType,
+      lineMessageId,
+      fileName,
+      mimeType,
+      content,
+      size: content?.length,
+    });
+
+    await getLineClient().replyMessage(replyToken, { 
+      type: 'text', 
+      text: 'ได้รับไฟล์เอกสารเรียบร้อยครับ! หากส่งครบทุกอย่างแล้ว รบกวนกดปุ่ม "สำเร็จแล้ว" ด้านล่างเพื่อให้เจ้าหน้าที่เริ่มตรวจสอบนะครับ',
+      quickReply: {
+        items: [{
+          type: 'action',
+          action: {
+            type: 'message',
+            label: '✅ สำเร็จแล้ว',
+            text: 'สำเร็จแล้ว'
+          }
+        }]
+      }
+    });
     return;
   }
 
