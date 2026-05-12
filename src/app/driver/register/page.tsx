@@ -111,8 +111,8 @@ export default function DriverRegistrationPage() {
           </p>
           <button 
             onClick={() => {
-              // Redirect to LINE OA as the "Close" action since we don't use LIFF
-              window.location.href = 'https://line.me/R/ti/p/@943hytkx';
+              // Redirect to the correct LINE OA chat directly
+              window.location.href = 'line://oaMessage/@782wnmvm/';
             }}
             className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-sm shadow-lg shadow-slate-200 transition-all active:scale-95"
           >
