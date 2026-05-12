@@ -20,12 +20,13 @@ export async function GET(req: NextRequest) {
 
     // 2. Query Public Jobs (Unassigned trips)
     let query: any = { 
-      status: { $in: ['Pending', 'No POD'] },
-      $or: [
-        { lineUserId: { $exists: false } },
-        { lineUserId: null },
-        { lineUserId: '' }
+      // Ensure it's not already assigned to a plate or a user
+      $and: [
+        { $or: [{ licensePlate: { $exists: false } }, { licensePlate: null }, { licensePlate: '' }] },
+        { $or: [{ lineUserId: { $exists: false } }, { lineUserId: null }, { lineUserId: '' }] }
       ],
+      // Only show active/pending jobs
+      status: { $in: ['Pending', 'No POD'] },
       lineAssignmentStatus: { $in: ['none', null] }
     };
 
