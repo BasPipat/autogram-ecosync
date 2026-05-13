@@ -6,7 +6,7 @@ import {
   ChevronLeft, Loader2, Calendar, FileText, 
   CheckCircle2, AlertCircle, ExternalLink, 
   Trash2, Wallet, MapPin, BarChart3, Clock,
-  ArrowRight, Pencil
+  ArrowRight, Pencil, Upload, Plus
 } from 'lucide-react';
 import SidebarLayout from '@/components/SidebarLayout';
 import { useRouter } from 'next/navigation';
@@ -99,6 +99,48 @@ export default function DriverProfileDeepDive({ params: paramsPromise }: { param
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
+      });
+      if (res.ok) {
+        fetchDriverData(params.id);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleDeleteDocument = async (docId: string) => {
+    if (!confirm('ยืนยันการลบเอกสารนี้ออกจากระบบ?')) return;
+    setUpdating(true);
+    try {
+      const res = await fetch(`/api/admin/line-driver-documents?docId=${docId}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        if (params?.id) fetchDriverData(params.id);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !params?.id) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('lineUserId', params.id);
+    formData.append('documentType', 'onboarding_media');
+
+    setUpdating(true);
+    try {
+      const res = await fetch('/api/admin/line-driver-documents', {
+        method: 'POST',
+        body: formData,
       });
       if (res.ok) {
         fetchDriverData(params.id);
@@ -454,8 +496,15 @@ export default function DriverProfileDeepDive({ params: paramsPromise }: { param
                 <h3 className="text-sm font-black uppercase tracking-widest flex items-center gap-3">
                   <FileText size={18} className="text-slate-400" /> คลังรูปเอกสาร ({documents.length})
                 </h3>
-                <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  <CheckCircle2 size={14} className="text-emerald-500" /> ตรวจสอบไฟล์ภาพจาก LINE
+                <div className="flex items-center gap-4">
+                  <label className="cursor-pointer bg-slate-900 text-white px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-slate-200">
+                    {updating ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+                    อัปโหลดเอกสาร
+                    <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} disabled={updating} />
+                  </label>
+                  <div className="hidden md:flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <CheckCircle2 size={14} className="text-emerald-500" /> ตรวจสอบไฟล์ภาพจาก LINE
+                  </div>
                 </div>
               </div>
 
@@ -467,21 +516,28 @@ export default function DriverProfileDeepDive({ params: paramsPromise }: { param
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {documents.map((doc: any) => (
-                    <div key={doc._id} className="group relative bg-slate-50 rounded-[24px] overflow-hidden border border-slate-100 hover:border-emerald-200 transition-all hover:shadow-lg">
+                    <div key={doc._id} className="group relative bg-slate-50 rounded-[24px] overflow-hidden border border-slate-100 hover:border-rose-200 transition-all hover:shadow-lg">
                       <div className="aspect-[4/3] relative">
                         <img 
                           src={`/api/admin/line-driver-documents/${doc._id}/content`} 
                           alt={doc.documentType}
                           className="w-full h-full object-cover transition-transform group-hover:scale-105"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-between p-6">
                           <a 
                             href={`/api/admin/line-driver-documents/${doc._id}/content`} 
                             target="_blank"
-                            className="w-full py-3 bg-white/20 backdrop-blur-md text-white rounded-xl text-xs font-black uppercase tracking-widest text-center hover:bg-white/30 transition-all border border-white/30"
+                            className="px-4 py-2 bg-white/20 backdrop-blur-md text-white rounded-xl text-[10px] font-black uppercase tracking-widest text-center hover:bg-white/30 transition-all border border-white/30"
                           >
-                            ดูภาพขยาย
+                            ดูภาพ
                           </a>
+                          <button 
+                            onClick={() => handleDeleteDocument(doc._id)}
+                            className="p-2 bg-rose-500/80 backdrop-blur-md text-white rounded-xl hover:bg-rose-600 transition-all border border-rose-400/30"
+                            title="ลบเอกสาร"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </div>
                       </div>
                       <div className="p-5 flex items-center justify-between">
