@@ -48,7 +48,7 @@ export default function MyMissionRedirect() {
         // 4. Smart Redirect Logic
         if (data.activeTripId) {
            // If has active mission, go to trip details
-           router.replace(`/driver/trips/${data.activeTripId}`);
+           router.replace(`/trips/${data.activeTripId}?lineUserId=${lineUserId}`);
         } else {
            // If no active mission, go to job board with alert
            alert('คุณยังไม่มีงานที่กำลังดำเนินการ ลองหาภารกิจใหม่ดูสิ!');

@@ -20,11 +20,12 @@ function JobBoardContent() {
   const [loading, setLoading] = useState(true);
   const [location, setLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resolvedLineUserId, setResolvedLineUserId] = useState(lineUserId || '');
 
-  const fetchJobs = async (lat?: number, lng?: number) => {
+  const fetchJobs = async (lat?: number, lng?: number, userId = resolvedLineUserId) => {
     setLoading(true);
     try {
-      let url = `/api/driver/jobs?lineUserId=${lineUserId || ''}`;
+      let url = `/api/driver/jobs?lineUserId=${userId || ''}`;
       if (lat && lng) {
         url += `&lat=${lat}&lng=${lng}`;
       }
@@ -61,6 +62,7 @@ function JobBoardContent() {
 
       // 2. Check Status if we have a lineUserId
       if (finalLineUserId) {
+        setResolvedLineUserId(finalLineUserId);
         try {
           const statusRes = await fetch(`/api/driver/status?lineUserId=${finalLineUserId}`);
           const statusData = await statusRes.json();
@@ -81,14 +83,14 @@ function JobBoardContent() {
           (pos) => {
             const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
             setLocation(coords);
-            fetchJobs(coords.lat, coords.lng);
+            fetchJobs(coords.lat, coords.lng, finalLineUserId || '');
           },
           () => {
-            fetchJobs();
+            fetchJobs(undefined, undefined, finalLineUserId || '');
           }
         );
       } else {
-        fetchJobs();
+        fetchJobs(undefined, undefined, finalLineUserId || '');
       }
     };
 
@@ -97,7 +99,7 @@ function JobBoardContent() {
 
   // Authorization Check
   const isSystemOwner = session?.user?.role === 'system_owner';
-  const isAuthorized = isSystemOwner || !!lineUserId;
+  const isAuthorized = isSystemOwner || !!resolvedLineUserId;
 
   if (status === 'loading') {
     return (
@@ -232,7 +234,7 @@ function JobBoardContent() {
               </div>
 
               <button
-                onClick={() => window.location.href = `/driver/trips/${job._id}?lineUserId=${lineUserId || ''}`}
+                onClick={() => window.location.href = `/trips/${job._id}?lineUserId=${resolvedLineUserId || ''}`}
                 className="w-full py-3.5 bg-slate-900 text-white rounded-2xl font-black text-xs shadow-lg shadow-slate-200 flex items-center justify-center gap-2"
               >
                 ดูรายละเอียดงาน <ChevronRight size={14} />

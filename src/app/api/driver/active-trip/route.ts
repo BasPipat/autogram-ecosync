@@ -19,19 +19,29 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'ไม่พบข้อมูลคนขับในระบบ' }, { status: 404 });
     }
 
-    // 2. Find active trip for this driver
-    // Using lineAssignmentStatus to determine if the mission is still active
-    const activeTrip = await Trip.findOne({
-      driverId: driver._id,
-      lineAssignmentStatus: { $in: ['accepted', 'in_progress'] }
-    }).sort({ createdAt: -1 });
+    // 2. Prefer the LINE driver's explicit activeTripId, then fall back to
+    // trips assigned by lineUserId. Shared-truck jobs do not always set driverId.
+    let activeTrip = null;
+    if (driver.activeTripId) {
+      activeTrip = await Trip.findOne({
+        _id: driver.activeTripId,
+        lineAssignmentStatus: { $in: ['accepted', 'in_progress', 'delivered', 'documents_submitted'] }
+      });
+    }
+
+    if (!activeTrip) {
+      activeTrip = await Trip.findOne({
+        lineUserId,
+        lineAssignmentStatus: { $in: ['accepted', 'in_progress', 'delivered', 'documents_submitted'] }
+      }).sort({ createdAt: -1 });
+    }
 
     // 3. Return results
     return NextResponse.json({ 
       activeTripId: activeTrip ? activeTrip._id.toString() : null 
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('Active Trip Fetch Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }

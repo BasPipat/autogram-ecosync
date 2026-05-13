@@ -35,6 +35,29 @@ function currency(amount: number) {
   return new Intl.NumberFormat('th-TH', { style: 'currency', currency: 'THB', maximumFractionDigits: 0 }).format(amount || 0);
 }
 
+function publicBaseUrl() {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    process.env.NEXTAUTH_URL ||
+    'https://autogram-ecosync.vercel.app'
+  ).replace(/\/$/, '');
+}
+
+function liffOrWebUrl(path: string) {
+  const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
+  if (liffId) return `https://liff.line.me/${liffId}${path}`;
+  return `${publicBaseUrl()}${path}`;
+}
+
+function tripHubUrl(tripId: string, lineUserId: string) {
+  return liffOrWebUrl(`/trips/${tripId}?lineUserId=${encodeURIComponent(lineUserId)}`);
+}
+
+function jobBoardUrl(lineUserId: string) {
+  return liffOrWebUrl(`/driver/jobs?lineUserId=${encodeURIComponent(lineUserId)}`);
+}
+
 async function getOrCreateDriver(lineUserId: string) {
   const existing = await LineDriver.findOne({ lineUserId });
   if (existing) return existing;
@@ -361,6 +384,7 @@ async function acceptJob(lineUserId: string, offerId: string, replyToken: string
     driverName: `${truck.driverFirstName} ${truck.driverLastName}`,
     acceptedFreightPrice: offer.driverPrice,
     lineAssignmentStatus: 'accepted',
+    opsStatus: 'accepted',
     lineJobOfferId: offer._id,
     lineAcceptedAt: now,
   });
@@ -529,6 +553,162 @@ async function showAvailableJobs(lineUserId: string, replyToken: string) {
   await getLineClient().replyMessage(replyToken, tripBoardFlex(tripsWithPrice));
 }
 
+function myMissionEmptyFlex(lineUserId: string): FlexMessage {
+  return {
+    type: 'flex',
+    altText: 'ยังไม่มีงานที่กำลังรันอยู่',
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          { type: 'text', text: 'ยังไม่มีงานที่กำลังรันอยู่ครับ', weight: 'bold', size: 'lg', color: '#0f172a', wrap: true },
+          { type: 'text', text: 'พี่สามารถเข้าไปดูงานว่างและกดรับงานใหม่ได้เลย', size: 'sm', color: '#64748b', wrap: true },
+          {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: '#ecfdf5',
+            cornerRadius: 'lg',
+            paddingAll: '14px',
+            contents: [
+              { type: 'text', text: 'Eco-Sync Load Board', weight: 'bold', size: 'sm', color: '#047857' },
+              { type: 'text', text: 'ระบบจะแสดงงานที่เปิดรับล่าสุดพร้อมข้อมูลเส้นทาง', size: 'xs', color: '#059669', wrap: true, margin: 'sm' },
+            ],
+          },
+        ],
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#10b981',
+            action: {
+              type: 'uri',
+              label: 'ไปดูงานว่าง',
+              uri: jobBoardUrl(lineUserId),
+            },
+          },
+        ],
+      },
+    },
+  };
+}
+
+function liveJobCardFlex(trip: any, lineUserId: string): FlexMessage {
+  const hubUrl = tripHubUrl(trip._id.toString(), lineUserId);
+  const statusText = trip.opsStatus || trip.lineAssignmentStatus || 'accepted';
+
+  return {
+    type: 'flex',
+    altText: `ใบงานดิจิทัล ${trip.tripId}`,
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#0f172a',
+        paddingAll: '18px',
+        contents: [
+          { type: 'text', text: 'LIVE JOB CARD', color: '#67e8f9', size: 'xs', weight: 'bold' },
+          { type: 'text', text: trip.tripId, color: '#ffffff', size: 'xl', weight: 'bold', margin: 'sm' },
+          { type: 'text', text: statusText, color: '#a7f3d0', size: 'xs', margin: 'xs' },
+        ],
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        spacing: 'md',
+        contents: [
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: 'ต้นทาง', size: 'xs', color: '#94a3b8', flex: 2 },
+              { type: 'text', text: trip.origin || '-', size: 'sm', color: '#334155', wrap: true, flex: 7 },
+            ],
+          },
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: 'ปลายทาง', size: 'xs', color: '#94a3b8', flex: 2 },
+              { type: 'text', text: trip.destination || '-', size: 'sm', color: '#334155', wrap: true, flex: 7 },
+            ],
+          },
+          {
+            type: 'separator',
+            margin: 'md',
+          },
+          {
+            type: 'text',
+            text: 'เปิดใบงานเพื่อดูแผนที่ live tracking, timeline และปุ่มเปลี่ยนสถานะงาน',
+            size: 'xs',
+            color: '#64748b',
+            wrap: true,
+          },
+        ],
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'button',
+            style: 'primary',
+            color: '#06b6d4',
+            height: 'md',
+            action: {
+              type: 'uri',
+              label: 'เข้าสู่หน้าใบงานดิจิทัล',
+              uri: hubUrl,
+            },
+          },
+        ],
+      },
+    },
+  };
+}
+
+async function showMyMission(lineUserId: string, replyToken: string) {
+  const driver = await getOrCreateDriver(lineUserId);
+  if (driver.status !== 'approved') {
+    await getLineClient().replyMessage(replyToken, [
+      { type: 'text', text: 'บัญชีรถร่วมของพี่ยังไม่ผ่านการตรวจสอบเอกสารครับ' },
+      onboardingMenuMessage(),
+    ]);
+    return;
+  }
+
+  const activeStatuses = ['accepted', 'in_progress', 'delivered', 'documents_submitted'];
+  let trip = driver.activeTripId
+    ? await Trip.findOne({ _id: driver.activeTripId, lineAssignmentStatus: { $in: activeStatuses } })
+    : null;
+
+  if (!trip) {
+    trip = await Trip.findOne({
+      lineUserId,
+      lineAssignmentStatus: { $in: activeStatuses },
+    }).sort({ createdAt: -1 });
+  }
+
+  if (!trip) {
+    if (driver.activeTripId) {
+      await LineDriver.findOneAndUpdate({ lineUserId }, { activeTripId: undefined, activeJobOfferId: undefined });
+    }
+    await getLineClient().replyMessage(replyToken, myMissionEmptyFlex(lineUserId));
+    return;
+  }
+
+  await getLineClient().replyMessage(replyToken, liveJobCardFlex(trip, lineUserId));
+}
+
 async function acceptTripDirectly(lineUserId: string, tripId: string, replyToken: string) {
   if (!mongoose.Types.ObjectId.isValid(tripId)) {
     await getLineClient().replyMessage(replyToken, { type: 'text', text: 'ไม่พบข้อมูลงานนี้ครับ' });
@@ -580,6 +760,7 @@ async function acceptTripDirectly(lineUserId: string, tripId: string, replyToken
       driverName: `${truck.driverFirstName} ${truck.driverLastName}`,
       acceptedFreightPrice: acceptedPrice,
       lineAssignmentStatus: 'accepted',
+      opsStatus: 'accepted',
       lineAcceptedAt: now,
       lineJobOfferId: offer ? offer._id : undefined,
     },
@@ -803,6 +984,11 @@ async function showDigitalDriverID(lineUserId: string, replyToken: string) {
 async function handleTextMessage(lineUserId: string, text: string, replyToken: string) {
   const cleanText = text.trim();
 
+  if (cleanText === 'งานของฉัน' || cleanText === 'My Mission') {
+    await showMyMission(lineUserId, replyToken);
+    return;
+  }
+
   if (cleanText === 'โปรไฟล์ของฉัน' || cleanText === 'My Profile') {
     await showDigitalDriverID(lineUserId, replyToken);
     return;
@@ -849,6 +1035,7 @@ async function handleTextMessage(lineUserId: string, text: string, replyToken: s
     if (normalized === 'เริ่มงาน' && driver.activeTripId) {
       await Trip.findByIdAndUpdate(driver.activeTripId, {
         lineAssignmentStatus: 'in_progress',
+        opsStatus: 'en_route_pickup',
         gpsSession: {
           source: 'line_oa',
           status: 'active',
@@ -940,6 +1127,7 @@ async function handleTextMessage(lineUserId: string, text: string, replyToken: s
   if (normalized === 'เริ่มงาน' && driver.activeTripId) {
     await Trip.findByIdAndUpdate(driver.activeTripId, {
       lineAssignmentStatus: 'in_progress',
+      opsStatus: 'en_route_pickup',
       gpsSession: {
         source: 'line_oa',
         status: 'active',
@@ -1086,6 +1274,7 @@ async function saveMediaDocument(
     await Trip.findByIdAndUpdate(driver.activeTripId, {
       podImageUrl: `line-message:${lineMessageId}`,
       lineAssignmentStatus: 'delivered',
+      opsStatus: 'documents_submitted',
       deliveredAt: new Date(),
       status: 'Pending',
     });
@@ -1107,6 +1296,7 @@ async function saveMediaDocument(
     const trip = await Trip.findByIdAndUpdate(driver.activeTripId, {
       deliveryDocumentVideoMessageId: lineMessageId,
       lineAssignmentStatus: 'payment_requested',
+      opsStatus: 'payment_requested',
       paymentRequestedAt: new Date(),
     }, { new: true });
 

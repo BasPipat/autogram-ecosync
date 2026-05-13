@@ -86,6 +86,7 @@ export default function DriverJobPage({ params }: { params: Promise<{ id: string
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tripId,
+          lineUserId,
           ...pos,
         }),
       });

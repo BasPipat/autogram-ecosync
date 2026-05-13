@@ -588,7 +588,18 @@ export default function ManageTripsPage() {
             ) : (
               displayedTrips.map(trip => (
                 <tr key={trip._id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
-                  <td className="p-4 font-mono font-bold text-blue-600">{trip.tripId}</td>
+                  <td className="p-4 font-mono font-bold">
+                    <a
+                      href={`/trips/${trip._id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-blue-600 hover:text-emerald-600 hover:underline"
+                      title="เปิด Digital Trip Hub"
+                    >
+                      {trip.tripId}
+                      <ExternalLink size={11} />
+                    </a>
+                  </td>
                   <td className="p-4 text-slate-500 font-medium text-xs">
                     <div>{trip.customerName ? <span className="font-bold text-emerald-700">{trip.customerName}</span> : '-'}</div>
                     {(currentUser?.role === 'system_owner' || currentUser?.role === 'owner') && <div className="text-[10px] text-slate-400 mt-1">{trip.companyName}</div>}

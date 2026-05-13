@@ -76,13 +76,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       trip.driverName = driver.displayName;
       trip.licensePlate = driver.licensePlate;
       trip.status = 'Pending'; // Change status to pending once taken
+      trip.lineUserId = lineUserId;
+      trip.lineAssignmentStatus = 'accepted';
+      trip.opsStatus = 'accepted';
       await trip.save();
+
+      await LineDriver.findOneAndUpdate({ lineUserId }, { activeTripId: trip._id });
 
       return NextResponse.json({ message: 'Job accepted successfully', trip });
     }
 
     if (action === 'complete') {
       trip.status = 'Verified'; // Or a new status like 'Delivered'
+      trip.lineAssignmentStatus = 'delivered';
+      trip.opsStatus = 'delivered';
+      trip.deliveredAt = new Date();
       await trip.save();
       return NextResponse.json({ message: 'Job completed successfully' });
     }

@@ -53,7 +53,7 @@ const richMenuData = {
   areas: [
     {
       bounds: { x: 0, y: 0, width: 1250, height: 843 }, // ซ้ายบน
-      action: { type: "uri", uri: URL_MY_MISSION }
+      action: { type: "message", text: "งานของฉัน" }
     },
     {
       bounds: { x: 1250, y: 0, width: 1250, height: 843 }, // ขวาบน

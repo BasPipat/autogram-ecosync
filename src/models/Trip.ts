@@ -60,6 +60,7 @@ export interface ITrip extends Document {
   tailLicensePlate?: string;
   acceptedFreightPrice?: number;
   lineAssignmentStatus?: 'none' | 'offered' | 'accepted' | 'in_progress' | 'delivered' | 'documents_submitted' | 'payment_requested' | 'paid';
+  opsStatus?: 'accepted' | 'en_route_pickup' | 'arrived_pickup' | 'en_route_dropoff' | 'delivered' | 'documents_submitted' | 'payment_requested' | 'paid';
   lineJobOfferId?: mongoose.Types.ObjectId;
   lineAcceptedAt?: Date;
   deliveredAt?: Date;
@@ -139,6 +140,11 @@ const TripSchema = new Schema({
     type: String,
     enum: ['none', 'offered', 'accepted', 'in_progress', 'delivered', 'documents_submitted', 'payment_requested', 'paid'],
     default: 'none',
+    index: true,
+  },
+  opsStatus: {
+    type: String,
+    enum: ['accepted', 'en_route_pickup', 'arrived_pickup', 'en_route_dropoff', 'delivered', 'documents_submitted', 'payment_requested', 'paid'],
     index: true,
   },
   lineJobOfferId: { type: Schema.Types.ObjectId, ref: 'JobOffer', index: true },
