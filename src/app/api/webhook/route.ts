@@ -670,7 +670,145 @@ async function saveTextDocument(driver: ILineDriver, text: string, replyToken: s
   return true;
 }
 
+function driverIDCardFlex(driver: ILineDriver, truck: ISharedTruck | null): FlexMessage {
+  const isVerified = driver.isDocumentsVerified && truck && truck.headPlateNumber;
+  const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || '2010054204-bv5oRtcL';
+  const profileUrl = `https://liff.line.me/${liffId}/users/drivers/${driver.lineUserId}`;
+
+  return {
+    type: 'flex',
+    altText: isVerified ? 'บัตรประจำตัวคนขับรถร่วม' : 'กรุณาอัปเดตข้อมูลโปรไฟล์',
+    contents: {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'text',
+            text: 'DIGITAL DRIVER ID',
+            weight: 'bold',
+            color: '#ffffff',
+            size: 'sm',
+            trackingSpacing: '0.2em'
+          }
+        ],
+        backgroundColor: isVerified ? '#10B981' : '#94A3B8',
+        paddingAll: 'lg'
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              {
+                type: 'box',
+                layout: 'vertical',
+                contents: [
+                  {
+                    type: 'image',
+                    url: driver.pictureUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
+                    aspectMode: 'cover',
+                    size: 'full'
+                  }
+                ],
+                width: '70px',
+                height: '70px',
+                cornerRadius: '100px',
+                borderWidth: '2px',
+                borderColor: isVerified ? '#10B981' : '#D1D5DB'
+              },
+              {
+                type: 'box',
+                layout: 'vertical',
+                contents: [
+                  {
+                    type: 'text',
+                    text: driver.displayName || 'รอนะบุชื่อ',
+                    weight: 'bold',
+                    size: 'lg',
+                    color: '#1E293B'
+                  },
+                  {
+                    type: 'text',
+                    text: isVerified ? 'VERIFIED DRIVER' : 'WAITING FOR UPDATE',
+                    size: 'xs',
+                    color: isVerified ? '#10B981' : '#F59E0B',
+                    weight: 'bold',
+                    margin: 'xs'
+                  }
+                ],
+                margin: 'lg'
+              }
+            ]
+          },
+          {
+            type: 'box',
+            layout: 'vertical',
+            contents: [
+              {
+                type: 'box',
+                layout: 'horizontal',
+                contents: [
+                  { type: 'text', text: 'ทะเบียนรถ', size: 'xs', color: '#94A3B8', flex: 4 },
+                  { type: 'text', text: truck?.headPlateNumber || 'ยังไม่ได้ระบุ', size: 'xs', color: '#334155', flex: 6, weight: 'bold' }
+                ]
+              },
+              {
+                type: 'box',
+                layout: 'horizontal',
+                contents: [
+                  { type: 'text', text: 'เบอร์โทรศัพท์', size: 'xs', color: '#94A3B8', flex: 4 },
+                  { type: 'text', text: driver.phone || 'ยังไม่ได้ระบุ', size: 'xs', color: '#334155', flex: 6, weight: 'bold' }
+                ],
+                margin: 'sm'
+              }
+            ],
+            margin: 'xl',
+            paddingAll: 'lg',
+            backgroundColor: '#F8FAFC',
+            cornerRadius: 'md'
+          }
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'button',
+            action: {
+              type: 'uri',
+              label: isVerified ? 'แก้ไขโปรไฟล์' : 'อัปเดตข้อมูลเดี๋ยวนี้',
+              uri: profileUrl
+            },
+            style: 'primary',
+            color: isVerified ? '#1E293B' : '#10B981'
+          }
+        ]
+      }
+    }
+  };
+}
+
+async function showDigitalDriverID(lineUserId: string, replyToken: string) {
+  const driver = await getOrCreateDriver(lineUserId);
+  const truck = await SharedTruck.findOne({ lineUserId });
+  await getLineClient().replyMessage(replyToken, driverIDCardFlex(driver, truck));
+}
+
 async function handleTextMessage(lineUserId: string, text: string, replyToken: string) {
+  const cleanText = text.trim();
+
+  if (cleanText === 'โปรไฟล์ของฉัน' || cleanText === 'My Profile') {
+    await showDigitalDriverID(lineUserId, replyToken);
+    return;
+  }
+
   const driver = await getOrCreateDriver(lineUserId);
   const normalized = text.trim();
 
