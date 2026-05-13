@@ -12,26 +12,33 @@ export default function MyMissionRedirect() {
   useEffect(() => {
     const initLiffAndRedirect = async () => {
       try {
+        const queryParams = new URLSearchParams(window.location.search);
+        let finalLineUserId = queryParams.get('lineUserId') || '';
+
+        // 1. Try Initialize LIFF if available
         const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
-        if (!liffId) {
-          setError('ระบบยังไม่ได้ตั้งค่า LIFF ID กรุณาตรวจสอบ Environment Variables ใน Vercel Dashboard');
+        if (liffId && !finalLineUserId) {
+          try {
+            await liff.init({ liffId });
+            if (liff.isLoggedIn()) {
+              const profile = await liff.getProfile();
+              finalLineUserId = profile.userId;
+            } else {
+              liff.login();
+              return;
+            }
+          } catch (err) {
+            console.error('LIFF Init failed, falling back to query params:', err);
+          }
+        }
+
+        if (!finalLineUserId) {
+          setError('ไม่พบข้อมูลผู้ใช้งาน LINE กรุณาเข้าใช้งานผ่านปุ่มใน LINE OA ครับ');
           return;
         }
 
-        // 1. Initialize LIFF
-        await liff.init({ liffId });
-
-        if (!liff.isLoggedIn()) {
-          liff.login();
-          return;
-        }
-
-        // 2. Get Driver Profile from LINE
-        const profile = await liff.getProfile();
-        const lineUserId = profile.userId;
-
-        // 3. Fetch status and active trip from API
-        const statusRes = await fetch(`/api/driver/status?lineUserId=${lineUserId}`);
+        // 2. Fetch status and active trip from API
+        const statusRes = await fetch(`/api/driver/status?lineUserId=${finalLineUserId}`);
         const statusData = await statusRes.json();
 
         if (!statusData.isRegistered || statusData.status !== 'approved') {
@@ -40,24 +47,22 @@ export default function MyMissionRedirect() {
           return;
         }
 
-        const res = await fetch(`/api/driver/active-trip?lineUserId=${lineUserId}`);
+        const res = await fetch(`/api/driver/active-trip?lineUserId=${finalLineUserId}`);
         const data = await res.json();
 
         if (!res.ok) throw new Error(data.error || 'Failed to fetch trip data');
 
-        // 4. Smart Redirect Logic
+        // 3. Smart Redirect Logic
         if (data.activeTripId) {
-           // If has active mission, go to trip details
-           router.replace(`/trips/${data.activeTripId}?lineUserId=${lineUserId}`);
+           router.replace(`/trips/${data.activeTripId}?lineUserId=${finalLineUserId}`);
         } else {
-           // If no active mission, go to job board with alert
            alert('คุณยังไม่มีงานที่กำลังดำเนินการ ลองหาภารกิจใหม่ดูสิ!');
-           router.replace(`/driver/jobs?lineUserId=${lineUserId}`);
+           router.replace(`/driver/jobs?lineUserId=${finalLineUserId}`);
         }
 
       } catch (err: any) {
-        console.error('LIFF Init Error:', err);
-        setError('ไม่สามารถเชื่อมต่อระบบ LINE ได้ กรุณาลองใหม่อีกครั้ง');
+        console.error('Redirect Error:', err);
+        setError('เกิดข้อผิดพลาดในการโหลดข้อมูล กรุณาลองใหม่อีกครั้ง');
       }
     };
 

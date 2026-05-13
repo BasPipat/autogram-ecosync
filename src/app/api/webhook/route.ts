@@ -45,8 +45,7 @@ function publicBaseUrl() {
 }
 
 function liffOrWebUrl(path: string) {
-  const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
-  if (liffId) return `https://liff.line.me/${liffId}${path}`;
+  // ยกเลิกการใช้ LIFF ตามคำขอ และใช้ลิงก์ตรงเสมอ
   return `${publicBaseUrl()}${path}`;
 }
 
