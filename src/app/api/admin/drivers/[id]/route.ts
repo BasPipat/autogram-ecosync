@@ -11,11 +11,16 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const token = await getSessionToken(req);
-    if (!token || !isInternalRole(token.role)) {
+    const { id } = await params;
+
+    // Security: Only internal roles OR the driver themselves can access
+    const isOwner = token?.role === 'system_owner' || token?.role === 'admin';
+    const isSelf = token?.lineUserId === id;
+
+    if (!token || (!isOwner && !isSelf)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = await params;
     const lineUserId = id;
     await connectToDatabase();
 
@@ -60,36 +65,66 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const token = await getSessionToken(req);
-    if (!token || !isInternalRole(token.role)) {
+    const { id } = await params;
+    const lineUserId = id;
+
+    // Security: Only system_owner OR the driver themselves can edit
+    const isOwner = token?.role === 'system_owner' || token?.role === 'admin';
+    const isSelf = token?.lineUserId === id;
+
+    if (!token || (!isOwner && !isSelf)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { status, isDocumentsVerified, reviewNote } = await req.json();
-    const { id } = await params;
-    const lineUserId = id;
+    const { 
+      status, isDocumentsVerified, reviewNote,
+      displayName, phone, bankName, bankAccountNumber, bankAccountName,
+      headPlateNumber, tailPlateNumber, vehicleType, fuelType, cargoInsuranceAmount
+    } = await req.json();
+
     await connectToDatabase();
 
-    const updateData: any = {};
-    if (status) {
-      updateData.status = status;
-      if (status === 'approved') updateData.approvedAt = new Date();
-      if (status === 'rejected') updateData.rejectedAt = new Date();
+    // 1. Update LineDriver
+    const driverUpdate: any = {};
+    if (isOwner && status) {
+      driverUpdate.status = status;
+      if (status === 'approved') driverUpdate.approvedAt = new Date();
+      if (status === 'rejected') driverUpdate.rejectedAt = new Date();
     }
-    if (isDocumentsVerified !== undefined) {
-      updateData.isDocumentsVerified = isDocumentsVerified;
+    if (isOwner && isDocumentsVerified !== undefined) {
+      driverUpdate.isDocumentsVerified = isDocumentsVerified;
       if (isDocumentsVerified) {
-        updateData.verifiedAt = new Date();
-        updateData.verifiedBy = token.id; // Using user ID from token
+        driverUpdate.verifiedAt = new Date();
+        driverUpdate.verifiedBy = token.id;
       }
     }
-    if (reviewNote !== undefined) updateData.reviewNote = reviewNote;
+    if (reviewNote !== undefined) driverUpdate.reviewNote = reviewNote;
+    if (displayName) driverUpdate.displayName = displayName;
+    if (phone) driverUpdate.phone = phone;
+    if (bankName) driverUpdate.bankName = bankName;
+    if (bankAccountNumber) driverUpdate.bankAccountNumber = bankAccountNumber;
+    if (bankAccountName) driverUpdate.bankAccountName = bankAccountName;
+    if (vehicleType) driverUpdate.vehicleType = vehicleType;
+    if (fuelType) driverUpdate.fuelType = fuelType;
 
-    const updated = await LineDriver.findOneAndUpdate({ lineUserId }, updateData, { new: true });
-    if (!updated) {
-      return NextResponse.json({ error: 'Driver not found' }, { status: 404 });
+    const updatedDriver = await LineDriver.findOneAndUpdate({ lineUserId }, driverUpdate, { new: true });
+
+    // 2. Update SharedTruck (if exists)
+    const truckUpdate: any = {};
+    if (phone) truckUpdate.driverPhone = phone;
+    if (bankName) truckUpdate.bankName = bankName;
+    if (bankAccountNumber) truckUpdate.bankAccountNumber = bankAccountNumber;
+    if (bankAccountName) truckUpdate.bankAccountName = bankAccountName;
+    if (headPlateNumber) truckUpdate.headPlateNumber = headPlateNumber;
+    if (tailPlateNumber) truckUpdate.tailPlateNumber = tailPlateNumber;
+    if (vehicleType) truckUpdate.vehicleType = vehicleType;
+    if (cargoInsuranceAmount !== undefined) truckUpdate.cargoInsuranceAmount = Number(cargoInsuranceAmount);
+
+    if (Object.keys(truckUpdate).length > 0) {
+      await SharedTruck.findOneAndUpdate({ lineUserId }, truckUpdate);
     }
 
-    return NextResponse.json({ message: 'Driver updated successfully', driver: updated });
+    return NextResponse.json({ message: 'Driver updated successfully', driver: updatedDriver });
   } catch (error: any) {
     console.error('Admin Driver Update Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
