@@ -461,8 +461,6 @@ export default function DriverProfileDeepDive({ params: paramsPromise }: { param
                     />
                   </div>
                 </section>
-
-                </section>
                 
                 {/* LINE Connection Section */}
                 <section>
