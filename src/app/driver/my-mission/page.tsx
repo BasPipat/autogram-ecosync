@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import liff from '@line/liff';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Package } from 'lucide-react';
 
 export default function MyMissionRedirect() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [lineUserId, setLineUserId] = useState('');
 
   useEffect(() => {
     const initLiffAndRedirect = async () => {
