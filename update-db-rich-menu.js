@@ -4,7 +4,7 @@ const { Setting } = require('./src/models/Setting');
 
 async function updateConfig() {
   await connectToDatabase();
-  const newRichMenuId = 'richmenu-47b385afae231dcd2d99a715bc37e43c';
+  const newRichMenuId = 'richmenu-0503760a42e09b329df7bbd08b2b94d6';
   
   const config = await Setting.findOne({ key: 'line_config' });
   if (config) {

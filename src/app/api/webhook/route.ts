@@ -672,8 +672,8 @@ async function saveTextDocument(driver: ILineDriver, text: string, replyToken: s
 
 function driverIDCardFlex(driver: ILineDriver, truck: ISharedTruck | null): FlexMessage {
   const isVerified = driver.isDocumentsVerified && truck && truck.headPlateNumber;
-  const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || '2010054204-bv5oRtcL';
-  const profileUrl = `https://liff.line.me/${liffId}/users/drivers/${driver.lineUserId}`;
+  // ใช้ลิงก์ตรงไปยังหน้าโปรไฟล์ (ไม่ผ่าน LIFF)
+  const profileUrl = `https://autogram-ecosync.vercel.app/users/drivers/${driver.lineUserId}`;
 
   return {
     type: 'flex',
