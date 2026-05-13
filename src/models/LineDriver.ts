@@ -48,6 +48,9 @@ export interface ILineDriver extends Document {
   approvedAt?: Date;
   rejectedAt?: Date;
   licensePlate?: string;
+  isDocumentsVerified?: boolean;
+  verifiedAt?: Date;
+  verifiedBy?: mongoose.Types.ObjectId;
 
   // CFO Relevant Fields
   vehicleType?: string;
@@ -112,6 +115,9 @@ const LineDriverSchema = new Schema<ILineDriver>({
   approvedAt: { type: Date },
   rejectedAt: { type: Date },
   licensePlate: { type: String, trim: true },
+  isDocumentsVerified: { type: Boolean, default: false },
+  verifiedAt: { type: Date },
+  verifiedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   
   vehicleType: { type: String },
   engineSize: { type: String },

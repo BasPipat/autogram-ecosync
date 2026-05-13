@@ -1,12 +1,16 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import SidebarLayout from '@/components/SidebarLayout';
 import { DRIVER_DOCUMENT_LABELS } from '@/lib/line-driver-flow';
 import {
+  AlertCircle,
   CalendarDays,
+  CheckCircle2,
   ExternalLink,
+  FileText,
   Fuel,
   IdCard,
   Loader2,
@@ -15,7 +19,6 @@ import {
   Save,
   Search,
   Shield,
-  Sparkles,
   Trash2,
   Truck,
   UserPlus,
@@ -80,6 +83,7 @@ interface ILineDriver {
   engineSize?: string;
   fuelType?: string;
   cargoTypeCapability?: string[];
+  isDocumentsVerified?: boolean;
   documents: ILineDriverDocument[];
 }
 
@@ -928,8 +932,13 @@ export default function ManageUsersPage() {
               lineDrivers.map(driver => (
                 <tr key={driver.lineUserId} style={{ borderBottom: '1px solid var(--border-light)' }}>
                   <td className="px-4 py-3">
-                    <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{driver.displayName || 'ไม่ระบุชื่อ'}</div>
-                    <div className="font-mono text-[11px]" style={{ color: 'var(--text-tertiary)' }}>{driver.lineUserId}</div>
+                    <Link 
+                      href={`/users/drivers/${driver.lineUserId}`}
+                      className="font-bold text-blue-600 hover:underline"
+                    >
+                      {driver.displayName || 'ไม่ระบุชื่อ'}
+                    </Link>
+                    <div className="font-mono text-[10px] opacity-40 mt-1">{driver.lineUserId}</div>
                   </td>
                   <td className="px-4 py-3">
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold"
@@ -953,42 +962,19 @@ export default function ManageUsersPage() {
                   </td>
 
                   <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-1.5 max-w-[360px]">
-                      {(() => {
-                        let onboardingDocCount = 0;
-                        return driver.documents.slice(0, 15).map(document => {
-                          const isGeneral = document.documentType === 'onboarding_media';
-                          if (isGeneral) onboardingDocCount++;
-                          
-                          const label = isGeneral 
-                            ? `เอกสาร ${onboardingDocCount}` 
-                            : (DRIVER_DOCUMENT_LABELS[document.documentType] || document.documentType);
-                          
-                          return (
-                            <div key={document._id} className="flex items-center">
-                              <a
-                                href={document.mediaType === 'text' ? undefined : `/api/admin/line-driver-documents/${document._id}/content`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1 px-2 py-1 rounded-l-lg text-[11px] font-semibold border-r border-slate-200"
-                                style={{ background: 'var(--border-light)', color: 'var(--text-secondary)' }}
-                              >
-                                {label}
-                                {document.mediaType !== 'text' && <ExternalLink size={11} />}
-                              </a>
-                              <button
-                                onClick={() => handleDeleteDocument(document._id, label)}
-                                className="px-1.5 py-1 rounded-r-lg hover:bg-rose-100 hover:text-rose-600 transition-colors"
-                                style={{ background: 'var(--border-light)', color: 'var(--text-tertiary)' }}
-                                title="ลบเอกสาร"
-                              >
-                                <X size={12} />
-                              </button>
-                            </div>
-                          );
-                        });
-                      })()}
-                    </div>
+                    <Link 
+                      href={`/users/drivers/${driver.lineUserId}?tab=documents`}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-bold border border-slate-100 hover:bg-slate-50 transition-all"
+                      style={{ background: 'var(--bg-base)', color: 'var(--text-secondary)' }}
+                    >
+                      <FileText size={13} className="text-blue-500" />
+                      {driver.documents.length} เอกสาร
+                      {driver.isDocumentsVerified ? (
+                        <CheckCircle2 size={13} className="text-emerald-500" />
+                      ) : (
+                        <AlertCircle size={13} className="text-orange-400" />
+                      )}
+                    </Link>
                   </td>
                   <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>
                     <div>{driver.phone || 'ไม่ระบุเบอร์'}</div>
@@ -1014,30 +1000,40 @@ export default function ManageUsersPage() {
                   <td className="px-4 py-3">
                     <div className="flex flex-col gap-1.5">
                       {lineDriverTruckLinks[driver.lineUserId] ? (
-                        <button
-                          type="button"
-                          onClick={() => handleLineDriverStatus(driver.lineUserId, 'approved')}
-                          disabled={approvingLineUserId === driver.lineUserId}
-                          className="py-1.5 px-3 rounded-lg text-[11px] font-bold shadow-sm hover:shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
-                          style={{ background: '#10B981', color: '#ffffff' }}
-                        >
-                          {approvingLineUserId === driver.lineUserId ? (
-                            <>
-                              <Loader2 size={12} className="animate-spin" />
-                              กำลังประมวลผล...
-                            </>
-                          ) : (
-                            'อนุมัติ'
-                          )}
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => handleLineDriverStatus(driver.lineUserId, 'approved')}
+                            disabled={approvingLineUserId === driver.lineUserId}
+                            className="py-1.5 px-3 rounded-lg text-[11px] font-bold shadow-sm hover:shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+                            style={{ 
+                              background: driver.isDocumentsVerified ? '#10B981' : '#D1D5DB', 
+                              color: '#ffffff' 
+                            }}
+                            title={driver.isDocumentsVerified ? 'อนุมัติ' : 'กรุณาตรวจสอบเอกสารในหน้า Profile ก่อน'}
+                          >
+                            {approvingLineUserId === driver.lineUserId ? (
+                              <>
+                                <Loader2 size={12} className="animate-spin" />
+                                กำลังประมวลผล...
+                              </>
+                            ) : (
+                              <>
+                                {driver.isDocumentsVerified ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
+                                อนุมัติ
+                              </>
+                            )}
+                          </button>
                       ) : (
                         <button
                           type="button"
                           onClick={() => handleLineDriverStatus(driver.lineUserId, 'approved')}
                           disabled={approvingLineUserId === driver.lineUserId}
                           className="py-1.5 px-3 rounded-lg text-[11px] font-bold shadow-sm hover:shadow-md transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
-                          style={{ background: '#F59E0B', color: '#ffffff' }}
-                          title="อนุมัติทันทีและสร้างข้อมูลรถสำรองให้อัตโนมัติ"
+                          style={{ 
+                            background: driver.isDocumentsVerified ? '#F59E0B' : '#D1D5DB', 
+                            color: '#ffffff' 
+                          }}
+                          title={driver.isDocumentsVerified ? 'อนุมัติทันทีและสร้างข้อมูลรถสำรองให้อัตโนมัติ' : 'กรุณาตรวจสอบเอกสารในหน้า Profile ก่อน'}
                         >
                           {approvingLineUserId === driver.lineUserId ? (
                             <>
@@ -1045,7 +1041,10 @@ export default function ManageUsersPage() {
                               กำลังประมวลผล...
                             </>
                           ) : (
-                            'อนุมัติด่วน'
+                            <>
+                              {driver.isDocumentsVerified ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
+                              อนุมัติด่วน
+                            </>
                           )}
                         </button>
                       )}
@@ -1067,21 +1066,7 @@ export default function ManageUsersPage() {
                       >
                         ลบข้อมูล
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => handleAiAnalyze(driver.lineUserId)}
-                        disabled={!!analyzingLineUserId || approvingLineUserId === driver.lineUserId}
-                        className="py-1.5 px-3 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
-                        style={{ background: '#F0FDFA', color: '#0D9488', border: '1px solid #CCFBF1' }}
-                        title="ใช้ AI วิเคราะห์เอกสารและกรอกข้อมูลอัตโนมัติ"
-                      >
-                        {analyzingLineUserId === driver.lineUserId ? (
-                          <Loader2 className="animate-spin" size={12} />
-                        ) : (
-                          <Sparkles size={12} />
-                        )}
-                        AI วิเคราะห์
-                      </button>
+                      {/* AI วิเคราะห์ถูกถอดออก */}
                     </div>
                   </td>
                 </tr>
@@ -1352,9 +1337,18 @@ export default function ManageUsersPage() {
                         {formatCurrency(truck.cargoInsuranceAmount)}
                       </td>
                       <td className="px-4 py-3">
-                        <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                          {truck.driverFirstName} {truck.driverLastName}
-                        </span>
+                        {truck.lineUserId ? (
+                          <Link 
+                            href={`/users/drivers/${truck.lineUserId}`}
+                            className="font-bold text-blue-600 hover:underline"
+                          >
+                            {truck.driverFirstName} {truck.driverLastName}
+                          </Link>
+                        ) : (
+                          <span className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                            {truck.driverFirstName} {truck.driverLastName}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3" style={{ color: 'var(--text-secondary)' }}>
                         {truck.driverLicenseType}

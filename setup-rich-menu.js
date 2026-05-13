@@ -23,7 +23,7 @@ function getEnv(key) {
 }
 
 const LINE_ACCESS_TOKEN = getEnv('LINE_CHANNEL_ACCESS_TOKEN'); 
-const IMAGE_PATH = './driver_rich_menu_mockup_fixed.jpg'; 
+const IMAGE_PATH = './driver_rich_menu_target.jpg'; 
 
 if (!LINE_ACCESS_TOKEN) {
   console.error("❌ ไม่พบ LINE_CHANNEL_ACCESS_TOKEN ใน .env.local");
@@ -61,11 +61,11 @@ const richMenuData = {
     },
     {
       bounds: { x: 0, y: 843, width: 1250, height: 843 }, // ซ้ายล่าง
-      action: { type: "uri", uri: URL_PROFILE }
+      action: { type: "message", text: "โปรไฟล์ของฉัน" }
     },
     {
       bounds: { x: 1250, y: 843, width: 1250, height: 843 }, // ขวาล่าง
-      action: { type: "uri", uri: URL_REGISTER }
+      action: { type: "message", text: "ข้อมูลรถ/เอกสาร" }
     }
   ]
 };

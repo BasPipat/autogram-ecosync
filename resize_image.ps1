@@ -1,6 +1,6 @@
 Add-Type -AssemblyName System.Drawing
-$source = "E:\eco-sync\driver_menu_raw_v3.png"
-$dest = "E:\eco-sync\driver_rich_menu_mockup_fixed.jpg"
+$source = "E:\eco-sync\public\assets\line\rich-menu-driver-v8.jpg"
+$dest = "E:\eco-sync\driver_rich_menu_target.jpg"
 
 try {
     $img = [System.Drawing.Image]::FromFile($source)
