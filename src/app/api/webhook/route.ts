@@ -53,7 +53,7 @@ function liffOrWebUrl(path: string) {
 }
 
 function tripHubUrl(tripId: string, lineUserId: string) {
-  return liffOrWebUrl(`/trips/${lineUserId}`);
+  return `${publicBaseUrl()}/trips/${lineUserId}`;
 }
 
 function jobBoardUrl(lineUserId: string) {
@@ -789,11 +789,17 @@ async function acceptTripDirectly(lineUserId: string, tripId: string, replyToken
     pendingDocumentType: undefined,
   });
 
-  // Send success message and the Live Job Card
+  // 4. Send success message with the new trip hub link
   await getLineClient().replyMessage(replyToken, [
     {
       type: 'text',
-      text: `รับงานสำเร็จครับ! รหัสงาน: ${trip.tripId}\nเส้นทาง: ${trip.origin} → ${trip.destination}`
+      text: [
+        'รับงานสำเร็จครับ!',
+        `รหัสงาน: ${trip.tripId}`,
+        'ระบบลงทะเบียนคุณเข้ากับใบงานนี้เรียบร้อยแล้ว',
+        '',
+        '👉 กดปุ่ม "ดูรายละเอียดงาน" ในใบงานด้านล่างเพื่อเริ่มนำทางและอัปเดตสถานะครับ',
+      ].filter(Boolean).join('\n'),
     },
     liveJobCardFlex(trip, lineUserId)
   ]);
@@ -1058,6 +1064,11 @@ async function handleTextMessage(lineUserId: string, text: string, replyToken: s
 
   if (normalized === 'ดูงาน' || normalized === 'งาน') {
     await showAvailableJobs(lineUserId, replyToken);
+    return;
+  }
+
+  if (normalized === 'งานของฉัน') {
+    await showMyMission(lineUserId, replyToken);
     return;
   }
 

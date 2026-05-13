@@ -41,6 +41,8 @@ export default function MyMissionRedirect() {
         setLineUserId(finalLineUserId);
 
         // 2. Fetch status and active trip from API
+        // SSOT: We wait slightly to allow Webhook to finish DB writes
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
         const res = await fetch(`/api/driver/active-trip?lineUserId=${finalLineUserId}`);
         const data = await res.json();
