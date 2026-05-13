@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const token = await getSessionToken(req);
+    const token = await getSessionToken(req) as any;
     const { id } = await params;
 
     // Security: Only internal roles OR the driver themselves can access
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const token = await getSessionToken(req);
+    const token = await getSessionToken(req) as any;
     const { id } = await params;
     const lineUserId = id;
 
