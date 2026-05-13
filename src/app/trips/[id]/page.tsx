@@ -178,6 +178,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
   const [approvedDrivers, setApprovedDrivers] = useState<any[]>([]);
   const [showDriverPicker, setShowDriverPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const isDriver = trip?.access.role === 'driver';
   const tripRef = useRef<TripHub | null>(null);
   const lastSyncRef = useRef(0);
 
