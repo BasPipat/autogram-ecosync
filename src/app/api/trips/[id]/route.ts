@@ -176,9 +176,30 @@ async function authorizeTrip(req: NextRequest, trip: LeanTrip, explicitLineUserI
 
 async function getTripWithAccess(req: NextRequest, id: string, lineUserId?: string) {
   await connectToDatabase();
-  const trip = await Trip.findOne(tripLookup(id)).lean() as LeanTrip | null;
+  
+  let query: any;
+  let sort: any = { createdAt: -1 };
+
+  // If ID is a LINE User ID (starts with U and length 33)
+  if (id.startsWith('U') && id.length === 33) {
+    // Find latest trip that is NOT yet fully completed/paid
+    query = { 
+      lineUserId: id,
+      opsStatus: { $nin: ['paid', 'documents_submitted'] } 
+    };
+  } else {
+    query = tripLookup(id);
+  }
+
+  let trip = await Trip.findOne(query).sort(sort).lean() as LeanTrip | null;
+  
+  // If no active trip found for LINE ID, try to find the latest one overall for them
+  if (!trip && id.startsWith('U') && id.length === 33) {
+    trip = await Trip.findOne({ lineUserId: id }).sort({ createdAt: -1 }).lean() as LeanTrip | null;
+  }
+
   if (!trip) {
-    return { response: NextResponse.json({ error: 'Trip not found' }, { status: 404 }) };
+    return { response: NextResponse.json({ error: 'ไม่พบข้อมูลงานของคุณในระบบ' }, { status: 404 }) };
   }
 
   // --- AUTO-LINK LOGIC START ---

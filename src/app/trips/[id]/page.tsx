@@ -163,11 +163,13 @@ function errorMessage(error: unknown, fallback: string) {
 export default function DigitalTripHubPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
   const { status: sessionStatus } = useSession();
-  const [lineUserId, setLineUserId] = useState(() => (
-    typeof window === 'undefined'
-      ? ''
-      : new URLSearchParams(window.location.search).get('lineUserId') || ''
-  ));
+  const [lineUserId, setLineUserId] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    // If the URL ID is a LINE ID, use it immediately
+    if (id.startsWith('U') && id.length === 33) return id;
+    // Fallback to query param for backward compatibility or Admin view with driver context
+    return new URLSearchParams(window.location.search).get('lineUserId') || '';
+  });
   const [trip, setTrip] = useState<TripHub | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

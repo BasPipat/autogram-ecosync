@@ -53,7 +53,7 @@ function liffOrWebUrl(path: string) {
 }
 
 function tripHubUrl(tripId: string, lineUserId: string) {
-  return liffOrWebUrl(`/trips/${tripId}?lineUserId=${encodeURIComponent(lineUserId)}`);
+  return liffOrWebUrl(`/trips/${lineUserId}`);
 }
 
 function jobBoardUrl(lineUserId: string) {
