@@ -19,32 +19,19 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'ไม่พบข้อมูลคนขับในระบบ' }, { status: 404 });
     }
 
-    // 2. Prefer the LINE driver's explicit activeTripId, then fall back to
-    // trips assigned by lineUserId.
-    const activeStatuses = ['accepted', 'in_progress', 'delivered', 'documents_submitted', 'payment_requested', 'paid'];
+    // 2. SSOT: Query Trip directly by lineUserId and active statuses.
+    // We ignore driver.activeTripId to avoid sync issues.
+    const activeStatuses = ['accepted', 'in_progress', 'arrived_pickup', 'en_route_pickup', 'en_route_dropoff', 'delivered', 'documents_submitted'];
     
-    let activeTrip = null;
-    if (driver.activeTripId) {
-      activeTrip = await Trip.findOne({
-        _id: driver.activeTripId,
-        lineAssignmentStatus: { $in: activeStatuses }
-      });
-    }
-
-    if (!activeTrip) {
-      // Fallback 1: Find any recent active trip
-      activeTrip = await Trip.findOne({
-        lineUserId,
-        lineAssignmentStatus: { $in: activeStatuses }
-      }).sort({ createdAt: -1 });
-    }
-
-    if (!activeTrip) {
-      // Fallback 2: Find literally the last trip this user was involved in (no status filter)
-      activeTrip = await Trip.findOne({ lineUserId }).sort({ createdAt: -1 });
-    }
+    // Find the most recent trip that is still in an active state for this driver
+    const activeTrip = await Trip.findOne({
+      lineUserId,
+      lineAssignmentStatus: { $in: activeStatuses }
+    }).sort({ createdAt: -1 });
 
     // 3. Return results
+    console.log(`[ActiveTripAPI] Lookup for ${lineUserId}: Found ${activeTrip ? activeTrip._id : 'None'}`);
+    
     return NextResponse.json({ 
       activeTripId: activeTrip ? activeTrip._id.toString() : null 
     });

@@ -41,17 +41,9 @@ export default function MyMissionRedirect() {
         setLineUserId(finalLineUserId);
 
         // 2. Fetch status and active trip from API
-        // เพิ่มหน่วงเวลาเล็กน้อยเพื่อให้ DB อัปเดตทัน
-        await new Promise(resolve => setTimeout(resolve, 800));
+        // SSOT: We wait slightly to allow Webhook to finish DB writes
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        const statusRes = await fetch(`/api/driver/status?lineUserId=${finalLineUserId}`);
-        const statusData = await statusRes.json();
-
-        if (!statusData.isRegistered) {
-          setError('พี่ยังไม่ได้ลงทะเบียนในระบบครับ');
-          return;
-        }
-
         const res = await fetch(`/api/driver/active-trip?lineUserId=${finalLineUserId}`);
         const data = await res.json();
 
@@ -61,8 +53,8 @@ export default function MyMissionRedirect() {
         if (data.activeTripId) {
            router.replace(`/trips/${data.activeTripId}?lineUserId=${finalLineUserId}`);
         } else {
-           // แทนที่จะ Redirect อัตโนมัติ เราให้เขาเลือกครับ
-           setError('ขณะนี้พี่ยังไม่มีงานที่กำลังดำเนินการอยู่ครับ');
+           // Show clear diagnostic info
+           setError(`ขณะนี้ไม่พบงานที่กำลังดำเนินการของ ID: ${finalLineUserId.substring(0, 8)}... หากเพิ่งรับงานมา กรุณากดปุ่มลองใหม่อีกครั้งครับ`);
         }
 
       } catch (err: any) {

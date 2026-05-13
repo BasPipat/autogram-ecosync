@@ -15,6 +15,23 @@ import { getLineChannelSecret, getLineClient } from '@/lib/line';
 import { DRIVER_DOCUMENT_LABELS, ONBOARDING_DOCUMENT_TYPES, getDocumentLabel, parseBankText } from '@/lib/line-driver-flow';
 import { DriverDocument } from '@/models/DriverDocument';
 import { DriverDocumentType, ILineDriver, LineDriver } from '@/models/LineDriver';
+export const dynamic = 'force-dynamic';
+import { NextResponse } from 'next/server';
+
+import {
+  FlexMessage,
+  Message,
+  TextMessage,
+  WebhookEvent,
+  WebhookRequestBody,
+  validateSignature,
+} from '@line/bot-sdk';
+import mongoose from 'mongoose';
+import { connectToDatabase } from '@/lib/mongodb';
+import { getLineChannelSecret, getLineClient } from '@/lib/line';
+import { DRIVER_DOCUMENT_LABELS, ONBOARDING_DOCUMENT_TYPES, getDocumentLabel, parseBankText } from '@/lib/line-driver-flow';
+import { DriverDocument } from '@/models/DriverDocument';
+import { DriverDocumentType, ILineDriver, LineDriver } from '@/models/LineDriver';
 import { JobOffer, IJobOffer } from '@/models/JobOffer';
 import { SharedTruck, ISharedTruck } from '@/models/SharedTruck';
 import { Trip } from '@/models/Trip';
@@ -22,6 +39,7 @@ import { analyzeDriverDocuments } from '@/lib/gemini';
 import { Setting } from '@/models/Setting';
 
 const PAYMENT_NOTIFY_LINE_USER_ID = process.env.LINE_PAYMENT_NOTIFY_USER_ID || process.env.LINE_ADMIN_USER_ID || '';
+const DRIVER_ACTIVE_STATUSES = ['accepted', 'in_progress', 'arrived_pickup', 'en_route_pickup', 'en_route_dropoff'];
 
 function sourceUserId(event: WebhookEvent) {
   return event.source.type === 'user' ? event.source.userId : event.source.userId;
@@ -334,7 +352,12 @@ async function acceptJob(lineUserId: string, offerId: string, replyToken: string
     return;
   }
 
-  if (driver.activeTripId) {
+  const activeTrip = await Trip.findOne({ 
+    lineUserId, 
+    lineAssignmentStatus: { $in: DRIVER_ACTIVE_STATUSES } 
+  });
+
+  if (activeTrip) {
     await getLineClient().replyMessage(replyToken, { 
       type: 'text', 
       text: 'พี่มีงานที่กำลังดำเนินการอยู่ครับ กรุณาปิดงานเดิมให้เรียบร้อยก่อนจึงจะรับงานใหม่ได้ครับ' 
@@ -389,8 +412,6 @@ async function acceptJob(lineUserId: string, offerId: string, replyToken: string
   });
 
   await LineDriver.findOneAndUpdate({ lineUserId }, {
-    activeTripId: offer.tripId,
-    activeJobOfferId: offer._id,
     pendingDocumentType: undefined,
   });
 
@@ -685,22 +706,12 @@ async function showMyMission(lineUserId: string, replyToken: string) {
     return;
   }
 
-  const activeStatuses = ['accepted', 'in_progress', 'delivered', 'documents_submitted'];
-  let trip = driver.activeTripId
-    ? await Trip.findOne({ _id: driver.activeTripId, lineAssignmentStatus: { $in: activeStatuses } })
-    : null;
+  let trip = await Trip.findOne({
+    lineUserId,
+    lineAssignmentStatus: { $in: DRIVER_ACTIVE_STATUSES },
+  }).sort({ createdAt: -1 });
 
   if (!trip) {
-    trip = await Trip.findOne({
-      lineUserId,
-      lineAssignmentStatus: { $in: activeStatuses },
-    }).sort({ createdAt: -1 });
-  }
-
-  if (!trip) {
-    if (driver.activeTripId) {
-      await LineDriver.findOneAndUpdate({ lineUserId }, { activeTripId: undefined, activeJobOfferId: undefined });
-    }
     await getLineClient().replyMessage(replyToken, myMissionEmptyFlex(lineUserId));
     return;
   }
@@ -720,7 +731,12 @@ async function acceptTripDirectly(lineUserId: string, tripId: string, replyToken
     return;
   }
 
-  if (driver.activeTripId) {
+  const activeTrip = await Trip.findOne({ 
+    lineUserId, 
+    lineAssignmentStatus: { $in: DRIVER_ACTIVE_STATUSES } 
+  });
+
+  if (activeTrip) {
     await getLineClient().replyMessage(replyToken, { 
       type: 'text', 
       text: 'พี่มีงานที่กำลังดำเนินการอยู่ครับ กรุณาปิดงานเดิมให้เรียบร้อยก่อนจึงจะรับงานใหม่ได้ครับ' 
@@ -785,8 +801,6 @@ async function acceptTripDirectly(lineUserId: string, tripId: string, replyToken
   }
 
   await LineDriver.findOneAndUpdate({ lineUserId }, {
-    activeTripId: trip._id,
-    activeJobOfferId: offer ? offer._id : undefined,
     pendingDocumentType: undefined,
   });
 
@@ -1031,28 +1045,16 @@ async function handleTextMessage(lineUserId: string, text: string, replyToken: s
       return;
     }
 
-    if (normalized === 'เริ่มงาน' && driver.activeTripId) {
-      await Trip.findByIdAndUpdate(driver.activeTripId, {
+    const activeTrip = await Trip.findOne({ 
+      lineUserId, 
+      lineAssignmentStatus: { $in: DRIVER_ACTIVE_STATUSES } 
+    }).sort({ createdAt: -1 });
+
+    if (normalized === 'เริ่มงาน' && activeTrip) {
+      await Trip.findByIdAndUpdate(activeTrip._id, {
         lineAssignmentStatus: 'in_progress',
         opsStatus: 'en_route_pickup',
         gpsSession: {
-          source: 'line_oa',
-          status: 'active',
-          isTracking: true,
-          startedAt: new Date(),
-          lastPingAt: new Date(),
-        },
-      });
-      await getLineClient().replyMessage(replyToken, { type: 'text', text: 'เริ่มงานเรียบร้อยครับ กรุณาส่งพิกัดเป็นระยะ และพิมพ์ "ส่งของเสร็จ" เมื่อส่งสินค้าแล้ว' });
-      return;
-    }
-
-    if (normalized === 'ส่งของเสร็จ' && driver.activeTripId) {
-      await LineDriver.findOneAndUpdate({ lineUserId }, { pendingDocumentType: 'pod_image' });
-      await getLineClient().replyMessage(replyToken, {
-        type: 'text',
-        text: 'กรุณาถ่ายรูปหลักฐานส่งงานครับ',
-        quickReply: {
           items: [
             { type: 'action', action: { type: 'camera', label: 'ถ่ายรูปส่งงาน' } },
             { type: 'action', action: { type: 'cameraRoll', label: 'เลือกรูป' } },
@@ -1123,8 +1125,13 @@ async function handleTextMessage(lineUserId: string, text: string, replyToken: s
     return;
   }
 
-  if (normalized === 'เริ่มงาน' && driver.activeTripId) {
-    await Trip.findByIdAndUpdate(driver.activeTripId, {
+  const activeTrip = await Trip.findOne({ 
+    lineUserId, 
+    lineAssignmentStatus: { $in: DRIVER_ACTIVE_STATUSES } 
+  }).sort({ createdAt: -1 });
+
+  if (normalized === 'เริ่มงาน' && activeTrip) {
+    await Trip.findByIdAndUpdate(activeTrip._id, {
       lineAssignmentStatus: 'in_progress',
       opsStatus: 'en_route_pickup',
       gpsSession: {
@@ -1139,7 +1146,7 @@ async function handleTextMessage(lineUserId: string, text: string, replyToken: s
     return;
   }
 
-  if (normalized === 'ส่งของเสร็จ' && driver.activeTripId) {
+  if (normalized === 'ส่งของเสร็จ' && activeTrip) {
     await LineDriver.findOneAndUpdate({ lineUserId }, { pendingDocumentType: 'pod_image' });
     await getLineClient().replyMessage(replyToken, {
       type: 'text',
@@ -1165,8 +1172,12 @@ async function saveMediaDocument(
   fileName?: string
 ) {
   const driver = await getOrCreateDriver(lineUserId);
+  const activeTrip = await Trip.findOne({ 
+    lineUserId, 
+    lineAssignmentStatus: { $in: DRIVER_ACTIVE_STATUSES } 
+  }).sort({ createdAt: -1 });
 
-  if (driver.status === 'approved' && !driver.activeTripId) {
+  if (driver.status === 'approved' && !activeTrip) {
     // Treat this as a vehicle document update request
     const documentType = 'vehicle_update';
     
@@ -1218,8 +1229,8 @@ async function saveMediaDocument(
   }
 
   let documentType = driver.pendingDocumentType ||
-    (driver.activeTripId && mediaType === 'image' ? 'pod_image' : undefined) ||
-    (driver.activeTripId && mediaType === 'video' ? 'delivery_documents_video' : undefined) ||
+    (activeTrip && mediaType === 'image' ? 'pod_image' : undefined) ||
+    (activeTrip && mediaType === 'video' ? 'delivery_documents_video' : undefined) ||
     ((driver.status === 'new' || driver.status === 'awaiting_documents') ? 'onboarding_media' : undefined);
 
   // If driver sent an image but the pending type is for text (like phone/bank), 
@@ -1265,12 +1276,12 @@ async function saveMediaDocument(
     mimeType,
     content,
     size: content?.length,
-    tripId: driver.activeTripId,
-    jobOfferId: driver.activeJobOfferId,
+    tripId: activeTrip?._id,
+    jobOfferId: activeTrip?.lineJobOfferId,
   });
 
-  if (documentType === 'pod_image' && driver.activeTripId) {
-    await Trip.findByIdAndUpdate(driver.activeTripId, {
+  if (documentType === 'pod_image' && activeTrip) {
+    await Trip.findByIdAndUpdate(activeTrip._id, {
       podImageUrl: `line-message:${lineMessageId}`,
       lineAssignmentStatus: 'delivered',
       opsStatus: 'documents_submitted',
@@ -1291,24 +1302,12 @@ async function saveMediaDocument(
     return;
   }
 
-  if (documentType === 'delivery_documents_video' && driver.activeTripId) {
-    const trip = await Trip.findByIdAndUpdate(driver.activeTripId, {
+  if (documentType === 'delivery_documents_video' && activeTrip) {
+    const trip = await Trip.findByIdAndUpdate(activeTrip._id, {
       deliveryDocumentVideoMessageId: lineMessageId,
       lineAssignmentStatus: 'payment_requested',
       opsStatus: 'payment_requested',
       paymentRequestedAt: new Date(),
-    }, { new: true });
-
-    await LineDriver.findOneAndUpdate({ lineUserId }, { 
-      pendingDocumentType: undefined,
-      activeTripId: undefined,
-      activeJobOfferId: undefined 
-    });
-
-    if (PAYMENT_NOTIFY_LINE_USER_ID && trip) {
-      await getLineClient().pushMessage(PAYMENT_NOTIFY_LINE_USER_ID, {
-        type: 'text',
-        text: [
           'แจ้งเตือนจ่ายเงินรถร่วม',
           `รหัสงาน: ${trip.tripId}`,
           `คนขับ: ${trip.driverName || driver.displayName || lineUserId}`,
