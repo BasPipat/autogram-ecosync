@@ -9,9 +9,9 @@ import {
   AlertCircle,
   Banknote,
   Camera,
-  CheckCircle2,
-  Clock3,
-  FileCheck2,
+  CheckCircle,
+  Clock,
+  FileCheck,
   Loader2,
   LocateFixed,
   MapPin,
@@ -160,7 +160,7 @@ function errorMessage(error: unknown, fallback: string) {
 }
 
 export default function DigitalTripHubPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+  const { id } = React.use(params);
   const { status: sessionStatus } = useSession();
   const [lineUserId, setLineUserId] = useState(() => (
     typeof window === 'undefined'
@@ -178,7 +178,6 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
   const [approvedDrivers, setApprovedDrivers] = useState<any[]>([]);
   const [showDriverPicker, setShowDriverPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const isDriver = trip?.access.role === 'driver';
   const tripRef = useRef<TripHub | null>(null);
   const lastSyncRef = useRef(0);
 
@@ -589,7 +588,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
                 <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-300">Trip Status Timeline</p>
                 <h2 className="mt-1 text-lg font-black">{timeline[currentStep]?.label || trip.opsStatus}</h2>
               </div>
-              <Clock3 className="text-cyan-300" size={22} />
+              <Clock className="text-cyan-300" size={22} />
             </div>
             <div className="mt-5 space-y-4">
               {timeline.map((step, index) => (
@@ -598,7 +597,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
                     <div className={`h-8 w-8 rounded-full border flex items-center justify-center ${
                       index <= currentStep ? 'border-emerald-300 bg-emerald-300 text-slate-950' : 'border-white/10 bg-white/5 text-slate-500'
                     }`}>
-                      {index <= currentStep ? <CheckCircle2 size={16} /> : <span className="text-xs font-black">{index + 1}</span>}
+                      {index <= currentStep ? <CheckCircle size={16} /> : <span className="text-xs font-black">{index + 1}</span>}
                     </div>
                     {index < timeline.length - 1 && <div className={`mt-2 h-8 w-px ${index < currentStep ? 'bg-emerald-300/70' : 'bg-white/10'}`} />}
                   </div>
@@ -667,7 +666,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
                           </div>
                         </div>
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <CheckCircle2 size={16} className="text-emerald-300" />
+                          <CheckCircle size={16} className="text-emerald-300" />
                         </div>
                       </button>
                     ))}
@@ -695,7 +694,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
                 <ActionButton icon={Play} label="เริ่มเดินทาง" disabled={currentStep > 0} loading={actionLoading === 'start_to_pickup'} onClick={() => patchTrip('start_to_pickup')} />
                 <ActionButton icon={MapPin} label="ถึงจุดรับ" disabled={currentStep > 2} loading={actionLoading === 'arrive_pickup'} onClick={() => patchTrip('arrive_pickup')} />
                 <ActionButton icon={Navigation} label="ออกไปจุดส่ง" disabled={currentStep > 3} loading={actionLoading === 'start_to_dropoff'} onClick={() => patchTrip('start_to_dropoff')} />
-                <ActionButton icon={FileCheck2} label="ส่งของสำเร็จ" disabled={currentStep > 4} loading={actionLoading === 'complete_delivery'} onClick={() => patchTrip('complete_delivery')} />
+                <ActionButton icon={FileCheck} label="ส่งของสำเร็จ" disabled={currentStep > 4} loading={actionLoading === 'complete_delivery'} onClick={() => patchTrip('complete_delivery')} />
                 <button
                   type="button"
                   onClick={() => isTracking ? stopTracking() : startTracking()}
