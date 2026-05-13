@@ -690,8 +690,7 @@ function driverIDCardFlex(driver: ILineDriver, truck: ISharedTruck | null): Flex
             text: 'DIGITAL DRIVER ID',
             weight: 'bold',
             color: '#ffffff',
-            size: 'sm',
-            trackingSpacing: '0.2em'
+            size: 'sm'
           }
         ],
         backgroundColor: isVerified ? '#10B981' : '#94A3B8',
