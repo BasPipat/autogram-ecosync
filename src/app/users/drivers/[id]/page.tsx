@@ -66,7 +66,7 @@ export default function DriverProfileDeepDive({ params: paramsPromise }: { param
         body: JSON.stringify({ status })
       });
       if (res.ok) {
-        fetchDriverData();
+        fetchDriverData(params.id);
       }
     } catch (err) {
       console.error(err);
@@ -86,7 +86,7 @@ export default function DriverProfileDeepDive({ params: paramsPromise }: { param
         body: JSON.stringify({ isDocumentsVerified: newValue })
       });
       if (res.ok) {
-        fetchDriverData();
+        fetchDriverData(params.id);
       }
     } catch (err) {
       console.error(err);
