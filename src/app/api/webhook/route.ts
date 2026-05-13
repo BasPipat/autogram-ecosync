@@ -165,7 +165,6 @@ function welcomeMessages(lineUserId: string): Message[] {
 }
 
 function welcomeBackMessages(driver: ILineDriver, lineUserId: string): Message[] {
-  const missionUrl = `https://autogram-ecosync.vercel.app/driver/my-mission?lineUserId=${lineUserId}`;
   return [
     {
       type: 'text',
@@ -175,33 +174,10 @@ function welcomeBackMessages(driver: ILineDriver, lineUserId: string): Message[]
         'บัญชีรถร่วมของคุณยังคงมีสถานะ "อนุมัติ" และพร้อมรับงานได้ทันทีครับ',
         'คุณสามารถกดดูงานที่ปุ่ม "ดูงาน" ที่เมน้านล่างได้เลยครับ',
       ].join('\n'),
-    },
-    {
-      type: 'flex',
-      altText: 'เข้าสู่หน้างานของฉัน',
-      contents: {
-        type: 'bubble',
-        body: {
-          type: 'box',
-          layout: 'vertical',
-          contents: [
-            {
-              type: 'button',
-              action: {
-                type: 'uri',
-                label: '🚚 ไปที่หน้างานของฉัน',
-                uri: missionUrl
-              },
-              style: 'primary',
-              color: '#059669',
-              height: 'sm'
-            }
-          ]
-        }
-      }
     }
   ];
 }
+
 
 function documentReceivedMessage(label: string, missingLabels: string[], readyForReview: boolean): Message[] {
   if (readyForReview) {
