@@ -63,6 +63,7 @@ type TripHub = {
   status: string;
   lineAssignmentStatus: string;
   opsStatus: string;
+  lineUserId?: string;
   driverName?: string;
   licensePlate?: string;
   tailLicensePlate?: string;
