@@ -79,7 +79,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { 
       status, isDocumentsVerified, reviewNote,
       displayName, phone, bankName, bankAccountNumber, bankAccountName,
-      headPlateNumber, tailPlateNumber, vehicleType, fuelType, cargoInsuranceAmount
+      headPlateNumber, tailPlateNumber, vehicleType, fuelType, cargoInsuranceAmount,
+      compulsoryInsuranceExpiresAt, vehicleInsuranceType, driverFirstName, driverLastName, driverLicenseType
     } = await req.json();
 
     await connectToDatabase();
@@ -106,6 +107,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (bankAccountName) driverUpdate.bankAccountName = bankAccountName;
     if (vehicleType) driverUpdate.vehicleType = vehicleType;
     if (fuelType) driverUpdate.fuelType = fuelType;
+    // Driver Details
+    if (driverFirstName) driverUpdate.driverFirstName = driverFirstName;
+    if (driverLastName) driverUpdate.driverLastName = driverLastName;
+    if (driverLicenseType) driverUpdate.driverLicenseType = driverLicenseType;
 
     const updatedDriver = await LineDriver.findOneAndUpdate({ lineUserId }, driverUpdate, { new: true });
 
@@ -119,6 +124,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (tailPlateNumber) truckUpdate.tailPlateNumber = tailPlateNumber;
     if (vehicleType) truckUpdate.vehicleType = vehicleType;
     if (cargoInsuranceAmount !== undefined) truckUpdate.cargoInsuranceAmount = Number(cargoInsuranceAmount);
+    // Insurance & Driver Details
+    if (compulsoryInsuranceExpiresAt) truckUpdate.compulsoryInsuranceExpiresAt = compulsoryInsuranceExpiresAt;
+    if (vehicleInsuranceType) truckUpdate.vehicleInsuranceType = vehicleInsuranceType;
+    if (driverFirstName) truckUpdate.driverFirstName = driverFirstName;
+    if (driverLastName) truckUpdate.driverLastName = driverLastName;
+    if (driverLicenseType) truckUpdate.driverLicenseType = driverLicenseType;
 
     if (Object.keys(truckUpdate).length > 0) {
       await SharedTruck.findOneAndUpdate({ lineUserId }, truckUpdate);

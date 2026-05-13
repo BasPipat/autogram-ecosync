@@ -51,7 +51,10 @@ export default function DriverProfileDeepDive({ params: paramsPromise }: { param
         // Initialize edit form
         setEditForm({
           displayName: json.driver.displayName,
+          driverFirstName: json.driver.driverFirstName || json.truck?.driverFirstName,
+          driverLastName: json.driver.driverLastName || json.truck?.driverLastName,
           phone: json.driver.phone || json.truck?.driverPhone,
+          driverLicenseType: json.driver.driverLicenseType || json.truck?.driverLicenseType,
           bankName: json.driver.bankName,
           bankAccountNumber: json.driver.bankAccountNumber,
           bankAccountName: json.driver.bankAccountName,
@@ -60,6 +63,8 @@ export default function DriverProfileDeepDive({ params: paramsPromise }: { param
           vehicleType: json.truck?.vehicleType || json.driver.vehicleType,
           fuelType: json.driver.fuelType,
           cargoInsuranceAmount: json.truck?.cargoInsuranceAmount,
+          compulsoryInsuranceExpiresAt: json.truck?.compulsoryInsuranceExpiresAt,
+          vehicleInsuranceType: json.truck?.vehicleInsuranceType,
         });
       } else {
         console.error('Failed to fetch driver data');
@@ -364,10 +369,10 @@ export default function DriverProfileDeepDive({ params: paramsPromise }: { param
                     <button 
                       onClick={handleSave}
                       disabled={updating}
-                      className="px-6 py-2 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2"
+                      className="px-8 py-2 bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-600 transition-all flex items-center gap-2 shadow-lg shadow-emerald-100"
                     >
                       {updating && <Loader2 size={14} className="animate-spin" />}
-                      บันทึกข้อมูล
+                      บันทึกข้อมูลรถร่วม
                     </button>
                   </div>
                 ) : (
@@ -381,70 +386,15 @@ export default function DriverProfileDeepDive({ params: paramsPromise }: { param
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-white p-8 rounded-[32px] shadow-sm border border-slate-100">
-                  <h3 className="text-sm font-black uppercase tracking-widest mb-8 flex items-center gap-3">
-                    <User size={18} className="text-slate-400" /> ข้อมูลพื้นฐาน
+              <div className="bg-white p-10 rounded-[40px] shadow-sm border border-slate-100 space-y-12">
+                {/* Vehicle Section */}
+                <section>
+                  <h3 className="text-sm font-black uppercase tracking-widest mb-8 flex items-center gap-3 text-emerald-600">
+                    <Truck size={20} /> ข้อมูลรถ
                   </h3>
-                  <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     <EditableInfoRow 
-                      label="ชื่อคนขับ" 
-                      value={driver.displayName} 
-                      isEditing={isEditing} 
-                      field="displayName" 
-                      editForm={editForm} 
-                      setEditForm={setEditForm} 
-                    />
-                    <EditableInfoRow 
-                      label="เบอร์โทรศัพท์" 
-                      value={driver.phone || truck?.driverPhone} 
-                      isEditing={isEditing} 
-                      field="phone" 
-                      editForm={editForm} 
-                      setEditForm={setEditForm} 
-                    />
-                    <InfoRow label="LINE User ID" value={driver.lineUserId} className="font-mono text-[11px]" />
-                    <InfoRow label="สถานะปัจจุบัน" value={driver.status} />
-                  </div>
-
-                  <h3 className="text-sm font-black uppercase tracking-widest mt-12 mb-8 flex items-center gap-3">
-                    <CreditCard size={18} className="text-slate-400" /> ข้อมูลธนาคาร
-                  </h3>
-                  <div className="space-y-6">
-                    <EditableInfoRow 
-                      label="ธนาคาร" 
-                      value={driver.bankName} 
-                      isEditing={isEditing} 
-                      field="bankName" 
-                      editForm={editForm} 
-                      setEditForm={setEditForm} 
-                    />
-                    <EditableInfoRow 
-                      label="เลขบัญชี" 
-                      value={driver.bankAccountNumber} 
-                      isEditing={isEditing} 
-                      field="bankAccountNumber" 
-                      editForm={editForm} 
-                      setEditForm={setEditForm} 
-                    />
-                    <EditableInfoRow 
-                      label="ชื่อบัญชี" 
-                      value={driver.bankAccountName} 
-                      isEditing={isEditing} 
-                      field="bankAccountName" 
-                      editForm={editForm} 
-                      setEditForm={setEditForm} 
-                    />
-                  </div>
-                </div>
-                
-                <div className="bg-white p-8 rounded-[32px] shadow-sm border border-slate-100">
-                  <h3 className="text-sm font-black uppercase tracking-widest mb-8 flex items-center gap-3">
-                    <Truck size={18} className="text-slate-400" /> ข้อมูลยานพาหนะ
-                  </h3>
-                  <div className="space-y-6">
-                    <EditableInfoRow 
-                      label="ทะเบียนหัว" 
+                      label="ทะเบียนหัว*" 
                       value={truck?.headPlateNumber} 
                       isEditing={isEditing} 
                       field="headPlateNumber" 
@@ -452,7 +402,7 @@ export default function DriverProfileDeepDive({ params: paramsPromise }: { param
                       setEditForm={setEditForm} 
                     />
                     <EditableInfoRow 
-                      label="ทะเบียนหาง" 
+                      label="ทะเบียนหาง*" 
                       value={truck?.tailPlateNumber} 
                       isEditing={isEditing} 
                       field="tailPlateNumber" 
@@ -460,17 +410,114 @@ export default function DriverProfileDeepDive({ params: paramsPromise }: { param
                       setEditForm={setEditForm} 
                     />
                     <EditableInfoRow 
-                      label="ประเภทรถ" 
-                      value={truck?.vehicleType || driver.vehicleType} 
+                      label="พรบ. หมดอายุ*" 
+                      value={truck?.compulsoryInsuranceExpiresAt} 
                       isEditing={isEditing} 
-                      field="vehicleType" 
+                      field="compulsoryInsuranceExpiresAt" 
                       editForm={editForm} 
                       setEditForm={setEditForm} 
+                      type="date"
+                    />
+                    <EditableInfoRow 
+                      label="ประเภทประกันรถ*" 
+                      value={truck?.vehicleInsuranceType} 
+                      isEditing={isEditing} 
+                      field="vehicleInsuranceType" 
+                      editForm={editForm} 
+                      setEditForm={setEditForm} 
+                    />
+                    <EditableInfoRow 
+                      label="ประกันสินค้า*" 
+                      value={truck?.cargoInsuranceAmount} 
+                      isEditing={isEditing} 
+                      field="cargoInsuranceAmount" 
+                      editForm={editForm} 
+                      setEditForm={setEditForm} 
+                      type="number"
                     />
                     <EditableInfoRow 
                       label="ประเภทเชื้อเพลิง" 
                       value={driver.fuelType} 
                       isEditing={isEditing} 
+                      field="fuelType" 
+                      editForm={editForm} 
+                      setEditForm={setEditForm} 
+                    />
+                  </div>
+                </section>
+
+                {/* Driver Section */}
+                <section>
+                  <h3 className="text-sm font-black uppercase tracking-widest mb-8 flex items-center gap-3 text-slate-900">
+                    <User size={20} /> ข้อมูลคนขับ
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                    <EditableInfoRow 
+                      label="ชื่อ*" 
+                      value={driver.driverFirstName || truck?.driverFirstName} 
+                      isEditing={isEditing} 
+                      field="driverFirstName" 
+                      editForm={editForm} 
+                      setEditForm={setEditForm} 
+                    />
+                    <EditableInfoRow 
+                      label="นามสกุล*" 
+                      value={driver.driverLastName || truck?.driverLastName} 
+                      isEditing={isEditing} 
+                      field="driverLastName" 
+                      editForm={editForm} 
+                      setEditForm={setEditForm} 
+                    />
+                    <EditableInfoRow 
+                      label="ประเภทใบขับขี่*" 
+                      value={driver.driverLicenseType || truck?.driverLicenseType} 
+                      isEditing={isEditing} 
+                      field="driverLicenseType" 
+                      editForm={editForm} 
+                      setEditForm={setEditForm} 
+                    />
+                    <EditableInfoRow 
+                      label="เบอร์โทรศัพท์*" 
+                      value={driver.phone || truck?.driverPhone} 
+                      isEditing={isEditing} 
+                      field="phone" 
+                      editForm={editForm} 
+                      setEditForm={setEditForm} 
+                    />
+                  </div>
+                </section>
+
+                {/* Bank Section */}
+                <section>
+                  <h3 className="text-sm font-black uppercase tracking-widest mb-8 flex items-center gap-3 text-slate-900">
+                    <CreditCard size={20} /> ข้อมูลโอนเงิน
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <EditableInfoRow 
+                      label="ธนาคาร*" 
+                      value={driver.bankName} 
+                      isEditing={isEditing} 
+                      field="bankName" 
+                      editForm={editForm} 
+                      setEditForm={setEditForm} 
+                    />
+                    <EditableInfoRow 
+                      label="เลขบัญชี*" 
+                      value={driver.bankAccountNumber} 
+                      isEditing={isEditing} 
+                      field="bankAccountNumber" 
+                      editForm={editForm} 
+                      setEditForm={setEditForm} 
+                    />
+                    <EditableInfoRow 
+                      label="ชื่อบัญชี*" 
+                      value={driver.bankAccountName} 
+                      isEditing={isEditing} 
+                      field="bankAccountName" 
+                      editForm={editForm} 
+                      setEditForm={setEditForm} 
+                    />
+                  </div>
                       field="fuelType" 
                       editForm={editForm} 
                       setEditForm={setEditForm} 
