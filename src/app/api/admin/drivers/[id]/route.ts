@@ -8,14 +8,15 @@ import { getSessionToken, isInternalRole } from '@/lib/access';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const token = await getSessionToken(req);
     if (!token || !isInternalRole(token.role)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const lineUserId = params.id;
+    const { id } = await params;
+    const lineUserId = id;
     await connectToDatabase();
 
     // 1. Fetch Driver
@@ -56,7 +57,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const token = await getSessionToken(req);
     if (!token || !isInternalRole(token.role)) {
@@ -64,7 +65,8 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     }
 
     const { status, isDocumentsVerified, reviewNote } = await req.json();
-    const lineUserId = params.id;
+    const { id } = await params;
+    const lineUserId = id;
     await connectToDatabase();
 
     const updateData: any = {};

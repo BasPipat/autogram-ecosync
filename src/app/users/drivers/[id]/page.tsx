@@ -22,20 +22,27 @@ interface IDriverDetail {
   };
 }
 
-export default function DriverProfileDeepDive({ params }: { params: { id: string } }) {
+export default function DriverProfileDeepDive({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const [params, setParams] = React.useState<{ id: string } | null>(null);
   const [data, setData] = useState<IDriverDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'info' | 'documents' | 'history'>('overview');
 
   useEffect(() => {
-    fetchDriverData();
-  }, [params.id]);
+    paramsPromise.then(setParams);
+  }, [paramsPromise]);
 
-  const fetchDriverData = async () => {
+  useEffect(() => {
+    if (params?.id) {
+      fetchDriverData(params.id);
+    }
+  }, [params?.id]);
+
+  const fetchDriverData = async (id: string) => {
     try {
-      const res = await fetch(`/api/admin/drivers/${params.id}`);
+      const res = await fetch(`/api/admin/drivers/${id}`);
       if (res.ok) {
         const json = await res.json();
         setData(json);
@@ -50,7 +57,7 @@ export default function DriverProfileDeepDive({ params }: { params: { id: string
   };
 
   const handleUpdateStatus = async (status: string) => {
-    if (!confirm(`ยืนยันการเปลี่ยนสถานะเป็น ${status}?`)) return;
+    if (!params?.id || !confirm(`ยืนยันการเปลี่ยนสถานะเป็น ${status}?`)) return;
     setUpdating(true);
     try {
       const res = await fetch(`/api/admin/drivers/${params.id}`, {
@@ -69,7 +76,7 @@ export default function DriverProfileDeepDive({ params }: { params: { id: string
   };
 
   const toggleVerification = async () => {
-    if (!data) return;
+    if (!data || !params?.id) return;
     const newValue = !data.driver.isDocumentsVerified;
     setUpdating(true);
     try {
