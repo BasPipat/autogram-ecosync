@@ -6,7 +6,7 @@ import {
   ChevronLeft, Loader2, Calendar, FileText, 
   CheckCircle2, AlertCircle, ExternalLink, 
   Trash2, Wallet, MapPin, BarChart3, Clock,
-  ArrowRight, Pencil, Upload, Plus
+  ArrowRight, Pencil, Upload, Plus, Copy, Check, Radio
 } from 'lucide-react';
 import SidebarLayout from '@/components/SidebarLayout';
 import { useRouter } from 'next/navigation';
@@ -31,6 +31,13 @@ export default function DriverProfileDeepDive({ params: paramsPromise }: { param
   const [activeTab, setActiveTab] = useState<'overview' | 'info' | 'documents' | 'history'>('overview');
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
+  const [copied, setCopied] = useState(false);
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   useEffect(() => {
     paramsPromise.then(setParams);
@@ -282,7 +289,16 @@ export default function DriverProfileDeepDive({ params: paramsPromise }: { param
                   {driver.status}
                 </span>
               </div>
-              <p className="text-slate-400 font-mono text-xs mb-6 tracking-wider">{driver.lineUserId}</p>
+              <div className="flex items-center justify-center md:justify-start gap-2 mb-6">
+                <p className="text-slate-400 font-mono text-xs tracking-wider">{driver.lineUserId}</p>
+                <button 
+                  onClick={() => copyToClipboard(driver.lineUserId)}
+                  className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors"
+                  title="คัดลอก LINE ID"
+                >
+                  {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                </button>
+              </div>
               
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-6">
                 <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100">
@@ -443,6 +459,28 @@ export default function DriverProfileDeepDive({ params: paramsPromise }: { param
                       editForm={editForm} 
                       setEditForm={setEditForm} 
                     />
+                  </div>
+                </section>
+
+                </section>
+                
+                {/* LINE Connection Section */}
+                <section>
+                  <h3 className="text-sm font-black uppercase tracking-widest mb-8 flex items-center gap-3 text-blue-600">
+                    <Radio size={20} /> การเชื่อมต่อ LINE OA
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">LINE User ID</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-slate-700 font-mono">{driver.lineUserId}</span>
+                        <button onClick={() => copyToClipboard(driver.lineUserId)} className="text-slate-400 hover:text-slate-600">
+                          {copied ? <Check size={14} /> : <Copy size={14} />}
+                        </button>
+                      </div>
+                    </div>
+                    <InfoRow label="สถานะ GPS Consent" value={driver.gpsConsentStatus} className={driver.gpsConsentStatus === 'granted' ? 'text-emerald-500' : 'text-orange-500'} />
+                    <InfoRow label="ยินยอมเมื่อ" value={driver.gpsConsentAt ? new Date(driver.gpsConsentAt).toLocaleString('th-TH') : '-'} />
                   </div>
                 </section>
 

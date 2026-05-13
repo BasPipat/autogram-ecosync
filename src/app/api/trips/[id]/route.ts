@@ -181,6 +181,53 @@ async function getTripWithAccess(req: NextRequest, id: string, lineUserId?: stri
     return { response: NextResponse.json({ error: 'Trip not found' }, { status: 404 }) };
   }
 
+  // --- AUTO-LINK LOGIC START ---
+  // If trip has driver info but no lineUserId, try to auto-bind from LineDriver database
+  if (!trip.lineUserId && (trip.driverName || trip.licensePlate)) {
+    try {
+      const searchConditions = [];
+      if (trip.driverName) {
+        searchConditions.push({ displayName: trip.driverName });
+        // Also try matching by first/last name if the displayName is split
+        const names = trip.driverName.split(' ');
+        if (names.length >= 2) {
+          searchConditions.push({ driverFirstName: names[0], driverLastName: names[1] });
+        }
+      }
+      if (trip.licensePlate) searchConditions.push({ licensePlate: trip.licensePlate });
+      
+      const matchedDriver = await LineDriver.findOne({ 
+        $or: searchConditions,
+        status: 'approved' 
+      }).populate('sharedTruckId').lean() as any;
+
+      if (matchedDriver) {
+        console.log(`[AutoLink] Matching trip ${trip.tripId} to driver ${matchedDriver.displayName} (${matchedDriver.lineUserId})`);
+        const truck = matchedDriver.sharedTruckId;
+        
+        // Update the Trip document in background
+        await Trip.findByIdAndUpdate(trip._id, {
+          lineUserId: matchedDriver.lineUserId,
+          driverName: matchedDriver.displayName || trip.driverName,
+          licensePlate: matchedDriver.licensePlate || truck?.headPlateNumber || trip.licensePlate,
+          tailLicensePlate: truck?.tailPlateNumber || trip.tailLicensePlate,
+          driverPhone: matchedDriver.phone || truck?.driverPhone || trip.driverPhone,
+          sharedTruckId: matchedDriver.sharedTruckId,
+          lineAssignmentStatus: 'accepted',
+          opsStatus: trip.opsStatus || 'accepted',
+          lineAcceptedAt: new Date(),
+        });
+        
+        // Update local trip object for immediate return
+        trip.lineUserId = matchedDriver.lineUserId;
+        trip.lineAssignmentStatus = 'accepted';
+      }
+    } catch (err) {
+      console.error('[AutoLink] Failed to auto-link driver:', err);
+    }
+  }
+  // --- AUTO-LINK LOGIC END ---
+
   const access = await authorizeTrip(req, trip, lineUserId);
   if (!access) {
     return { response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };

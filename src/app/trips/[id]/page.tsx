@@ -22,6 +22,8 @@ import {
   ShieldCheck,
   Square,
   Truck,
+  UserPlus,
+  Search,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { getPusherClient } from '@/lib/pusher';
@@ -173,6 +175,9 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
   const [isTracking, setIsTracking] = useState(false);
   const [watchId, setWatchId] = useState<number | null>(null);
   const [podUrl, setPodUrl] = useState('');
+  const [approvedDrivers, setApprovedDrivers] = useState<any[]>([]);
+  const [showDriverPicker, setShowDriverPicker] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const tripRef = useRef<TripHub | null>(null);
   const lastSyncRef = useRef(0);
 
@@ -369,6 +374,44 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
       setActionLoading(null);
     }
   };
+  
+  const fetchApprovedDrivers = async () => {
+    try {
+      const res = await fetch('/api/admin/drivers/approved');
+      if (res.ok) {
+        const data = await res.json();
+        setApprovedDrivers(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch drivers:', err);
+    }
+  };
+
+  const bindDriver = async (selectedLineUserId: string) => {
+    setActionLoading('binding_driver');
+    try {
+      const res = await fetch(`/api/admin/trips/${id}/bind-driver`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lineUserId: selectedLineUserId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Binding failed');
+      setTrip(data.trip);
+      setShowDriverPicker(false);
+      setNotice('ผูกข้อมูลคนขับเรียบร้อยแล้ว');
+    } catch (err) {
+      setNotice(errorMessage(err, 'ผูกข้อมูลคนขับไม่สำเร็จ'));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  useEffect(() => {
+    if (trip?.access.role === 'admin') {
+      fetchApprovedDrivers();
+    }
+  }, [trip?.access.role]);
 
   const center = useMemo(() => (
     trip?.gpsSession.currentPin ||
@@ -576,9 +619,67 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">Vehicle & Driver</p>
-            <div className="mt-4 grid gap-3">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">Vehicle & Driver</p>
+              {!isDriver && (
+                <button
+                  onClick={() => setShowDriverPicker(!showDriverPicker)}
+                  className="flex items-center gap-1.5 rounded-lg bg-emerald-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-emerald-300 transition hover:bg-emerald-300/20"
+                >
+                  <UserPlus size={12} />
+                  {trip.lineUserId ? 'เปลี่ยนคนขับ' : 'ผูกคนขับ LINE'}
+                </button>
+              )}
+            </div>
+
+            {showDriverPicker && !isDriver && (
+              <div className="mb-5 rounded-xl border border-white/10 bg-slate-900 p-3 shadow-xl">
+                <div className="relative mb-3">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                  <input
+                    type="text"
+                    placeholder="ค้นหาชื่อหรือทะเบียน..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full rounded-lg border border-white/10 bg-slate-950 py-2 pl-9 pr-3 text-xs text-white placeholder:text-slate-600 focus:border-emerald-300/50 outline-none"
+                  />
+                </div>
+                <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                  {approvedDrivers
+                    .filter(d => 
+                      d.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                      d.licensePlate?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      d.phone?.includes(searchQuery)
+                    )
+                    .map(d => (
+                      <button
+                        key={d.lineUserId}
+                        onClick={() => bindDriver(d.lineUserId)}
+                        disabled={actionLoading === 'binding_driver'}
+                        className="w-full flex items-center justify-between gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition text-left group"
+                      >
+                        <div className="flex items-center gap-3">
+                          <img src={d.pictureUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} className="h-8 w-8 rounded-full border border-white/10" alt="" />
+                          <div>
+                            <p className="text-xs font-black text-white">{d.displayName} <span className="ml-1 text-[9px] text-slate-500 font-mono">({d.lineUserId.substring(0, 6)}...)</span></p>
+                            <p className="text-[10px] text-slate-500 font-bold">{d.licensePlate} · {d.phone}</p>
+                          </div>
+                        </div>
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <CheckCircle2 size={16} className="text-emerald-300" />
+                        </div>
+                      </button>
+                    ))}
+                  {approvedDrivers.length === 0 && (
+                    <p className="text-center py-4 text-[11px] text-slate-500 font-bold">ไม่พบคนขับที่ได้รับอนุมัติแล้ว</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="grid gap-3">
               <InfoLine label="คนขับ" value={trip.driverName || '-'} />
+              <InfoLine label="LINE ID" value={trip.lineUserId ? `${trip.lineUserId.substring(0, 8)}...` : '-'} />
               <InfoLine label="เบอร์โทร" value={trip.driverPhone || '-'} />
               <InfoLine label="ทะเบียนหัว" value={trip.licensePlate || '-'} />
               <InfoLine label="ทะเบียนหาง" value={trip.tailLicensePlate || '-'} />
