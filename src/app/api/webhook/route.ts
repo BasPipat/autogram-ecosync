@@ -15,23 +15,8 @@ import { getLineChannelSecret, getLineClient } from '@/lib/line';
 import { DRIVER_DOCUMENT_LABELS, ONBOARDING_DOCUMENT_TYPES, getDocumentLabel, parseBankText } from '@/lib/line-driver-flow';
 import { DriverDocument } from '@/models/DriverDocument';
 import { DriverDocumentType, ILineDriver, LineDriver } from '@/models/LineDriver';
-export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
 
-import {
-  FlexMessage,
-  Message,
-  TextMessage,
-  WebhookEvent,
-  WebhookRequestBody,
-  validateSignature,
-} from '@line/bot-sdk';
-import mongoose from 'mongoose';
-import { connectToDatabase } from '@/lib/mongodb';
-import { getLineChannelSecret, getLineClient } from '@/lib/line';
-import { DRIVER_DOCUMENT_LABELS, ONBOARDING_DOCUMENT_TYPES, getDocumentLabel, parseBankText } from '@/lib/line-driver-flow';
-import { DriverDocument } from '@/models/DriverDocument';
-import { DriverDocumentType, ILineDriver, LineDriver } from '@/models/LineDriver';
+
 import { JobOffer, IJobOffer } from '@/models/JobOffer';
 import { SharedTruck, ISharedTruck } from '@/models/SharedTruck';
 import { Trip } from '@/models/Trip';
@@ -39,7 +24,7 @@ import { analyzeDriverDocuments } from '@/lib/gemini';
 import { Setting } from '@/models/Setting';
 
 const PAYMENT_NOTIFY_LINE_USER_ID = process.env.LINE_PAYMENT_NOTIFY_USER_ID || process.env.LINE_ADMIN_USER_ID || '';
-const DRIVER_ACTIVE_STATUSES = ['accepted', 'in_progress', 'arrived_pickup', 'en_route_pickup', 'en_route_dropoff'];
+const DRIVER_ACTIVE_STATUSES = ['accepted', 'in_progress', 'arrived_pickup', 'en_route_pickup', 'en_route_dropoff', 'delivered', 'documents_submitted'];
 
 function sourceUserId(event: WebhookEvent) {
   return event.source.type === 'user' ? event.source.userId : event.source.userId;
@@ -1307,7 +1292,12 @@ async function saveMediaDocument(
       deliveryDocumentVideoMessageId: lineMessageId,
       lineAssignmentStatus: 'payment_requested',
       opsStatus: 'payment_requested',
-      paymentRequestedAt: new Date(),
+    }, { new: true });
+
+    if (PAYMENT_NOTIFY_LINE_USER_ID && trip) {
+      await getLineClient().pushMessage(PAYMENT_NOTIFY_LINE_USER_ID, {
+        type: 'text',
+        text: [
           'แจ้งเตือนจ่ายเงินรถร่วม',
           `รหัสงาน: ${trip.tripId}`,
           `คนขับ: ${trip.driverName || driver.displayName || lineUserId}`,
@@ -1344,8 +1334,14 @@ async function handleLocation(lineUserId: string, latitude: number, longitude: n
     { upsert: true, new: true }
   );
 
-  if (driver.activeTripId) {
-    await Trip.findByIdAndUpdate(driver.activeTripId, {
+    const activeTrip = await Trip.findOne({ 
+    lineUserId, 
+    lineAssignmentStatus: { $in: DRIVER_ACTIVE_STATUSES } 
+  }).sort({ createdAt: -1 });
+
+  if (activeTrip) {
+
+    await Trip.findByIdAndUpdate(activeTrip._id, {
       'gpsSession.source': 'line_oa',
       'gpsSession.status': 'active',
       'gpsSession.isTracking': true,
