@@ -518,21 +518,7 @@ export default function DriverProfileDeepDive({ params: paramsPromise }: { param
                       setEditForm={setEditForm} 
                     />
                   </div>
-                      field="fuelType" 
-                      editForm={editForm} 
-                      setEditForm={setEditForm} 
-                    />
-                    <EditableInfoRow 
-                      label="ประกันสินค้า" 
-                      value={truck?.cargoInsuranceAmount} 
-                      isEditing={isEditing} 
-                      field="cargoInsuranceAmount" 
-                      editForm={editForm} 
-                      setEditForm={setEditForm} 
-                      type="number"
-                    />
-                  </div>
-                </div>
+                </section>
               </div>
             </div>
           )}
