@@ -789,24 +789,13 @@ async function acceptTripDirectly(lineUserId: string, tripId: string, replyToken
     pendingDocumentType: undefined,
   });
 
-  // Simple success message based on trip data
+  // Send success message and the Live Job Card
   await getLineClient().replyMessage(replyToken, [
     {
       type: 'text',
-      text: [
-        'รับงานสำเร็จครับ!',
-        `รหัสงาน: ${trip.tripId}`,
-        `เส้นทาง: ${trip.origin} → ${trip.destination}`,
-        `ราคาจ้าง: ${acceptedPrice > 0 ? currency(acceptedPrice) : 'รอเจ้าหน้าที่แจ้งราคา'}`,
-        `ทะเบียน: ${truck.headPlateNumber}`,
-        '',
-        trip.originMapUrl ? `📌 พิกัดต้นทาง: ${trip.originMapUrl}` : '',
-        trip.destinationMapUrl ? `📌 พิกัดปลายทาง: ${trip.destinationMapUrl}` : '',
-        '',
-        'เมื่อเริ่มเดินทาง พิมพ์ "เริ่มงาน"',
-        'เมื่อส่งของเสร็จ พิมพ์ "ส่งของเสร็จ"',
-      ].filter(Boolean).join('\n'),
-    }
+      text: `รับงานสำเร็จครับ! รหัสงาน: ${trip.tripId}\nเส้นทาง: ${trip.origin} → ${trip.destination}`
+    },
+    liveJobCardFlex(trip, lineUserId)
   ]);
 }
 
