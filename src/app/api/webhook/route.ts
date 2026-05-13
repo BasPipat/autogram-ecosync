@@ -45,8 +45,8 @@ function publicBaseUrl() {
 }
 
 function liffOrWebUrl(path: string) {
-  // ยกเลิกการใช้ LIFF ตามคำขอ และใช้ลิงก์ตรงเสมอ
-  return `${publicBaseUrl()}${path}`;
+  const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || '2010054204-bv5oRtcL';
+  return `https://liff.line.me/${liffId}${path}`;
 }
 
 function tripHubUrl(tripId: string, lineUserId: string) {

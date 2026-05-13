@@ -16,8 +16,8 @@ export default function MyMissionRedirect() {
         let finalLineUserId = queryParams.get('lineUserId') || '';
 
         // 1. Try Initialize LIFF if available
-        const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID;
-        if (liffId && !finalLineUserId) {
+        const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || '2010054204-bv5oRtcL';
+        if (liffId) {
           try {
             await liff.init({ liffId });
             if (liff.isLoggedIn()) {

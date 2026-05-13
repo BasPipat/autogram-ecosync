@@ -48,9 +48,10 @@ function JobBoardContent() {
       let finalLineUserId = lineUserId;
 
       // 1. If no lineUserId in URL, try LIFF
-      if (!finalLineUserId && process.env.NEXT_PUBLIC_LINE_LIFF_ID) {
+      const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || '2010054204-bv5oRtcL';
+      if (!finalLineUserId && liffId) {
         try {
-          await liff.init({ liffId: process.env.NEXT_PUBLIC_LINE_LIFF_ID });
+          await liff.init({ liffId });
           if (liff.isLoggedIn()) {
             const profile = await liff.getProfile();
             finalLineUserId = profile.userId;

@@ -52,19 +52,19 @@ const richMenuData = {
   chatBarText: "เมนูคนขับรถ 🚛",
   areas: [
     {
-      bounds: { x: 0, y: 0, width: 1250, height: 843 }, // ซ้ายบน
-      action: { type: "message", text: "งานของฉัน" }
+      bounds: { x: 0, y: 0, width: 1250, height: 843 }, // ซ้ายบน (งานของฉัน)
+      action: { type: "uri", uri: `https://liff.line.me/2010054204-bv5oRtcL/driver/my-mission` }
     },
     {
-      bounds: { x: 1250, y: 0, width: 1250, height: 843 }, // ขวาบน
-      action: { type: "message", text: "ดูงาน" }
+      bounds: { x: 1250, y: 0, width: 1250, height: 843 }, // ขวาบน (ดูงาน)
+      action: { type: "uri", uri: `https://liff.line.me/2010054204-bv5oRtcL/driver/jobs` }
     },
     {
-      bounds: { x: 0, y: 843, width: 1250, height: 843 }, // ซ้ายล่าง
-      action: { type: "message", text: "โปรไฟล์ของฉัน" }
+      bounds: { x: 0, y: 843, width: 1250, height: 843 }, // ซ้ายล่าง (โปรไฟล์ของฉัน)
+      action: { type: "message", text: "โปรไฟล์ของฉัน" } // โปรไฟล์ยังคงใช้ message เพื่อให้บอทส่งบัตร Digital ID ที่มีรูปและข้อมูลสวยๆ ครับ
     },
     {
-      bounds: { x: 1250, y: 843, width: 1250, height: 843 }, // ขวาล่าง
+      bounds: { x: 1250, y: 843, width: 1250, height: 843 }, // ขวาล่าง (ข้อมูลรถ/เอกสาร)
       action: { type: "message", text: "ข้อมูลรถ/เอกสาร" }
     }
   ]

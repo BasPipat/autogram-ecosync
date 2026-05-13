@@ -190,9 +190,11 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     if (lineUserId) return;
 
     const initLiff = async () => {
-      if (sessionStatus === 'authenticated' || !process.env.NEXT_PUBLIC_LINE_LIFF_ID) return;
+      if (sessionStatus === 'authenticated') return;
+      const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || '2010054204-bv5oRtcL';
+      if (!liffId) return;
       try {
-        await liff.init({ liffId: process.env.NEXT_PUBLIC_LINE_LIFF_ID });
+        await liff.init({ liffId });
         if (liff.isLoggedIn()) {
           const profile = await liff.getProfile();
           setLineUserId(profile.userId);
