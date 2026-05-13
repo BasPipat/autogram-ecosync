@@ -37,13 +37,17 @@ export default function MyMissionRedirect() {
           return;
         }
 
+        setLineUserId(finalLineUserId);
+
         // 2. Fetch status and active trip from API
+        // เพิ่มหน่วงเวลาเล็กน้อยเพื่อให้ DB อัปเดตทัน
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
         const statusRes = await fetch(`/api/driver/status?lineUserId=${finalLineUserId}`);
         const statusData = await statusRes.json();
 
-        if (!statusData.isRegistered || statusData.status !== 'approved') {
-          alert('กรุณาลงทะเบียนหรือรอการตรวจสอบเอกสารก่อนเริ่มใช้งานครับ');
-          router.replace('/driver/register');
+        if (!statusData.isRegistered) {
+          setError('พี่ยังไม่ได้ลงทะเบียนในระบบครับ');
           return;
         }
 
@@ -56,8 +60,8 @@ export default function MyMissionRedirect() {
         if (data.activeTripId) {
            router.replace(`/trips/${data.activeTripId}?lineUserId=${finalLineUserId}`);
         } else {
-           alert('คุณยังไม่มีงานที่กำลังดำเนินการ ลองหาภารกิจใหม่ดูสิ!');
-           router.replace(`/driver/jobs?lineUserId=${finalLineUserId}`);
+           // แทนที่จะ Redirect อัตโนมัติ เราให้เขาเลือกครับ
+           setError('ขณะนี้พี่ยังไม่มีงานที่กำลังดำเนินการอยู่ครับ');
         }
 
       } catch (err: any) {
@@ -72,7 +76,28 @@ export default function MyMissionRedirect() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
       {error ? (
-        <div className="text-red-500 font-medium px-6 text-center">{error}</div>
+        <div className="max-w-sm w-full px-6 text-center">
+          <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-400">
+            <Package size={40} />
+          </div>
+          <h2 className="text-xl font-black text-slate-800 mb-2">ตรวจสอบสถานะงาน</h2>
+          <p className="text-slate-500 font-medium mb-8">{error}</p>
+          
+          <div className="grid gap-3">
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-sm shadow-lg shadow-emerald-100"
+            >
+              ลองตรวจสอบอีกครั้ง
+            </button>
+            <button 
+              onClick={() => router.replace(`/driver/jobs?lineUserId=${lineUserId}`)}
+              className="w-full py-4 bg-white border-2 border-slate-100 text-slate-600 rounded-2xl font-black text-sm"
+            >
+              ไปดูหน้างานว่าง
+            </button>
+          </div>
+        </div>
       ) : (
         <div className="flex flex-col items-center">
           <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mb-4" />
