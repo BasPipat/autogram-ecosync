@@ -50,8 +50,9 @@ export default function MyMissionRedirect() {
         if (!res.ok) throw new Error(data.error || 'Failed to fetch trip data');
 
         // 3. Smart Redirect Logic
-        if (data.activeTripId) {
-           router.replace(`/trips/${data.activeTripId}?lineUserId=${finalLineUserId}`);
+        if (data.activeTripId || finalLineUserId) {
+           // Direct to the personalized LINE ID URL
+           router.replace(`/trips/${finalLineUserId}`);
         } else {
            // Show clear diagnostic info
            setError(`ขณะนี้ไม่พบงานที่กำลังดำเนินการของ ID: ${finalLineUserId.substring(0, 8)}... หากเพิ่งรับงานมา กรุณากดปุ่มลองใหม่อีกครั้งครับ`);

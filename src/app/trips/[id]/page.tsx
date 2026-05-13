@@ -219,7 +219,10 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     if (sessionStatus === 'loading') return;
     try {
       const query = lineUserId ? `?lineUserId=${encodeURIComponent(lineUserId)}` : '';
-      const res = await fetch(`/api/trips/${id}${query}`, { cache: 'no-store' });
+      const res = await fetch(`/api/trips/${id}${query}`, { 
+        cache: 'no-store',
+        // Next.js automatically handles cookies for fetch on the same origin
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'ไม่สามารถโหลดข้อมูลทริปได้');
       setTrip(data);

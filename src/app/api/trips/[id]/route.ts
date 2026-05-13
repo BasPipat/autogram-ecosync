@@ -158,7 +158,8 @@ async function authorizeTrip(req: NextRequest, trip: LeanTrip, explicitLineUserI
     if (isInternalRole(token.role)) {
       return { role: 'admin', canViewFinancials: token.role === 'system_owner' || token.role === 'owner' };
     }
-    if (sameTenant(token, trip)) {
+    // For other internal roles, check tenant if available, or just allow if it's admin role
+    if (token.role === 'admin' || sameTenant(token, trip)) {
       return { role: 'admin', canViewFinancials: false };
     }
   }
