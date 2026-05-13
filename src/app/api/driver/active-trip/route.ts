@@ -20,20 +20,28 @@ export async function GET(req: Request) {
     }
 
     // 2. Prefer the LINE driver's explicit activeTripId, then fall back to
-    // trips assigned by lineUserId. Shared-truck jobs do not always set driverId.
+    // trips assigned by lineUserId.
+    const activeStatuses = ['accepted', 'in_progress', 'delivered', 'documents_submitted', 'payment_requested', 'paid'];
+    
     let activeTrip = null;
     if (driver.activeTripId) {
       activeTrip = await Trip.findOne({
         _id: driver.activeTripId,
-        lineAssignmentStatus: { $in: ['accepted', 'in_progress', 'delivered', 'documents_submitted'] }
+        lineAssignmentStatus: { $in: activeStatuses }
       });
     }
 
     if (!activeTrip) {
+      // Fallback 1: Find any recent active trip
       activeTrip = await Trip.findOne({
         lineUserId,
-        lineAssignmentStatus: { $in: ['accepted', 'in_progress', 'delivered', 'documents_submitted'] }
+        lineAssignmentStatus: { $in: activeStatuses }
       }).sort({ createdAt: -1 });
+    }
+
+    if (!activeTrip) {
+      // Fallback 2: Find literally the last trip this user was involved in (no status filter)
+      activeTrip = await Trip.findOne({ lineUserId }).sort({ createdAt: -1 });
     }
 
     // 3. Return results
