@@ -41,6 +41,12 @@ export default function MyMissionRedirect() {
         }
 
         setLineUserId(finalLineUserId);
+        
+        // --- Cleanup URL: Remove sensitive/test ID from URL for security ---
+        if (typeof window !== 'undefined' && (window.location.search.includes('lineUserId') || window.location.search.includes('code'))) {
+          const cleanUrl = window.location.pathname;
+          window.history.replaceState({}, '', cleanUrl);
+        }
 
         // 2. Fetch status and active trip from API
         // SSOT: We wait slightly to allow Webhook to finish DB writes
