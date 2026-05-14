@@ -10,11 +10,16 @@ export default function MyMissionRedirect() {
   const [error, setError] = useState<string | null>(null);
   const [lineUserId, setLineUserId] = useState('');
 
+  const [isLiffLoading, setIsLiffLoading] = useState(true);
+
   useEffect(() => {
+    let isMounted = true;
+
     const initLiffAndRedirect = async () => {
       try {
         const queryParams = new URLSearchParams(window.location.search);
         let finalLineUserId = queryParams.get('lineUserId') || '';
+        const hasLoginCode = queryParams.has('code') || queryParams.has('liff.state');
 
         // 1. Try Initialize LIFF if available
         const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || '2010054204-bv5oRtcL';
@@ -22,22 +27,43 @@ export default function MyMissionRedirect() {
         if (liffId && !finalLineUserId) {
           try {
             await liff.init({ liffId });
+            
             if (liff.isLoggedIn()) {
               const profile = await liff.getProfile();
               finalLineUserId = profile.userId;
-            } else {
-              // Not logged in and no manual ID provided
-              liff.login({ redirectUri: window.location.href });
+            } else if (!hasLoginCode) {
+              // Only trigger login if we are NOT in the middle of a redirect (no code)
+              // and no manual ID was provided.
+              liff.login({ redirectUri: window.location.origin + window.location.pathname });
               return;
+            } else {
+              // We have a code, wait for LIFF to process it
+              console.log('Detected login code, waiting for LIFF processing...');
+              await new Promise(r => setTimeout(r, 2000));
+              if (liff.isLoggedIn()) {
+                const profile = await liff.getProfile();
+                finalLineUserId = profile.userId;
+              }
             }
           } catch (err) {
             console.error('LIFF Init failed:', err);
           }
         }
 
-        if (!finalLineUserId) {
+        if (!isMounted) return;
+
+        if (!finalLineUserId && !hasLoginCode) {
           setError('ไม่พบข้อมูลผู้ใช้งาน LINE กรุณาเข้าใช้งานผ่านปุ่มใน LINE OA ครับ');
+          setIsLiffLoading(false);
           return;
+        }
+
+        if (!finalLineUserId && hasLoginCode) {
+           // Still no ID but we have a code? Probably session issue.
+           // Don't loop, show error.
+           setError('เซสชัน LINE หมดอายุหรือผิดพลาด กรุณาลองใหม่อีกครั้งจาก LINE OA');
+           setIsLiffLoading(false);
+           return;
         }
 
         setLineUserId(finalLineUserId);
@@ -73,13 +99,18 @@ export default function MyMissionRedirect() {
            setError(`ขณะนี้ไม่พบภารกิจที่กำลังดำเนินการของพี่ยังครับ (ID: ${finalLineUserId.substring(0, 8)}...)`);
         }
 
+        setIsLiffLoading(false);
+
       } catch (err: any) {
         console.error('Redirect Error:', err);
         setError('เกิดปัญหาในการเชื่อมต่อกับเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง');
+        setIsLiffLoading(false);
       }
     };
 
     initLiffAndRedirect();
+    
+    return () => { isMounted = false; };
   }, [router]);
 
   return (
@@ -107,12 +138,12 @@ export default function MyMissionRedirect() {
             </button>
           </div>
         </div>
-      ) : (
+      ) : isLiffLoading ? (
         <div className="flex flex-col items-center">
           <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mb-4" />
           <p className="text-slate-600 font-medium">กำลังค้นหาภารกิจของคุณ...</p>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
