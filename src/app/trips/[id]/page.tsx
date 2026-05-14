@@ -3,7 +3,7 @@
 import React, { use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import liff from '@line/liff';
 import { useSession } from 'next-auth/react';
-import { useJsApiLoader, GoogleMap, Marker, Polyline } from '@react-google-maps/api';
+import { useJsApiLoader, GoogleMap, Marker, Polyline, DirectionsRenderer } from '@react-google-maps/api';
 import {
   Activity,
   AlertCircle,
@@ -178,6 +178,9 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const [isBottomSheetExpanded, setIsBottomSheetExpanded] = useState(false);
   const [localPin, setLocalPin] = useState<Pin | null>(null);
+  const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
+  const [isAutoTracking, setIsAutoTracking] = useState(true);
+  const routeTargetRef = useRef<string | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -446,24 +449,50 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     (trip?.gpsHistory || []).map(point => ({ lat: point.lat, lng: point.lng }))
   ), [trip?.gpsHistory]);
 
-  const activeSegmentPath = useMemo(() => {
+  useEffect(() => {
+    if (!isLoaded || !maps) return;
+    
     const step = statusIndex(trip?.opsStatus || '');
     const currentLoc = currentPin || localPin;
+    if (!currentLoc) return;
+
+    let targetLoc: Pin | null | undefined = null;
+    let targetId = '';
     
-    if (!currentLoc) return [];
-    
-    // step 1 or 2 -> heading to pickup
     if ((step === 1 || step === 2) && trip?.originPin) {
-      return [currentLoc, trip.originPin].map(p => ({ lat: p.lat, lng: p.lng }));
+      targetLoc = trip.originPin;
+      targetId = 'origin';
+    } else if ((step === 3 || step === 4) && trip?.destinationPin) {
+      targetLoc = trip.destinationPin;
+      targetId = 'destination';
     }
-    
-    // step 3 or 4 -> heading to dropoff
-    if ((step === 3 || step === 4) && trip?.destinationPin) {
-      return [currentLoc, trip.destinationPin].map(p => ({ lat: p.lat, lng: p.lng }));
+
+    if (!targetLoc) {
+      setDirections(null);
+      routeTargetRef.current = null;
+      return;
     }
-    
-    return [];
-  }, [trip?.opsStatus, currentPin, localPin, trip?.originPin, trip?.destinationPin]);
+
+    // Only calculate if target changes
+    if (routeTargetRef.current === targetId) return;
+
+    const directionsService = new maps.DirectionsService();
+    directionsService.route(
+      {
+        origin: { lat: currentLoc.lat, lng: currentLoc.lng },
+        destination: { lat: targetLoc.lat, lng: targetLoc.lng },
+        travelMode: maps.TravelMode.DRIVING,
+      },
+      (result, status) => {
+        if (status === maps.DirectionsStatus.OK && result) {
+          setDirections(result);
+          routeTargetRef.current = targetId;
+        } else {
+          console.error(`Error fetching directions: ${status}`);
+        }
+      }
+    );
+  }, [isLoaded, maps, trip?.opsStatus, trip?.originPin, trip?.destinationPin, currentPin, localPin]);
 
   const panToPoint = useCallback((pin?: Pin | null) => {
     console.log('Panning to:', pin);
@@ -474,7 +503,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
   }, [mapInstance]);
 
   useEffect(() => {
-    if (!mapInstance || !maps) return;
+    if (!mapInstance || !maps || !isAutoTracking) return;
     const bounds = new maps.LatLngBounds();
     let hasPoints = false;
 
@@ -516,7 +545,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
       mapInstance.setCenter(defaultCenter);
       mapInstance.setZoom(10);
     }
-  }, [mapInstance, maps, trip?.originPin, trip?.destinationPin, trip?.opsStatus, currentPin, localPin]);
+  }, [mapInstance, maps, trip?.originPin, trip?.destinationPin, trip?.opsStatus, currentPin, localPin, isAutoTracking]);
 
   if (loading) {
     return (
@@ -588,6 +617,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
               maxZoom: 16,
             }}
             onLoad={(map) => setMapInstance(map)}
+            onDragStart={() => setIsAutoTracking(false)}
           >
             {routePath.length === 2 && (
               <Polyline
@@ -606,15 +636,17 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
                 options={{ strokeColor: '#3b82f6', strokeOpacity: 0.9, strokeWeight: 5 }}
               />
             )}
-            {activeSegmentPath.length === 2 && (
-              <Polyline
-                path={activeSegmentPath}
+            {directions && (
+              <DirectionsRenderer
+                directions={directions}
                 options={{
-                  strokeColor: '#4f46e5', // indigo-600
-                  strokeOpacity: 0.9,
-                  strokeWeight: 6,
-                  geodesic: true,
-                  zIndex: 10,
+                  suppressMarkers: true,
+                  polylineOptions: {
+                    strokeColor: '#4f46e5', // indigo-600
+                    strokeOpacity: 0.9,
+                    strokeWeight: 6,
+                    zIndex: 10,
+                  }
                 }}
               />
             )}
@@ -646,8 +678,11 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
       {/* FLOATING MAP TOOLS */}
       <div className="absolute right-4 top-24 z-10 flex flex-col gap-2 pointer-events-none">
         <button
-          onClick={() => panToPoint(localPin || currentPin)}
-          className="h-12 w-12 rounded-2xl bg-white shadow-xl flex items-center justify-center text-slate-700 pointer-events-auto active:bg-slate-100 transition-colors border border-slate-100"
+          onClick={() => {
+            setIsAutoTracking(true);
+            panToPoint(localPin || currentPin);
+          }}
+          className={`h-12 w-12 rounded-2xl bg-white shadow-xl flex items-center justify-center transition-colors border border-slate-100 ${isAutoTracking ? 'text-blue-600' : 'text-slate-400'}`}
           title="Center on my location"
         >
           <LocateFixed size={22} />
