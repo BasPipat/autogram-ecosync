@@ -121,12 +121,16 @@ function tripLookup(id: string) {
 }
 
 function serializePin(pin?: DbPin | null) {
-  if (!pin || typeof pin.lat !== 'number' || typeof pin.lng !== 'number') return null;
+  if (!pin) return null;
+  const lat = typeof pin.lat === 'number' ? pin.lat : (typeof pin.lat === 'string' ? parseFloat(pin.lat) : NaN);
+  const lng = typeof pin.lng === 'number' ? pin.lng : (typeof pin.lng === 'string' ? parseFloat(pin.lng) : NaN);
+  if (isNaN(lat) || isNaN(lng)) return null;
+
   return {
-    lat: pin.lat,
-    lng: pin.lng,
+    lat,
+    lng,
     address: typeof pin.address === 'string' ? pin.address : '',
-    googleMapsUrl: typeof pin.googleMapsUrl === 'string' ? pin.googleMapsUrl : `https://www.google.com/maps?q=${pin.lat},${pin.lng}`,
+    googleMapsUrl: typeof pin.googleMapsUrl === 'string' ? pin.googleMapsUrl : `https://www.google.com/maps?q=${lat},${lng}`,
     speed: typeof pin.speed === 'number' ? pin.speed : null,
     heading: typeof pin.heading === 'number' ? pin.heading : null,
     timestamp: typeof pin.timestamp === 'number' ? pin.timestamp : null,
