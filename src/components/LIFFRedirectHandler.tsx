@@ -26,7 +26,8 @@ export default function LIFFRedirectHandler() {
       // Ensure it's a relative path to our own site
       if (targetPath.startsWith('/') && targetPath !== pathname) {
         console.log('LIFFRedirectHandler: Redirecting to', targetPath);
-        router.replace(targetPath);
+        // CRITICAL: Preserve search params (code, state) during redirect
+        router.replace(targetPath + window.location.search);
       }
     }
   }, [searchParams, pathname, router]);
