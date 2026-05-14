@@ -5,13 +5,14 @@ import { signOut, useSession } from 'next-auth/react';
 import { useState } from 'react';
 import {
   Menu, X, LayoutDashboard, Truck, Leaf, FileBarChart,
-  Settings, Users, LogOut, ChevronRight, Calculator, Search
+  Settings, Users, LogOut, ChevronRight, Calculator, Search, Navigation
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/driver/jobs', label: 'Load Board', icon: Search, role: 'system_owner' },
   { href: '/admin/trips', label: 'Trip Management', icon: Truck },
+  { href: '/admin/active-trips', label: 'Live Tracker', icon: Navigation },
   { href: '/report-center', label: 'Carbon Intelligence', icon: Leaf },
   { href: '/system-owner/modeling', label: 'Financial Modeling', icon: Calculator, role: 'system_owner' },
   { href: '/master-settings', label: 'Master Settings', icon: Settings },
