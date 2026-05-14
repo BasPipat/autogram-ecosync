@@ -234,6 +234,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
       void fetchTrip();
     };
     const initial = window.setTimeout(run, 0);
+    const timer = window.setInterval(run, 20000);
     // Real-time local positioning for visualization
     let watchId: number | null = null;
     if (navigator.geolocation) {
@@ -527,6 +528,8 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
         scale: 7,
       }
     : undefined;
+
+  return (
     <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-slate-50 text-slate-900 relative">
       {/* MAP BACKGROUND */}
       <div className="absolute inset-0 z-0">
