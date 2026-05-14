@@ -446,6 +446,25 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     (trip?.gpsHistory || []).map(point => ({ lat: point.lat, lng: point.lng }))
   ), [trip?.gpsHistory]);
 
+  const activeSegmentPath = useMemo(() => {
+    const step = statusIndex(trip?.opsStatus || '');
+    const currentLoc = currentPin || localPin;
+    
+    if (!currentLoc) return [];
+    
+    // step 1 or 2 -> heading to pickup
+    if ((step === 1 || step === 2) && trip?.originPin) {
+      return [currentLoc, trip.originPin].map(p => ({ lat: p.lat, lng: p.lng }));
+    }
+    
+    // step 3 or 4 -> heading to dropoff
+    if ((step === 3 || step === 4) && trip?.destinationPin) {
+      return [currentLoc, trip.destinationPin].map(p => ({ lat: p.lat, lng: p.lng }));
+    }
+    
+    return [];
+  }, [trip?.opsStatus, currentPin, localPin, trip?.originPin, trip?.destinationPin]);
+
   const panToPoint = useCallback((pin?: Pin | null) => {
     console.log('Panning to:', pin);
     if (!mapInstance || !pin || !pin.lat || !pin.lng) return;
@@ -581,6 +600,18 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
               <Polyline
                 path={gpsPath}
                 options={{ strokeColor: '#3b82f6', strokeOpacity: 0.9, strokeWeight: 5 }}
+              />
+            )}
+            {activeSegmentPath.length === 2 && (
+              <Polyline
+                path={activeSegmentPath}
+                options={{
+                  strokeColor: '#4f46e5', // indigo-600
+                  strokeOpacity: 0.9,
+                  strokeWeight: 6,
+                  geodesic: true,
+                  zIndex: 10,
+                }}
               />
             )}
             {trip.originPin && (
