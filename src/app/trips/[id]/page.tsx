@@ -447,10 +447,10 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
   ), [trip?.gpsHistory]);
 
   const panToPoint = useCallback((pin?: Pin | null) => {
-    if (!mapInstance || !pin) return;
+    console.log('Panning to:', pin);
+    if (!mapInstance || !pin || !pin.lat || !pin.lng) return;
     mapInstance.panTo({ lat: pin.lat, lng: pin.lng });
-    mapInstance.setZoom(16);
-    // On mobile, if pan is called, maybe collapse the bottom sheet to show the result
+    mapInstance.setZoom(17);
     setIsBottomSheetExpanded(false);
   }, [mapInstance]);
 
@@ -893,7 +893,10 @@ function Metric({ icon: Icon, label, value, tone }: { icon?: LucideIcon; label: 
 function RoutePoint({ tone, label, title, time, contact, phone, onClick }: { tone: 'amber' | 'emerald'; label: string; title: string; time: string; contact?: string; phone?: string; onClick: () => void }) {
   const dot = tone === 'amber' ? 'bg-amber-400' : 'bg-emerald-500';
   return (
-    <div className="flex gap-4">
+    <div 
+      onClick={onClick}
+      className="flex gap-4 cursor-pointer group active:opacity-60 transition-opacity"
+    >
       <div className="flex flex-col items-center">
         <span className={`mt-1.5 h-3.5 w-3.5 rounded-full border-2 border-white shadow-sm ${dot}`} />
         <div className="mt-1 h-full w-px bg-slate-200" />
@@ -902,12 +905,9 @@ function RoutePoint({ tone, label, title, time, contact, phone, onClick }: { ton
         <div className="flex items-center justify-between gap-3 mb-1">
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
         </div>
-        <button 
-          onClick={onClick}
-          className="block text-left text-sm font-black leading-snug text-slate-800 transition-colors hover:text-blue-600 active:opacity-60"
-        >
+        <p className="text-sm font-black leading-snug text-slate-800 group-hover:text-blue-600 transition-colors">
           {title}
-        </button>
+        </p>
         <p className="mt-1 text-xs font-bold text-slate-500">{time}</p>
         {(contact || phone) && <p className="mt-1.5 text-[11px] font-bold text-slate-400">{contact || '-'} · {phone || '-'}</p>}
       </div>
