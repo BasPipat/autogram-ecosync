@@ -24,8 +24,9 @@ export default function MyMissionRedirect() {
             if (liff.isLoggedIn()) {
               const profile = await liff.getProfile();
               finalLineUserId = profile.userId;
-            } else {
-              liff.login();
+            } else if (!finalLineUserId) {
+              // Only call login if no manual ID is provided in query
+              liff.login({ redirectUri: window.location.href });
               return;
             }
           } catch (err) {
