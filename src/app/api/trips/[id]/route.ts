@@ -120,26 +120,40 @@ function tripLookup(id: string) {
   return { $or: conditions };
 }
 
-function serializePin(pin?: any) {
-  if (!pin) return null;
-  
-  let lat = Number(pin.lat);
-  let lng = Number(pin.lng);
-  
-  // Handle Mongoose Decimal128 objects
-  if (pin.lat && typeof pin.lat === 'object' && pin.lat.$numberDecimal) lat = Number(pin.lat.$numberDecimal);
-  if (pin.lng && typeof pin.lng === 'object' && pin.lng.$numberDecimal) lng = Number(pin.lng.$numberDecimal);
+function serializePin(pin?: any, fallbackUrl?: string) {
+  let lat: number | typeof NaN = NaN;
+  let lng: number | typeof NaN = NaN;
+  let address = '';
+  let googleMapsUrl = fallbackUrl || '';
+
+  if (pin) {
+    lat = Number(pin.lat);
+    lng = Number(pin.lng);
+    if (pin.lat && typeof pin.lat === 'object' && pin.lat.$numberDecimal) lat = Number(pin.lat.$numberDecimal);
+    if (pin.lng && typeof pin.lng === 'object' && pin.lng.$numberDecimal) lng = Number(pin.lng.$numberDecimal);
+    if (typeof pin.address === 'string') address = pin.address;
+    if (typeof pin.googleMapsUrl === 'string' && pin.googleMapsUrl) googleMapsUrl = pin.googleMapsUrl;
+  }
+
+  // Fallback: extract lat,lng from URL if missing
+  if ((isNaN(lat) || isNaN(lng)) && googleMapsUrl) {
+    const match = googleMapsUrl.match(/[?&]q=([-.\d]+),([-.\d]+)/);
+    if (match) {
+      lat = parseFloat(match[1]);
+      lng = parseFloat(match[2]);
+    }
+  }
 
   if (isNaN(lat) || isNaN(lng)) return null;
 
   return {
     lat,
     lng,
-    address: typeof pin.address === 'string' ? pin.address : '',
-    googleMapsUrl: typeof pin.googleMapsUrl === 'string' ? pin.googleMapsUrl : `https://www.google.com/maps?q=${lat},${lng}`,
-    speed: typeof pin.speed === 'number' ? pin.speed : null,
-    heading: typeof pin.heading === 'number' ? pin.heading : null,
-    timestamp: typeof pin.timestamp === 'number' ? pin.timestamp : null,
+    address,
+    googleMapsUrl: googleMapsUrl || `https://www.google.com/maps?q=${lat},${lng}`,
+    speed: typeof pin?.speed === 'number' ? pin.speed : null,
+    heading: typeof pin?.heading === 'number' ? pin.heading : null,
+    timestamp: typeof pin?.timestamp === 'number' ? pin.timestamp : null,
   };
 }
 
@@ -312,8 +326,8 @@ async function serializeTrip(trip: LeanTrip, access: AccessInfo) {
     scheduledDestinationTime: trip.scheduledDestinationTime || '',
     destinationContactName: trip.destinationContactName || '',
     destinationContactPhone: trip.destinationContactPhone || '',
-    originPin: serializePin(trip.originPin),
-    destinationPin: serializePin(trip.destinationPin),
+    originPin: serializePin(trip.originPin, trip.originMapUrl),
+    destinationPin: serializePin(trip.destinationPin, trip.destinationMapUrl),
     distance: trip.distance || 0,
     weight: trip.weight || 0,
     carbon: trip.carbon || trip.emissionKgCo2e || 0,
