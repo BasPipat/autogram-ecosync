@@ -16,7 +16,8 @@ export default function MyMissionRedirect() {
   useEffect(() => {
     const queryParams = new URLSearchParams(window.location.search);
     const manualLineUserId = queryParams.get('lineUserId');
-    const hasLoginCode = queryParams.has('code') || queryParams.has('liff.state');
+    const hash = window.location.hash;
+    const hasLoginCode = queryParams.has('code') || queryParams.has('liff.state') || hash.includes('code=') || hash.includes('liff.state=');
 
     // 1. Wait for LIFF Initialization (unless we have a manual ID)
     if (isInitializing && !manualLineUserId) return;
