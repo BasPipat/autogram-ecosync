@@ -114,15 +114,7 @@ const defaultCenter = { lat: 13.7563, lng: 100.5018 };
 const mapContainerStyle = { width: '100%', height: '100%' };
 const libraries: ('places')[] = ['places'];
 
-const mapStyle = [
-  { elementType: 'geometry', stylers: [{ color: '#0f172a' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#94a3b8' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#020617' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1f2937' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#334155' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#082f49' }] },
-  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-];
+// Modern light mode design relies on the default map style.
 
 const timeline = [
   { key: 'accepted', label: 'รับงานแล้ว', detail: 'งานถูกล็อกเข้ากับรถและคนขับ' },
@@ -183,6 +175,8 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
   const [searchQuery, setSearchQuery] = useState('');
   const tripRef = useRef<TripHub | null>(null);
   const lastSyncRef = useRef(0);
+  const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
+  const [isBottomSheetExpanded, setIsBottomSheetExpanded] = useState(false);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -419,6 +413,9 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     }
   }, [trip?.access.role]);
 
+  const currentPin = trip?.gpsSession?.currentPin;
+  const maps = typeof window !== 'undefined' ? (window as GoogleMapsWindow).google?.maps : undefined;
+
   const center = useMemo(() => (
     trip?.gpsSession.currentPin ||
     trip?.originPin ||
@@ -435,21 +432,48 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     (trip?.gpsHistory || []).map(point => ({ lat: point.lat, lng: point.lng }))
   ), [trip?.gpsHistory]);
 
+  useEffect(() => {
+    if (!mapInstance || !maps) return;
+    const bounds = new maps.LatLngBounds();
+    let hasPoints = false;
+
+    if (trip?.originPin) {
+      bounds.extend({ lat: trip.originPin.lat, lng: trip.originPin.lng });
+      hasPoints = true;
+    }
+    if (trip?.destinationPin) {
+      bounds.extend({ lat: trip.destinationPin.lat, lng: trip.destinationPin.lng });
+      hasPoints = true;
+    }
+    if (currentPin) {
+      bounds.extend({ lat: currentPin.lat, lng: currentPin.lng });
+      hasPoints = true;
+    }
+
+    if (hasPoints) {
+      // Add padding to ensure points aren't hidden behind the bottom sheet
+      mapInstance.fitBounds(bounds, { top: 60, right: 40, bottom: 350, left: 40 });
+    } else {
+      mapInstance.setCenter(defaultCenter);
+      mapInstance.setZoom(10);
+    }
+  }, [mapInstance, maps, trip?.originPin, trip?.destinationPin, currentPin]);
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
-        <Loader2 className="animate-spin text-emerald-300" size={30} />
+      <div className="min-h-[100dvh] bg-slate-50 text-slate-900 flex items-center justify-center">
+        <Loader2 className="animate-spin text-blue-600" size={30} />
       </div>
     );
   }
 
   if (error || !trip) {
     return (
-      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-6">
-        <div className="max-w-md text-center border border-red-400/20 bg-red-400/10 rounded-2xl p-8">
-          <AlertCircle className="mx-auto mb-4 text-red-300" size={42} />
+      <div className="min-h-[100dvh] bg-slate-50 text-slate-900 flex items-center justify-center p-6">
+        <div className="max-w-md text-center border border-red-200 bg-red-50 rounded-3xl p-8 shadow-xl">
+          <AlertCircle className="mx-auto mb-4 text-red-500" size={42} />
           <h1 className="text-xl font-black mb-2">เปิดใบงานไม่ได้</h1>
-          <p className="text-sm text-slate-300">{error || 'ไม่พบข้อมูลทริป'}</p>
+          <p className="text-sm text-slate-600">{error || 'ไม่พบข้อมูลทริป'}</p>
         </div>
       </div>
     );
@@ -457,14 +481,12 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
 
   const currentStep = statusIndex(trip.opsStatus);
   const isDriver = trip.access.role === 'driver';
-  const currentPin = trip.gpsSession.currentPin;
-  const maps = typeof window !== 'undefined' ? (window as GoogleMapsWindow).google?.maps : undefined;
   const truckIcon: google.maps.Symbol | undefined = isLoaded && maps
     ? {
         path: maps.SymbolPath.FORWARD_CLOSED_ARROW,
-        fillColor: '#22d3ee',
+        fillColor: '#3b82f6',
         fillOpacity: 1,
-        strokeColor: '#ecfeff',
+        strokeColor: '#ffffff',
         strokeWeight: 2,
         scale: 6,
         rotation: currentPin?.heading || 0,
@@ -472,165 +494,169 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     : undefined;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-white/10 bg-slate-950/95 px-4 py-4 backdrop-blur md:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-2xl border border-emerald-300/20 bg-emerald-300/10 flex items-center justify-center">
-              <Truck className="text-emerald-300" size={24} />
+    <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-slate-50 text-slate-900 relative">
+      {/* MAP BACKGROUND */}
+      <div className="absolute inset-0 z-0">
+        {!isLoaded ? (
+          <div className="h-full flex flex-col items-center justify-center gap-3 text-slate-400 bg-slate-100">
+            <Loader2 className="animate-spin" size={26} />
+            <span className="text-xs font-bold uppercase tracking-[0.22em]">Loading Map</span>
+          </div>
+        ) : loadError ? (
+          <div className="h-full flex flex-col items-center justify-center gap-3 p-8 text-center text-red-500 bg-slate-100">
+            <AlertCircle size={38} />
+            <p className="font-bold">Google Maps ยังไม่พร้อมใช้งาน</p>
+          </div>
+        ) : (
+          <GoogleMap
+            mapContainerStyle={{ width: '100%', height: '100%' }}
+            center={center}
+            zoom={currentPin ? 13 : 10}
+            options={{ 
+              disableDefaultUI: true, 
+              gestureHandling: 'greedy',
+            }}
+            onLoad={(map) => setMapInstance(map)}
+          >
+            {routePath.length === 2 && (
+              <Polyline
+                path={routePath}
+                options={{
+                  strokeColor: '#64748b',
+                  strokeOpacity: 0.8,
+                  strokeWeight: 4,
+                  icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 }, offset: '0', repeat: '20px' }],
+                }}
+              />
+            )}
+            {gpsPath.length > 1 && (
+              <Polyline
+                path={gpsPath}
+                options={{ strokeColor: '#3b82f6', strokeOpacity: 0.9, strokeWeight: 5 }}
+              />
+            )}
+            {trip.originPin && (
+              <Marker position={trip.originPin} label={{ text: 'A', color: '#ffffff', fontSize: '12px', fontWeight: 'bold' }} />
+            )}
+            {trip.destinationPin && (
+              <Marker position={trip.destinationPin} label={{ text: 'B', color: '#ffffff', fontSize: '12px', fontWeight: 'bold' }} />
+            )}
+            {currentPin && (
+              <Marker
+                position={currentPin}
+                icon={truckIcon}
+                label={!truckIcon ? { text: 'Truck', color: '#000000', fontSize: '11px', fontWeight: 'bold' } : undefined}
+                zIndex={999}
+              />
+            )}
+          </GoogleMap>
+        )}
+      </div>
+
+      {/* FLOATING HEADER */}
+      <header className="relative z-10 p-4 md:p-6 pointer-events-none">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div className="rounded-3xl bg-white/95 p-4 shadow-lg backdrop-blur-md pointer-events-auto border border-slate-100 max-w-sm">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                <Truck size={24} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-black tracking-tight text-slate-800">{trip.tripId}</h1>
+                  <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-blue-700">
+                    Live
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs font-bold text-slate-500">
+                  {trip.origin} → {trip.destination}
+                </p>
+              </div>
             </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-black tracking-tight md:text-2xl">{trip.tripId}</h1>
-                <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-200">
-                  Digital Trip Hub
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+              <div className="flex flex-1 items-center gap-2 rounded-xl bg-slate-50 px-3 py-2">
+                <Radio size={14} className={trip.gpsSession.isTracking || isTracking ? 'text-emerald-500 animate-pulse' : 'text-slate-400'} />
+                <span className="text-xs font-bold text-slate-600">
+                  {trip.gpsSession.isTracking || isTracking ? 'Online' : 'Standby'}
                 </span>
               </div>
-              <p className="mt-1 text-xs font-medium text-slate-400">
-                {trip.origin} ไป {trip.destination}
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2">
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Live GPS</p>
-              <p className="mt-1 flex items-center gap-2 text-sm font-black">
-                <Radio size={14} className={trip.gpsSession.isTracking || isTracking ? 'text-emerald-300' : 'text-slate-500'} />
-                {trip.gpsSession.isTracking || isTracking ? 'Online' : 'Standby'}
-              </p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2">
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Last Ping</p>
-              <p className="mt-1 text-sm font-black">{formatDateTime(trip.gpsSession.lastPingAt || currentPin?.timestamp)}</p>
+              <div className="flex flex-1 items-center justify-center rounded-xl bg-slate-50 px-3 py-2">
+                <span className="text-[10px] font-bold text-slate-500">{formatDateTime(trip.gpsSession.lastPingAt || currentPin?.timestamp)}</span>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-7xl gap-5 px-4 py-5 md:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)] md:px-8">
-        <section className="space-y-5">
-          <div className="h-[460px] overflow-hidden rounded-2xl border border-white/10 bg-slate-900 shadow-2xl md:h-[620px]">
-            {!isLoaded ? (
-              <div className="h-full flex flex-col items-center justify-center gap-3 text-slate-500">
-                <Loader2 className="animate-spin" size={26} />
-                <span className="text-xs font-bold uppercase tracking-[0.22em]">Loading Map</span>
-              </div>
-            ) : loadError ? (
-              <div className="h-full flex flex-col items-center justify-center gap-3 p-8 text-center text-red-200">
-                <AlertCircle size={38} />
-                <p className="font-bold">Google Maps ยังไม่พร้อมใช้งาน</p>
-              </div>
-            ) : (
-              <GoogleMap
-                mapContainerStyle={mapContainerStyle}
-                center={center}
-                zoom={currentPin ? 13 : 10}
-                options={{ disableDefaultUI: true, styles: mapStyle }}
-              >
-                {routePath.length === 2 && (
-                  <Polyline
-                    path={routePath}
-                    options={{
-                      strokeColor: '#f59e0b',
-                      strokeOpacity: 0.85,
-                      strokeWeight: 4,
-                      icons: [{ icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 3 }, offset: '0', repeat: '18px' }],
-                    }}
-                  />
-                )}
-                {gpsPath.length > 1 && (
-                  <Polyline
-                    path={gpsPath}
-                    options={{ strokeColor: '#22d3ee', strokeOpacity: 0.95, strokeWeight: 5 }}
-                  />
-                )}
-                {trip.originPin && (
-                  <Marker position={trip.originPin} label={{ text: 'A', color: '#ffffff', fontWeight: 'bold' }} />
-                )}
-                {trip.destinationPin && (
-                  <Marker position={trip.destinationPin} label={{ text: 'B', color: '#ffffff', fontWeight: 'bold' }} />
-                )}
-                {currentPin && (
-                  <Marker
-                    position={currentPin}
-                    icon={truckIcon}
-                    label={!truckIcon ? { text: 'Truck', color: '#ffffff', fontSize: '11px', fontWeight: 'bold' } : undefined}
-                  />
-                )}
-              </GoogleMap>
-            )}
+      {/* EXPANDABLE BOTTOM SHEET / SIDE PANEL */}
+      <div className={`absolute bottom-0 left-0 right-0 z-20 flex flex-col transition-transform duration-500 ease-out md:static md:w-[450px] md:h-full md:border-l md:border-slate-200 md:bg-white md:shadow-2xl md:transform-none ${
+        isBottomSheetExpanded ? 'translate-y-0' : 'translate-y-[calc(100%-80px)]'
+      }`}>
+        <div 
+          className="flex h-20 w-full cursor-pointer items-center justify-center rounded-t-3xl bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.1)] md:hidden border-b border-slate-100"
+          onClick={() => setIsBottomSheetExpanded(!isBottomSheetExpanded)}
+        >
+          <div className="flex flex-col items-center gap-2">
+            <div className="h-1.5 w-12 rounded-full bg-slate-200" />
+            <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+              {isBottomSheetExpanded ? 'ซ่อนรายละเอียด' : 'ดูรายละเอียดงาน'}
+            </span>
           </div>
+        </div>
 
-          <div className="grid gap-4 md:grid-cols-4">
-            <Metric icon={Package} label="สินค้า" value={trip.cargoName || trip.cargoType || '-'} tone="emerald" />
-            <Metric icon={Navigation} label="ระยะทาง" value={`${trip.distance || 0} km`} tone="cyan" />
-            <Metric icon={Activity} label="น้ำหนัก" value={`${trip.weight || 0} ton`} tone="amber" />
-            <Metric icon={ShieldCheck} label="Carbon" value={`${Number(trip.carbon || 0).toLocaleString()} kgCO2e`} tone="violet" />
-          </div>
-
-          {trip.access.canViewFinancials && trip.financials && (
-            <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">System Owner Visibility</p>
-                  <h2 className="mt-1 text-lg font-black">ต้นทุนและกำไร</h2>
-                </div>
-                <Banknote className="text-emerald-300" size={22} />
-              </div>
-              <div className="grid gap-3 md:grid-cols-4">
-                <Metric label="ราคาตั้งต้น" value={formatMoney(trip.financials.basePrice)} tone="cyan" />
-                <Metric label="ค่ารถร่วม" value={formatMoney(trip.financials.driverPrice)} tone="amber" />
-                <Metric label="ส่วนต่าง" value={formatMoney(trip.financials.platformFee)} tone="emerald" />
-                <Metric label="Margin" value={trip.financials.grossMarginPercent !== null ? `${trip.financials.grossMarginPercent}%` : '-'} tone="violet" />
-              </div>
-            </section>
-          )}
-        </section>
-
-        <aside className="space-y-5">
-          <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-300">Trip Status Timeline</p>
-                <h2 className="mt-1 text-lg font-black">{timeline[currentStep]?.label || trip.opsStatus}</h2>
-              </div>
-              <Clock className="text-cyan-300" size={22} />
+        <div className="h-[70vh] overflow-y-auto bg-white p-5 pb-24 md:h-full md:p-8 custom-scrollbar">
+          
+          {/* Timeline */}
+          <section className="mb-8">
+            <div className="flex items-center gap-2 mb-5">
+              <Clock className="text-blue-500" size={18} />
+              <h2 className="text-sm font-black uppercase tracking-wider text-slate-800">Status Timeline</h2>
             </div>
-            <div className="mt-5 space-y-4">
+            <div className="space-y-4">
               {timeline.map((step, index) => (
-                <div key={step.key} className="flex gap-3">
+                <div key={step.key} className="flex gap-4">
                   <div className="flex flex-col items-center">
-                    <div className={`h-8 w-8 rounded-full border flex items-center justify-center ${
-                      index <= currentStep ? 'border-emerald-300 bg-emerald-300 text-slate-950' : 'border-white/10 bg-white/5 text-slate-500'
+                    <div className={`flex h-7 w-7 items-center justify-center rounded-full border-2 ${
+                      index <= currentStep ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-200 bg-white text-slate-400'
                     }`}>
-                      {index <= currentStep ? <CheckCircle size={16} /> : <span className="text-xs font-black">{index + 1}</span>}
+                      {index <= currentStep ? <CheckCircle size={14} /> : <span className="text-[10px] font-black">{index + 1}</span>}
                     </div>
-                    {index < timeline.length - 1 && <div className={`mt-2 h-8 w-px ${index < currentStep ? 'bg-emerald-300/70' : 'bg-white/10'}`} />}
+                    {index < timeline.length - 1 && <div className={`mt-1 h-8 w-0.5 rounded-full ${index < currentStep ? 'bg-emerald-500' : 'bg-slate-100'}`} />}
                   </div>
-                  <div className="pt-1">
-                    <p className={index <= currentStep ? 'text-sm font-black text-white' : 'text-sm font-bold text-slate-500'}>{step.label}</p>
-                    <p className="mt-1 text-xs leading-relaxed text-slate-500">{step.detail}</p>
+                  <div className="pt-0.5 pb-2">
+                    <p className={index <= currentStep ? 'text-sm font-black text-slate-800' : 'text-sm font-bold text-slate-400'}>{step.label}</p>
+                    <p className="mt-0.5 text-[11px] font-medium leading-relaxed text-slate-500">{step.detail}</p>
                   </div>
                 </div>
               ))}
             </div>
           </section>
 
-          <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">Route Manifest</p>
-            <div className="mt-5 space-y-4">
+          {/* Quick Metrics */}
+          <div className="mb-8 grid grid-cols-2 gap-3">
+            <Metric icon={Package} label="สินค้า" value={trip.cargoName || trip.cargoType || '-'} tone="emerald" />
+            <Metric icon={Navigation} label="ระยะทาง" value={`${trip.distance || 0} km`} tone="blue" />
+            <Metric icon={Activity} label="น้ำหนัก" value={`${trip.weight || 0} ton`} tone="amber" />
+            <Metric icon={ShieldCheck} label="Carbon" value={`${Number(trip.carbon || 0).toLocaleString()} kg`} tone="violet" />
+          </div>
+
+          {/* Route Manifest */}
+          <section className="mb-8 rounded-3xl border border-slate-100 bg-slate-50 p-5">
+            <h2 className="mb-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Route Manifest</h2>
+            <div className="space-y-5">
               <RoutePoint tone="amber" label="จุดรับ" title={trip.origin} time={`${formatDateTime(trip.scheduledOriginDate)} ${trip.scheduledOriginTime || ''}`} contact={trip.originContactName} phone={trip.originContactPhone} url={trip.originMapUrl} />
               <RoutePoint tone="emerald" label="จุดส่ง" title={trip.destination} time={`${formatDateTime(trip.scheduledDestinationDate)} ${trip.scheduledDestinationTime || ''}`} contact={trip.destinationContactName} phone={trip.destinationContactPhone} url={trip.destinationMapUrl} />
             </div>
           </section>
 
-          <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+          {/* Vehicle & Driver */}
+          <section className="mb-8 rounded-3xl border border-slate-100 bg-white shadow-sm p-5">
             <div className="flex items-center justify-between gap-3 mb-4">
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">Vehicle & Driver</p>
+              <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Vehicle & Driver</h2>
               {!isDriver && (
                 <button
                   onClick={() => setShowDriverPicker(!showDriverPicker)}
-                  className="flex items-center gap-1.5 rounded-lg bg-emerald-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-emerald-300 transition hover:bg-emerald-300/20"
+                  className="flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-600 transition hover:bg-slate-200"
                 >
                   <UserPlus size={12} />
                   {trip.lineUserId ? 'เปลี่ยนคนขับ' : 'ผูกคนขับ LINE'}
@@ -639,15 +665,15 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
             </div>
 
             {showDriverPicker && !isDriver && (
-              <div className="mb-5 rounded-xl border border-white/10 bg-slate-900 p-3 shadow-xl">
+              <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                 <div className="relative mb-3">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                   <input
                     type="text"
                     placeholder="ค้นหาชื่อหรือทะเบียน..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full rounded-lg border border-white/10 bg-slate-950 py-2 pl-9 pr-3 text-xs text-white placeholder:text-slate-600 focus:border-emerald-300/50 outline-none"
+                    className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-xs font-bold text-slate-800 placeholder:text-slate-400 focus:border-blue-500 outline-none"
                   />
                 </div>
                 <div className="max-h-60 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
@@ -662,22 +688,22 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
                         key={d.lineUserId}
                         onClick={() => bindDriver(d.lineUserId)}
                         disabled={actionLoading === 'binding_driver'}
-                        className="w-full flex items-center justify-between gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition text-left group"
+                        className="w-full flex items-center justify-between gap-3 p-3 rounded-xl bg-white border border-slate-100 hover:border-blue-300 transition text-left group shadow-sm"
                       >
                         <div className="flex items-center gap-3">
-                          <img src={d.pictureUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} className="h-8 w-8 rounded-full border border-white/10" alt="" />
+                          <img src={d.pictureUrl || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'} className="h-9 w-9 rounded-full border border-slate-100" alt="" />
                           <div>
-                            <p className="text-xs font-black text-white">{d.displayName} <span className="ml-1 text-[9px] text-slate-500 font-mono">({d.lineUserId.substring(0, 6)}...)</span></p>
-                            <p className="text-[10px] text-slate-500 font-bold">{d.licensePlate} · {d.phone}</p>
+                            <p className="text-xs font-black text-slate-800">{d.displayName} <span className="ml-1 text-[9px] text-slate-400 font-mono">({d.lineUserId.substring(0, 6)}...)</span></p>
+                            <p className="text-[10px] text-slate-500 font-bold mt-0.5">{d.licensePlate} · {d.phone}</p>
                           </div>
                         </div>
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <CheckCircle size={16} className="text-emerald-300" />
+                          <CheckCircle size={16} className="text-blue-500" />
                         </div>
                       </button>
                     ))}
                   {approvedDrivers.length === 0 && (
-                    <p className="text-center py-4 text-[11px] text-slate-500 font-bold">ไม่พบคนขับที่ได้รับอนุมัติแล้ว</p>
+                    <p className="text-center py-4 text-[11px] text-slate-400 font-bold">ไม่พบคนขับที่ได้รับอนุมัติแล้ว</p>
                   )}
                 </div>
               </div>
@@ -689,34 +715,39 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
               <InfoLine label="เบอร์โทร" value={trip.driverPhone || '-'} />
               <InfoLine label="ทะเบียนหัว" value={trip.licensePlate || '-'} />
               <InfoLine label="ทะเบียนหาง" value={trip.tailLicensePlate || '-'} />
-              <InfoLine label="พิกัดล่าสุด" value={shortCoordinate(currentPin)} />
             </div>
           </section>
 
+          {/* Driver Actions */}
           {isDriver && (
-            <section className="rounded-2xl border border-emerald-300/20 bg-emerald-300/[0.05] p-5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">Driver Actions</p>
-              <div className="mt-4 grid gap-3">
-                <ActionButton icon={Play} label="เริ่มเดินทาง" disabled={currentStep > 0} loading={actionLoading === 'start_to_pickup'} onClick={() => patchTrip('start_to_pickup')} />
-                <ActionButton icon={MapPin} label="ถึงจุดรับ" disabled={currentStep > 2} loading={actionLoading === 'arrive_pickup'} onClick={() => patchTrip('arrive_pickup')} />
-                <ActionButton icon={Navigation} label="ออกไปจุดส่ง" disabled={currentStep > 3} loading={actionLoading === 'start_to_dropoff'} onClick={() => patchTrip('start_to_dropoff')} />
-                <ActionButton icon={FileCheck} label="ส่งของสำเร็จ" disabled={currentStep > 4} loading={actionLoading === 'complete_delivery'} onClick={() => patchTrip('complete_delivery')} />
+            <section className="mb-8 rounded-3xl border border-blue-100 bg-blue-50/50 p-5">
+              <h2 className="mb-4 text-[10px] font-black uppercase tracking-widest text-blue-600">Driver Actions</h2>
+              <div className="grid gap-3">
+                <ActionButton icon={Play} label="เริ่มเดินทาง" disabled={currentStep > 0} loading={actionLoading === 'start_to_pickup'} onClick={() => patchTrip('start_to_pickup')} tone="blue" />
+                <ActionButton icon={MapPin} label="ถึงจุดรับ" disabled={currentStep > 2} loading={actionLoading === 'arrive_pickup'} onClick={() => patchTrip('arrive_pickup')} tone="amber" />
+                <ActionButton icon={Navigation} label="ออกไปจุดส่ง" disabled={currentStep > 3} loading={actionLoading === 'start_to_dropoff'} onClick={() => patchTrip('start_to_dropoff')} tone="blue" />
+                <ActionButton icon={FileCheck} label="ส่งของสำเร็จ" disabled={currentStep > 4} loading={actionLoading === 'complete_delivery'} onClick={() => patchTrip('complete_delivery')} tone="emerald" />
+                
                 <button
                   type="button"
                   onClick={() => isTracking ? stopTracking() : startTracking()}
-                  className="h-12 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-black text-slate-100 flex items-center justify-center gap-2 transition hover:bg-white/10"
+                  className={`mt-2 h-12 rounded-2xl border-2 px-4 text-sm font-black flex items-center justify-center gap-2 transition-all ${
+                    isTracking 
+                      ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100' 
+                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+                  }`}
                 >
                   {isTracking ? <Square size={16} /> : <LocateFixed size={16} />}
                   {isTracking ? 'หยุดส่ง GPS ชั่วคราว' : 'เริ่มส่ง GPS'}
                 </button>
               </div>
 
-              <div className="mt-5 border-t border-white/10 pt-4">
+              <div className="mt-5 border-t border-blue-100 pt-5">
                 <button
                   type="button"
                   onClick={() => patchTrip('request_pod')}
                   disabled={actionLoading === 'request_pod'}
-                  className="mb-3 h-11 w-full rounded-xl bg-cyan-300 text-slate-950 text-sm font-black flex items-center justify-center gap-2 disabled:opacity-60"
+                  className="mb-3 h-12 w-full rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/20 text-sm font-black flex items-center justify-center gap-2 transition hover:bg-blue-700 disabled:opacity-50 disabled:shadow-none"
                 >
                   {actionLoading === 'request_pod' ? <Loader2 className="animate-spin" size={16} /> : <Camera size={16} />}
                   เปิดรับ POD ผ่าน LINE
@@ -725,14 +756,14 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
                   <input
                     value={podUrl}
                     onChange={event => setPodUrl(event.target.value)}
-                    placeholder="วางลิงก์ไฟล์ POD"
-                    className="min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-950 px-3 text-xs text-white outline-none placeholder:text-slate-600"
+                    placeholder="วางลิงก์ไฟล์ POD ที่นี่"
+                    className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
                   />
                   <button
                     type="button"
                     disabled={!podUrl || actionLoading === 'submit_pod_url'}
                     onClick={() => patchTrip('submit_pod_url', { podUrl })}
-                    className="h-11 rounded-xl bg-emerald-300 px-4 text-xs font-black text-slate-950 disabled:opacity-40"
+                    className="h-12 rounded-2xl bg-slate-900 px-5 text-sm font-black text-white transition hover:bg-slate-800 disabled:opacity-40"
                   >
                     บันทึก
                   </button>
@@ -741,70 +772,70 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
             </section>
           )}
 
-          {notice && (
-            <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-4 text-sm font-bold text-cyan-100">
-              {notice}
-            </div>
-          )}
-
-          {trip.access.canViewFinancials && (
-            <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-violet-300">GPS Ping History</p>
-              <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">
-                {trip.gpsHistory.length === 0 ? (
-                  <p className="text-sm text-slate-500">ยังไม่มีประวัติ ping</p>
-                ) : (
-                  [...trip.gpsHistory].reverse().slice(0, 20).map((pin, index) => (
-                    <div key={`${pin.timestamp || index}-${pin.lat}-${pin.lng}`} className="rounded-xl border border-white/10 bg-slate-950/70 p-3">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-xs font-black text-white">{shortCoordinate(pin)}</span>
-                        <span className="text-[10px] font-bold text-slate-500">{formatDateTime(pin.timestamp)}</span>
-                      </div>
-                      <p className="mt-1 text-[11px] text-slate-500">Speed {pin.speed ? Math.round(pin.speed * 3.6) : 0} km/h · Heading {pin.heading ? Math.round(pin.heading) : 0}°</p>
-                    </div>
-                  ))
-                )}
+          {/* Admin Tools */}
+          {trip.access.canViewFinancials && trip.financials && (
+            <section className="mb-8 rounded-3xl border border-violet-100 bg-violet-50/50 p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <Banknote className="text-violet-600" size={18} />
+                <h2 className="text-[10px] font-black uppercase tracking-widest text-violet-600">ต้นทุนและกำไร (Admin Only)</h2>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Metric label="ราคาตั้งต้น" value={formatMoney(trip.financials.basePrice)} tone="violet" />
+                <Metric label="ค่ารถร่วม" value={formatMoney(trip.financials.driverPrice)} tone="amber" />
+                <Metric label="ส่วนต่าง" value={formatMoney(trip.financials.platformFee)} tone="emerald" />
+                <Metric label="Margin" value={trip.financials.grossMarginPercent !== null ? `${trip.financials.grossMarginPercent}%` : '-'} tone="blue" />
               </div>
             </section>
           )}
-        </aside>
-      </main>
+          
+          {notice && (
+            <div className="mb-8 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm font-bold text-blue-700 flex items-start gap-3">
+              <AlertCircle size={18} className="mt-0.5 shrink-0" />
+              <p>{notice}</p>
+            </div>
+          )}
+
+        </div>
+      </div>
     </div>
   );
 }
 
-function Metric({ icon: Icon, label, value, tone }: { icon?: LucideIcon; label: string; value: string; tone: 'emerald' | 'cyan' | 'amber' | 'violet' }) {
+function Metric({ icon: Icon, label, value, tone }: { icon?: LucideIcon; label: string; value: string; tone: 'emerald' | 'blue' | 'amber' | 'violet' }) {
   const color = {
-    emerald: 'text-emerald-300 bg-emerald-300/10 border-emerald-300/20',
-    cyan: 'text-cyan-300 bg-cyan-300/10 border-cyan-300/20',
-    amber: 'text-amber-300 bg-amber-300/10 border-amber-300/20',
-    violet: 'text-violet-300 bg-violet-300/10 border-violet-300/20',
+    emerald: 'text-emerald-600 bg-emerald-50 border-emerald-100',
+    blue: 'text-blue-600 bg-blue-50 border-blue-100',
+    amber: 'text-amber-600 bg-amber-50 border-amber-100',
+    violet: 'text-violet-600 bg-violet-50 border-violet-100',
   }[tone];
 
   return (
-    <div className={`rounded-2xl border p-4 ${color}`}>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] opacity-80">{label}</p>
-        {Icon && <Icon size={17} />}
+    <div className={`rounded-2xl border p-3.5 ${color} flex flex-col justify-between`}>
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <p className="text-[10px] font-black uppercase tracking-widest opacity-70">{label}</p>
+        {Icon && <Icon size={14} className="opacity-80" />}
       </div>
-      <p className="mt-3 truncate text-lg font-black text-white">{value}</p>
+      <p className="truncate text-lg font-black">{value}</p>
     </div>
   );
 }
 
 function RoutePoint({ tone, label, title, time, contact, phone, url }: { tone: 'amber' | 'emerald'; label: string; title: string; time: string; contact?: string; phone?: string; url?: string }) {
-  const dot = tone === 'amber' ? 'bg-amber-300' : 'bg-emerald-300';
+  const dot = tone === 'amber' ? 'bg-amber-400' : 'bg-emerald-500';
   return (
-    <div className="flex gap-3">
-      <span className={`mt-1 h-3 w-3 rounded-full ${dot}`} />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">{label}</p>
-          {url && <a href={url} target="_blank" rel="noopener noreferrer" className="text-[11px] font-bold text-cyan-300">เปิดแผนที่</a>}
+    <div className="flex gap-4">
+      <div className="flex flex-col items-center">
+        <span className={`mt-1.5 h-3.5 w-3.5 rounded-full border-2 border-white shadow-sm ${dot}`} />
+        <div className="mt-1 h-full w-px bg-slate-200" />
+      </div>
+      <div className="min-w-0 flex-1 pb-4">
+        <div className="flex items-center justify-between gap-3 mb-1">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
+          {url && <a href={url} target="_blank" rel="noopener noreferrer" className="text-[10px] font-black text-blue-600 hover:underline">เปิดแผนที่</a>}
         </div>
-        <p className="mt-1 text-sm font-black leading-snug text-white">{title}</p>
-        <p className="mt-1 text-xs text-slate-500">{time}</p>
-        {(contact || phone) && <p className="mt-1 text-xs text-slate-400">{contact || '-'} · {phone || '-'}</p>}
+        <p className="text-sm font-black leading-snug text-slate-800">{title}</p>
+        <p className="mt-1 text-xs font-bold text-slate-500">{time}</p>
+        {(contact || phone) && <p className="mt-1.5 text-[11px] font-bold text-slate-400">{contact || '-'} · {phone || '-'}</p>}
       </div>
     </div>
   );
@@ -812,20 +843,26 @@ function RoutePoint({ tone, label, title, time, contact, phone, url }: { tone: '
 
 function InfoLine({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-2 last:border-b-0">
-      <span className="text-xs font-bold text-slate-500">{label}</span>
-      <span className="min-w-0 truncate text-right text-sm font-black text-white">{value}</span>
+    <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-2 last:border-b-0">
+      <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">{label}</span>
+      <span className="min-w-0 truncate text-right text-sm font-black text-slate-800">{value}</span>
     </div>
   );
 }
 
-function ActionButton({ icon: Icon, label, disabled, loading, onClick }: { icon: LucideIcon; label: string; disabled?: boolean; loading?: boolean; onClick: () => void }) {
+function ActionButton({ icon: Icon, label, disabled, loading, onClick, tone = 'blue' }: { icon: LucideIcon; label: string; disabled?: boolean; loading?: boolean; onClick: () => void; tone?: 'blue' | 'emerald' | 'amber' }) {
+  const color = {
+    blue: 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-600/20',
+    emerald: 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/20',
+    amber: 'bg-amber-500 text-white hover:bg-amber-600 shadow-amber-500/20',
+  }[tone];
+
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled || loading}
-      className="h-12 rounded-xl bg-emerald-300 px-4 text-sm font-black text-slate-950 flex items-center justify-center gap-2 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-slate-500"
+      className={`h-12 rounded-2xl px-4 text-sm font-black flex items-center justify-center gap-2 transition-all shadow-lg ${color} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none`}
     >
       {loading ? <Loader2 className="animate-spin" size={16} /> : <Icon size={16} />}
       {label}
