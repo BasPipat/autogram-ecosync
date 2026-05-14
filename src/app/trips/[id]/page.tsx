@@ -459,14 +459,25 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     const bounds = new maps.LatLngBounds();
     let hasPoints = false;
 
-    if (trip?.originPin) {
+    // Smart Context-Aware Bounding based on Trip Status
+    const step = statusIndex(trip?.opsStatus || '');
+    
+    // step 0 (accepted): Overview (Origin + Destination)
+    // step 1, 2 (pickup phase): Focus on Origin
+    // step 3, 4, 5 (dropoff phase): Focus on Destination
+    const showOrigin = step <= 2;
+    const showDestination = step === 0 || step >= 3;
+
+    if (showOrigin && trip?.originPin) {
       bounds.extend({ lat: trip.originPin.lat, lng: trip.originPin.lng });
       hasPoints = true;
     }
-    if (trip?.destinationPin) {
+    if (showDestination && trip?.destinationPin) {
       bounds.extend({ lat: trip.destinationPin.lat, lng: trip.destinationPin.lng });
       hasPoints = true;
     }
+    
+    // Always ensure the driver's location is in view
     if (currentPin) {
       bounds.extend({ lat: currentPin.lat, lng: currentPin.lng });
       hasPoints = true;
@@ -482,7 +493,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
       mapInstance.setCenter(defaultCenter);
       mapInstance.setZoom(10);
     }
-  }, [mapInstance, maps, trip?.originPin, trip?.destinationPin, currentPin, localPin]);
+  }, [mapInstance, maps, trip?.originPin, trip?.destinationPin, trip?.opsStatus, currentPin, localPin]);
 
   if (loading) {
     return (
