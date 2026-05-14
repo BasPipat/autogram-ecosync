@@ -3,57 +3,57 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Package } from 'lucide-react';
-import { useLIFF } from '@/components/LIFFProvider';
 
 export default function MyMissionPage() {
   const router = useRouter();
-  const { lineUserId: liffUserId, isLoggedIn, isInitializing } = useLIFF();
   const [error, setError] = useState<string | null>(null);
-  const [statusMsg, setStatusMsg] = useState('กำลังเริ่มระบบ LINE...');
-  const hasFetched = useRef(false);
+  const [statusMsg, setStatusMsg] = useState('กำลังเริ่มระบบ...');
+  const initialized = useRef(false);
 
   useEffect(() => {
-    // Check for manual bypass ID (for admin/testing)
-    const params = new URLSearchParams(window.location.search);
-    const manualId = params.get('lineUserId');
+    if (initialized.current) return;
+    initialized.current = true;
 
-    if (manualId) {
-      if (!hasFetched.current) {
-        hasFetched.current = true;
-        fetchMission(manualId);
+    const run = async () => {
+      // ── Manual bypass for admin/testing ──────────────────────
+      const params = new URLSearchParams(window.location.search);
+      const manualId = params.get('lineUserId');
+      if (manualId) {
+        await fetchMission(manualId);
+        return;
       }
-      return;
-    }
 
-    // Wait for LIFF init to complete
-    if (isInitializing) {
-      setStatusMsg('กำลังเริ่มระบบ LINE...');
-      return;
-    }
+      // ── LIFF flow (LIFF endpoint now points HERE directly) ───
+      const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || '2010054204-bv5oRtcL';
+      try {
+        setStatusMsg('กำลังเชื่อมต่อ LINE...');
+        const liff = (await import('@line/liff')).default;
 
-    // LIFF init complete but not logged in → trigger login (once only)
-    if (!isLoggedIn || !liffUserId) {
-      if (!hasFetched.current) {
-        hasFetched.current = true;
-        setStatusMsg('กำลังนำไปยืนยันตัวตน...');
-        import('@line/liff').then(({ default: liff }) => {
-          // Login and come back to this page (clean URL)
-          liff.login({ redirectUri: window.location.origin + '/driver/my-mission' });
-        });
+        // liff.init() processes the `code` in URL and stores session
+        await liff.init({ liffId });
+
+        if (liff.isLoggedIn()) {
+          setStatusMsg('กำลังค้นหาภารกิจ...');
+          const profile = await liff.getProfile();
+          await fetchMission(profile.userId);
+        } else {
+          // Not logged in → send to LINE login, return to THIS page
+          setStatusMsg('กำลังนำไปยืนยันตัวตน...');
+          liff.login({
+            redirectUri: window.location.origin + '/driver/my-mission',
+          });
+        }
+      } catch (err: any) {
+        console.error('[MyMission] LIFF Error:', err);
+        setError('เกิดปัญหาในการเชื่อมต่อ LINE\nกรุณาลองใหม่อีกครั้งครับ');
       }
-      return;
-    }
+    };
 
-    // Logged in ✓ - fetch mission
-    if (!hasFetched.current) {
-      hasFetched.current = true;
-      fetchMission(liffUserId);
-    }
-  }, [isInitializing, isLoggedIn, liffUserId]);
+    run();
+  }, []);
 
   const fetchMission = async (userId: string) => {
-    setStatusMsg('กำลังค้นหาภารกิจ...');
-    // Clean up URL
+    // Clean URL from any LIFF parameters
     window.history.replaceState({}, '', '/driver/my-mission');
 
     try {
@@ -77,7 +77,7 @@ export default function MyMissionPage() {
         setError('ขณะนี้ยังไม่มีภารกิจที่กำลังดำเนินการครับ');
       }
     } catch {
-      setError('เกิดปัญหาในการเชื่อมต่อ\nกรุณาลองใหม่อีกครั้งครับ');
+      setError('เกิดปัญหาในการเชื่อมต่อเซิร์ฟเวอร์\nกรุณาลองใหม่อีกครั้งครับ');
     }
   };
 
@@ -91,7 +91,11 @@ export default function MyMissionPage() {
           <h2 className="text-xl font-black text-slate-800 mb-3">ตรวจสอบสถานะงาน</h2>
           <p className="text-slate-500 font-medium mb-8 whitespace-pre-line">{error}</p>
           <button
-            onClick={() => { hasFetched.current = false; window.location.reload(); }}
+            onClick={() => {
+              initialized.current = false;
+              setError(null);
+              window.location.reload();
+            }}
             className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-sm shadow-lg"
           >
             ลองตรวจสอบอีกครั้ง
@@ -100,7 +104,7 @@ export default function MyMissionPage() {
       ) : (
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-12 h-12 text-emerald-600 animate-spin" />
-          <p className="text-slate-600 font-medium">{statusMsg}</p>
+          <p className="text-slate-600 font-medium animate-pulse">{statusMsg}</p>
         </div>
       )}
     </div>
