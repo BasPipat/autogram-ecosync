@@ -506,8 +506,8 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     }
 
     if (hasPoints) {
-      // Add padding to ensure points aren't hidden behind the bottom sheet
-      mapInstance.fitBounds(bounds, { top: 60, right: 40, bottom: 350, left: 40 });
+      // Add padding to ensure points aren't hidden behind the bottom sheet or the top card
+      mapInstance.fitBounds(bounds, { top: 220, right: 40, bottom: 350, left: 40 });
     } else {
       mapInstance.setCenter(defaultCenter);
       mapInstance.setZoom(10);
@@ -653,9 +653,9 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
       {/* FLOATING HEADER */}
       <header className="relative z-10 p-4 md:p-6 pointer-events-none">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 md:flex-row md:items-start md:justify-between">
-          <div className="rounded-3xl bg-white/95 p-4 shadow-lg backdrop-blur-md pointer-events-auto border border-slate-100 max-w-sm">
+          <div className="rounded-3xl bg-white/50 p-4 shadow-lg backdrop-blur-xl pointer-events-auto border border-white/60 max-w-sm">
             <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-700">
                 <Truck size={24} />
               </div>
               <div>
@@ -670,14 +670,14 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
                 </p>
               </div>
             </div>
-            <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-              <div className="flex flex-1 items-center gap-2 rounded-xl bg-slate-50 px-3 py-2">
-                <Radio size={14} className={trip.gpsSession.isTracking || isTracking ? 'text-emerald-500 animate-pulse' : 'text-slate-400'} />
-                <span className="text-xs font-bold text-slate-600">
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-400/20 pt-3">
+              <div className="flex flex-1 items-center gap-2 rounded-xl bg-white/40 px-3 py-2 backdrop-blur-md">
+                <Radio size={14} className={trip.gpsSession.isTracking || isTracking ? 'text-emerald-600 animate-pulse' : 'text-slate-500'} />
+                <span className="text-xs font-bold text-slate-700">
                   {trip.gpsSession.isTracking || isTracking ? 'Online' : 'Standby'}
                 </span>
               </div>
-              <div className="flex flex-1 items-center justify-center rounded-xl bg-slate-50 px-3 py-2">
+              <div className="flex flex-1 items-center justify-center rounded-xl bg-white/40 px-3 py-2 backdrop-blur-md">
                 <span className="text-[10px] font-bold text-slate-500">{formatDateTime(trip.gpsSession.lastPingAt || currentPin?.timestamp)}</span>
               </div>
             </div>
