@@ -177,6 +177,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
   const lastSyncRef = useRef(0);
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const [isBottomSheetExpanded, setIsBottomSheetExpanded] = useState(false);
+  const [localPin, setLocalPin] = useState<Pin | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -234,6 +235,18 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     };
     const initial = window.setTimeout(run, 0);
     const timer = window.setInterval(run, 20000);
+
+    // Initial local positioning for visualization
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLocalPin({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        (err) => console.log('Local location access denied or failed:', err),
+        { enableHighAccuracy: true }
+      );
+    }
+
     return () => {
       window.clearTimeout(initial);
       window.clearInterval(timer);
@@ -432,6 +445,14 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     (trip?.gpsHistory || []).map(point => ({ lat: point.lat, lng: point.lng }))
   ), [trip?.gpsHistory]);
 
+  const panToPoint = useCallback((pin?: Pin | null) => {
+    if (!mapInstance || !pin) return;
+    mapInstance.panTo({ lat: pin.lat, lng: pin.lng });
+    mapInstance.setZoom(16);
+    // On mobile, if pan is called, maybe collapse the bottom sheet to show the result
+    setIsBottomSheetExpanded(false);
+  }, [mapInstance]);
+
   useEffect(() => {
     if (!mapInstance || !maps) return;
     const bounds = new maps.LatLngBounds();
@@ -448,6 +469,9 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     if (currentPin) {
       bounds.extend({ lat: currentPin.lat, lng: currentPin.lng });
       hasPoints = true;
+    } else if (localPin) {
+      bounds.extend({ lat: localPin.lat, lng: localPin.lng });
+      hasPoints = true;
     }
 
     if (hasPoints) {
@@ -457,7 +481,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
       mapInstance.setCenter(defaultCenter);
       mapInstance.setZoom(10);
     }
-  }, [mapInstance, maps, trip?.originPin, trip?.destinationPin, currentPin]);
+  }, [mapInstance, maps, trip?.originPin, trip?.destinationPin, currentPin, localPin]);
 
   if (loading) {
     return (
@@ -547,6 +571,14 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
                 icon={truckIcon}
                 label={!truckIcon ? { text: 'Truck', color: '#000000', fontSize: '11px', fontWeight: 'bold' } : undefined}
                 zIndex={999}
+              />
+            )}
+            {localPin && !currentPin && (
+              <Marker
+                position={localPin}
+                icon={truckIcon} // Show arrow if available even if not tracking yet
+                label={!truckIcon ? { text: 'You', color: '#000000', fontSize: '11px', fontWeight: 'bold' } : undefined}
+                opacity={0.6}
               />
             )}
           </GoogleMap>
@@ -644,8 +676,24 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
           <section className="mb-8 rounded-3xl border border-slate-100 bg-slate-50 p-5">
             <h2 className="mb-4 text-[10px] font-black uppercase tracking-widest text-slate-500">Route Manifest</h2>
             <div className="space-y-5">
-              <RoutePoint tone="amber" label="จุดรับ" title={trip.origin} time={`${formatDateTime(trip.scheduledOriginDate)} ${trip.scheduledOriginTime || ''}`} contact={trip.originContactName} phone={trip.originContactPhone} url={trip.originMapUrl} />
-              <RoutePoint tone="emerald" label="จุดส่ง" title={trip.destination} time={`${formatDateTime(trip.scheduledDestinationDate)} ${trip.scheduledDestinationTime || ''}`} contact={trip.destinationContactName} phone={trip.destinationContactPhone} url={trip.destinationMapUrl} />
+              <RoutePoint 
+                tone="amber" 
+                label="จุดรับ" 
+                title={trip.origin} 
+                time={`${formatDateTime(trip.scheduledOriginDate)} ${trip.scheduledOriginTime || ''}`} 
+                contact={trip.originContactName} 
+                phone={trip.originContactPhone} 
+                onClick={() => panToPoint(trip.originPin)}
+              />
+              <RoutePoint 
+                tone="emerald" 
+                label="จุดส่ง" 
+                title={trip.destination} 
+                time={`${formatDateTime(trip.scheduledDestinationDate)} ${trip.scheduledDestinationTime || ''}`} 
+                contact={trip.destinationContactName} 
+                phone={trip.destinationContactPhone} 
+                onClick={() => panToPoint(trip.destinationPin)}
+              />
             </div>
           </section>
 
@@ -820,7 +868,7 @@ function Metric({ icon: Icon, label, value, tone }: { icon?: LucideIcon; label: 
   );
 }
 
-function RoutePoint({ tone, label, title, time, contact, phone, url }: { tone: 'amber' | 'emerald'; label: string; title: string; time: string; contact?: string; phone?: string; url?: string }) {
+function RoutePoint({ tone, label, title, time, contact, phone, onClick }: { tone: 'amber' | 'emerald'; label: string; title: string; time: string; contact?: string; phone?: string; onClick: () => void }) {
   const dot = tone === 'amber' ? 'bg-amber-400' : 'bg-emerald-500';
   return (
     <div className="flex gap-4">
@@ -831,9 +879,13 @@ function RoutePoint({ tone, label, title, time, contact, phone, url }: { tone: '
       <div className="min-w-0 flex-1 pb-4">
         <div className="flex items-center justify-between gap-3 mb-1">
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
-          {url && <a href={url} target="_blank" rel="noopener noreferrer" className="text-[10px] font-black text-blue-600 hover:underline">เปิดแผนที่</a>}
         </div>
-        <p className="text-sm font-black leading-snug text-slate-800">{title}</p>
+        <button 
+          onClick={onClick}
+          className="block text-left text-sm font-black leading-snug text-slate-800 transition-colors hover:text-blue-600 active:opacity-60"
+        >
+          {title}
+        </button>
         <p className="mt-1 text-xs font-bold text-slate-500">{time}</p>
         {(contact || phone) && <p className="mt-1.5 text-[11px] font-bold text-slate-400">{contact || '-'} · {phone || '-'}</p>}
       </div>
