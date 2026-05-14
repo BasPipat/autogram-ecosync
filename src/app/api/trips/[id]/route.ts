@@ -299,7 +299,7 @@ async function serializeTrip(trip: LeanTrip, access: AccessInfo) {
       })
     : null;
   const history = Array.isArray(trip.gpsSession?.locationHistory)
-    ? trip.gpsSession.locationHistory.map(serializePin).filter(Boolean)
+    ? trip.gpsSession.locationHistory.map(pin => serializePin(pin)).filter(Boolean)
     : [];
 
   const basePrice = typeof offer?.basePrice === 'number' ? offer.basePrice : null;
