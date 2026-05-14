@@ -562,6 +562,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
             options={{ 
               disableDefaultUI: true, 
               gestureHandling: 'greedy',
+              maxZoom: 16,
             }}
             onLoad={(map) => setMapInstance(map)}
           >
