@@ -53,7 +53,7 @@ const richMenuData = {
   areas: [
     {
       bounds: { x: 0, y: 0, width: 1250, height: 843 }, // ซ้ายบน (งานของฉัน)
-      action: { type: "uri", uri: `https://liff.line.me/2010054204-bv5oRtcL/driver/my-mission` }
+      action: { type: "uri", uri: `https://liff.line.me/2010054204-bv5oRtcL` }
     },
     {
       bounds: { x: 1250, y: 0, width: 1250, height: 843 }, // ขวาบน (ดูงาน)
