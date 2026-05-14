@@ -120,10 +120,16 @@ function tripLookup(id: string) {
   return { $or: conditions };
 }
 
-function serializePin(pin?: DbPin | null) {
+function serializePin(pin?: any) {
   if (!pin) return null;
-  const lat = typeof pin.lat === 'number' ? pin.lat : (typeof pin.lat === 'string' ? parseFloat(pin.lat) : NaN);
-  const lng = typeof pin.lng === 'number' ? pin.lng : (typeof pin.lng === 'string' ? parseFloat(pin.lng) : NaN);
+  
+  let lat = Number(pin.lat);
+  let lng = Number(pin.lng);
+  
+  // Handle Mongoose Decimal128 objects
+  if (pin.lat && typeof pin.lat === 'object' && pin.lat.$numberDecimal) lat = Number(pin.lat.$numberDecimal);
+  if (pin.lng && typeof pin.lng === 'object' && pin.lng.$numberDecimal) lng = Number(pin.lng.$numberDecimal);
+
   if (isNaN(lat) || isNaN(lng)) return null;
 
   return {

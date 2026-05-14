@@ -484,8 +484,12 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     // step 0 (accepted): Overview (Origin + Destination)
     // step 1, 2 (pickup phase): Focus on Origin
     // step 3, 4, 5 (dropoff phase): Focus on Destination
-    const showOrigin = step <= 2;
-    const showDestination = step === 0 || step >= 3;
+    let showOrigin = step <= 2;
+    let showDestination = step === 0 || step >= 3;
+
+    // Smart Fallback: If we should show origin but it's missing, try to show destination instead so map isn't blank
+    if (showOrigin && !trip?.originPin && trip?.destinationPin) showDestination = true;
+    if (showDestination && !trip?.destinationPin && trip?.originPin) showOrigin = true;
 
     if (showOrigin && trip?.originPin) {
       bounds.extend({ lat: trip.originPin.lat, lng: trip.originPin.lng });
