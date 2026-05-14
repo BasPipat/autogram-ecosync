@@ -85,17 +85,6 @@ export default function LandingPage() {
     }).catch(() => {
       setNews(FEATURED_NEWS);
     });
-
-    // --- LIFF Redirect Interceptor ---
-    const params = new URLSearchParams(window.location.search);
-    const liffState = params.get('liff.state');
-    if (liffState) {
-      const targetPath = decodeURIComponent(liffState);
-      // If the state looks like a path, redirect to it
-      if (targetPath.startsWith('/')) {
-        router.replace(targetPath);
-      }
-    }
   }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {

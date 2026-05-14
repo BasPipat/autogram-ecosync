@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import ClientSessionProvider from "@/components/SessionProvider";
+import LIFFRedirectHandler from "@/components/LIFFRedirectHandler";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -30,6 +31,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <ClientSessionProvider>
+          <LIFFRedirectHandler />
           {children}
         </ClientSessionProvider>
       </body>
