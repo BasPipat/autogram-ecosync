@@ -8,7 +8,7 @@ import { useLIFF } from '@/components/LIFFProvider';
 
 export default function MyMissionRedirect() {
   const router = useRouter();
-  const { lineUserId: liffUserId, isLoggedIn, isInitializing, error: liffError } = useLIFF();
+  const { lineUserId: liffUserId, isLoggedIn, isInitializing, wasRedirected, error: liffError } = useLIFF();
   const [error, setError] = useState<string | null>(null);
   const [fetching, setFetching] = useState(false);
   const loginTriggered = useRef(false);
@@ -17,7 +17,7 @@ export default function MyMissionRedirect() {
     const queryParams = new URLSearchParams(window.location.search);
     const manualLineUserId = queryParams.get('lineUserId');
     const hash = window.location.hash;
-    const hasLoginCode = queryParams.has('code') || queryParams.has('liff.state') || hash.includes('code=') || hash.includes('liff.state=');
+    const hasLoginCode = queryParams.has('code') || queryParams.has('liff.state') || hash.includes('code=') || hash.includes('liff.state=') || wasRedirected;
 
     // 1. Wait for LIFF Initialization (unless we have a manual ID)
     if (isInitializing && !manualLineUserId) return;

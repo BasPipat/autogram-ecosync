@@ -7,6 +7,7 @@ interface LIFFContextType {
   lineUserId: string | null;
   isLoggedIn: boolean;
   isInitializing: boolean;
+  wasRedirected: boolean;
   error: string | null;
 }
 
@@ -14,6 +15,7 @@ const LIFFContext = createContext<LIFFContextType>({
   lineUserId: null,
   isLoggedIn: false,
   isInitializing: true,
+  wasRedirected: false,
   error: null
 });
 
@@ -24,8 +26,15 @@ export default function LIFFProvider({ children }: { children: React.ReactNode }
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [wasRedirected, setWasRedirected] = useState(false);
 
   useEffect(() => {
+    const search = window.location.search;
+    const hash = window.location.hash;
+    if (search.includes('code=') || hash.includes('code=')) {
+      setWasRedirected(true);
+    }
+
     const initLiff = async () => {
       const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || '2010054204-bv5oRtcL';
       
@@ -58,7 +67,7 @@ export default function LIFFProvider({ children }: { children: React.ReactNode }
   }, []);
 
   return (
-    <LIFFContext.Provider value={{ lineUserId, isLoggedIn, isInitializing, error }}>
+    <LIFFContext.Provider value={{ lineUserId, isLoggedIn, isInitializing, wasRedirected, error }}>
       {children}
     </LIFFContext.Provider>
   );
