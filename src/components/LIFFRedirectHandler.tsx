@@ -1,45 +1,42 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { useLIFF } from '@/components/LIFFProvider';
+import { useRouter, usePathname } from 'next/navigation';
 
 export default function LIFFRedirectHandler() {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const { isInitializing } = useLIFF();
-  const targetPathRef = useRef<string | null>(null);
+  const didRedirect = useRef(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (didRedirect.current) return;
 
-    // Capture the target path ONCE if it exists in the URL
-    if (!targetPathRef.current) {
-      const liffState = searchParams.get('liff.state');
-      const hash = window.location.hash;
+    // Read liff.state from URL IMMEDIATELY before LIFF SDK clears it
+    const search = window.location.search;
+    const hash = window.location.hash;
+
+    // Try from query string: ?liff.state=%2Fdriver%2Fmy-mission
+    const params = new URLSearchParams(search);
+    let liffState = params.get('liff.state');
+
+    // Try from hash: #liff.state=%2Fdriver%2Fmy-mission
+    if (!liffState && hash) {
       const hashParams = new URLSearchParams(hash.replace('#', ''));
-      const liffStateInHash = hashParams.get('liff.state');
-      const finalState = liffState || liffStateInHash;
-      
-      if (finalState) {
-        targetPathRef.current = decodeURIComponent(finalState);
-        console.log('LIFFRedirectHandler: Captured target path', targetPathRef.current);
-      }
+      liffState = hashParams.get('liff.state');
     }
 
-    if (isInitializing) return; // Wait for LIFF to be ready at the current URL first
-
-    if (targetPathRef.current) {
-      const targetPath = targetPathRef.current;
-      // Ensure it's a relative path to our own site
+    if (liffState) {
+      const targetPath = decodeURIComponent(liffState);
       if (targetPath.startsWith('/') && targetPath !== pathname) {
-        console.log('LIFFRedirectHandler: Redirecting to captured path', targetPath);
-        // We use origin + path + search to keep everything intact
-        router.replace(targetPath + window.location.search);
+        didRedirect.current = true;
+        console.log('[LIFFRedirectHandler] Redirecting to:', targetPath);
+        // Preserve code/state params for LIFF SDK to process on the target page
+        router.replace(targetPath + search);
       }
     }
-  }, [searchParams, pathname, router, isInitializing]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run ONCE on mount only
 
   return null;
 }
