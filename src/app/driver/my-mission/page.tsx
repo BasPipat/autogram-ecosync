@@ -13,12 +13,11 @@ export default function MyMissionPage() {
   const hasFetched = useRef(false);
 
   useEffect(() => {
-    // Check for manual bypass ID first (for admin testing)
+    // Check for manual bypass ID (for admin/testing)
     const params = new URLSearchParams(window.location.search);
     const manualId = params.get('lineUserId');
 
     if (manualId) {
-      // Bypass mode: use manual ID directly
       if (!hasFetched.current) {
         hasFetched.current = true;
         fetchMission(manualId);
@@ -26,26 +25,26 @@ export default function MyMissionPage() {
       return;
     }
 
-    // Wait for LIFF to finish initializing
+    // Wait for LIFF init to complete
     if (isInitializing) {
       setStatusMsg('กำลังเริ่มระบบ LINE...');
       return;
     }
 
-    // LIFF is done, check login status
+    // LIFF init complete but not logged in → trigger login (once only)
     if (!isLoggedIn || !liffUserId) {
-      // Not logged in - trigger login (only once)
       if (!hasFetched.current) {
         hasFetched.current = true;
         setStatusMsg('กำลังนำไปยืนยันตัวตน...');
         import('@line/liff').then(({ default: liff }) => {
+          // Login and come back to this page (clean URL)
           liff.login({ redirectUri: window.location.origin + '/driver/my-mission' });
         });
       }
       return;
     }
 
-    // Logged in with valid userId
+    // Logged in ✓ - fetch mission
     if (!hasFetched.current) {
       hasFetched.current = true;
       fetchMission(liffUserId);
@@ -54,8 +53,7 @@ export default function MyMissionPage() {
 
   const fetchMission = async (userId: string) => {
     setStatusMsg('กำลังค้นหาภารกิจ...');
-
-    // Clean URL
+    // Clean up URL
     window.history.replaceState({}, '', '/driver/my-mission');
 
     try {
@@ -64,9 +62,9 @@ export default function MyMissionPage() {
 
       if (!res.ok) {
         if (res.status === 404) {
-          setError(`ไม่พบข้อมูลคนขับในระบบ\nกรุณาลงทะเบียนก่อนใช้งานครับ`);
+          setError('ไม่พบข้อมูลคนขับในระบบ\nกรุณาลงทะเบียนก่อนใช้งานครับ');
         } else if (res.status === 403) {
-          setError('บัญชีของคุณยังไม่ได้รับการอนุมัติ\nกรุณารอการอนุมัติจากแอดมินครับ');
+          setError('บัญชียังไม่ได้รับการอนุมัติ\nกรุณารอแอดมินอนุมัติครับ');
         } else {
           setError(data.error || 'ไม่สามารถโหลดข้อมูลได้');
         }
@@ -92,14 +90,12 @@ export default function MyMissionPage() {
           </div>
           <h2 className="text-xl font-black text-slate-800 mb-3">ตรวจสอบสถานะงาน</h2>
           <p className="text-slate-500 font-medium mb-8 whitespace-pre-line">{error}</p>
-          <div className="grid gap-3">
-            <button
-              onClick={() => { hasFetched.current = false; window.location.reload(); }}
-              className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-sm shadow-lg"
-            >
-              ลองตรวจสอบอีกครั้ง
-            </button>
-          </div>
+          <button
+            onClick={() => { hasFetched.current = false; window.location.reload(); }}
+            className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-sm shadow-lg"
+          >
+            ลองตรวจสอบอีกครั้ง
+          </button>
         </div>
       ) : (
         <div className="flex flex-col items-center gap-4">
