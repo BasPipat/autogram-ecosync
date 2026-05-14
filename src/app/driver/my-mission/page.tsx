@@ -18,19 +18,20 @@ export default function MyMissionRedirect() {
 
         // 1. Try Initialize LIFF if available
         const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || '2010054204-bv5oRtcL';
-        if (liffId) {
+        
+        if (liffId && !finalLineUserId) {
           try {
             await liff.init({ liffId });
             if (liff.isLoggedIn()) {
               const profile = await liff.getProfile();
               finalLineUserId = profile.userId;
-            } else if (!finalLineUserId) {
-              // Only call login if no manual ID is provided in query
+            } else {
+              // Not logged in and no manual ID provided
               liff.login({ redirectUri: window.location.href });
               return;
             }
           } catch (err) {
-            console.error('LIFF Init failed, falling back to query params:', err);
+            console.error('LIFF Init failed:', err);
           }
         }
 
@@ -48,20 +49,27 @@ export default function MyMissionRedirect() {
         const res = await fetch(`/api/driver/active-trip?lineUserId=${finalLineUserId}`);
         const data = await res.json();
 
-        if (!res.ok) throw new Error(data.error || 'Failed to fetch trip data');
+        if (!res.ok) {
+          if (res.status === 404) {
+            setError(`ไม่พบข้อมูลคนขับในระบบสำหรับ ID: ${finalLineUserId.substring(0, 8)}... กรุณาลงทะเบียนก่อนใช้งานครับ`);
+          } else {
+            setError(data.error || 'ไม่สามารถโหลดข้อมูลงานได้ในขณะนี้');
+          }
+          return;
+        }
 
         // 3. Smart Redirect Logic
-        if (data.activeTripId || finalLineUserId) {
+        if (data.activeTripId) {
            // Direct to the personalized LINE ID URL
            router.replace(`/trips/${finalLineUserId}`);
         } else {
            // Show clear diagnostic info
-           setError(`ขณะนี้ไม่พบงานที่กำลังดำเนินการของ ID: ${finalLineUserId.substring(0, 8)}... หากเพิ่งรับงานมา กรุณากดปุ่มลองใหม่อีกครั้งครับ`);
+           setError(`ขณะนี้ไม่พบภารกิจที่กำลังดำเนินการของพี่ยังครับ (ID: ${finalLineUserId.substring(0, 8)}...)`);
         }
 
       } catch (err: any) {
         console.error('Redirect Error:', err);
-        setError('เกิดข้อผิดพลาดในการโหลดข้อมูล กรุณาลองใหม่อีกครั้ง');
+        setError('เกิดปัญหาในการเชื่อมต่อกับเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง');
       }
     };
 
