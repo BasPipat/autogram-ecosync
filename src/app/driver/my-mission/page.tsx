@@ -29,15 +29,13 @@ export default function MyMissionPage() {
         setStatusMsg('กำลังเชื่อมต่อ LINE...');
         const liff = (await import('@line/liff')).default;
 
-        // liff.init() processes the `code` in URL and stores session
-        await liff.init({ liffId });
+        await liff.init({ liffId, withLoginOnExternalBrowser: true });
 
         if (liff.isLoggedIn()) {
           setStatusMsg('กำลังค้นหาภารกิจ...');
           const profile = await liff.getProfile();
           await fetchMission(profile.userId);
         } else {
-          // Not logged in → send to LINE login, return to THIS page
           setStatusMsg('กำลังนำไปยืนยันตัวตน...');
           liff.login({
             redirectUri: window.location.origin + '/driver/my-mission',
@@ -45,7 +43,7 @@ export default function MyMissionPage() {
         }
       } catch (err: any) {
         console.error('[MyMission] LIFF Error:', err);
-        setError('เกิดปัญหาในการเชื่อมต่อ LINE\nกรุณาลองใหม่อีกครั้งครับ');
+        setError(`เกิดปัญหาในการเชื่อมต่อ LINE\n[${err?.code || 'ERR'}] ${err?.message || String(err)}`);
       }
     };
 
