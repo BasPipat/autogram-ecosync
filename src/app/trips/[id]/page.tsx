@@ -234,22 +234,22 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
       void fetchTrip();
     };
     const initial = window.setTimeout(run, 0);
-    const timer = window.setInterval(run, 20000);
-
-    // Initial local positioning for visualization
+    // Real-time local positioning for visualization
+    let watchId: number | null = null;
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
+      watchId = navigator.geolocation.watchPosition(
         (pos) => {
           setLocalPin({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         },
         (err) => console.log('Local location access denied or failed:', err),
-        { enableHighAccuracy: true }
+        { enableHighAccuracy: true, maximumAge: 10000 }
       );
     }
 
     return () => {
       window.clearTimeout(initial);
       window.clearInterval(timer);
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     };
   }, [fetchTrip]);
 
@@ -516,8 +516,17 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
         rotation: currentPin?.heading || 0,
       }
     : undefined;
-
-  return (
+  
+  const userDotIcon: google.maps.Symbol | undefined = isLoaded && maps
+    ? {
+        path: maps.SymbolPath.CIRCLE,
+        fillColor: '#3b82f6',
+        fillOpacity: 1,
+        strokeColor: '#ffffff',
+        strokeWeight: 3,
+        scale: 7,
+      }
+    : undefined;
     <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-slate-50 text-slate-900 relative">
       {/* MAP BACKGROUND */}
       <div className="absolute inset-0 z-0">
@@ -576,13 +585,23 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
             {localPin && !currentPin && (
               <Marker
                 position={localPin}
-                icon={truckIcon} // Show arrow if available even if not tracking yet
-                label={!truckIcon ? { text: 'You', color: '#000000', fontSize: '11px', fontWeight: 'bold' } : undefined}
-                opacity={0.6}
+                icon={userDotIcon}
+                zIndex={998}
               />
             )}
           </GoogleMap>
         )}
+      </div>
+
+      {/* FLOATING MAP TOOLS */}
+      <div className="absolute right-4 top-24 z-10 flex flex-col gap-2 pointer-events-none">
+        <button
+          onClick={() => panToPoint(localPin || currentPin)}
+          className="h-12 w-12 rounded-2xl bg-white shadow-xl flex items-center justify-center text-slate-700 pointer-events-auto active:bg-slate-100 transition-colors border border-slate-100"
+          title="Center on my location"
+        >
+          <LocateFixed size={22} />
+        </button>
       </div>
 
       {/* FLOATING HEADER */}
