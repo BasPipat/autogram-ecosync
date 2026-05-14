@@ -36,7 +36,7 @@ export default function LIFFProvider({ children }: { children: React.ReactNode }
     }
 
     const initLiff = async () => {
-      const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || '2010054204-bv5oRtcL';
+      const liffId = '2010054204-bv5oRtcL'; // Hardcoded for production stability
       
       try {
         await liff.init({ liffId });
