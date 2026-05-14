@@ -31,6 +31,14 @@ export default function LIFFProvider({ children }: { children: React.ReactNode }
       
       try {
         await liff.init({ liffId });
+
+        // If we detect a login callback, wait slightly for LIFF to finalize internal session
+        const search = typeof window !== 'undefined' ? window.location.search : '';
+        const hasCode = search.includes('code=') || search.includes('liff.state=');
+        
+        if (!liff.isLoggedIn() && hasCode) {
+          await new Promise(r => setTimeout(r, 1000));
+        }
         
         if (liff.isLoggedIn()) {
           const profile = await liff.getProfile();
