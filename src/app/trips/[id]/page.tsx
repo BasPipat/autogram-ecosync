@@ -224,7 +224,6 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
       const query = lineUserId ? `?lineUserId=${encodeURIComponent(lineUserId)}` : '';
       const res = await fetch(`/api/trips/${id}${query}`, { 
         cache: 'no-store',
-        // Next.js automatically handles cookies for fetch on the same origin
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'ไม่สามารถโหลดข้อมูลทริปได้');
@@ -237,6 +236,44 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     }
   }, [id, lineUserId, sessionStatus]);
 
+  const startTracking = useCallback(() => {
+    if (!navigator.geolocation) {
+      setNotice('อุปกรณ์นี้ไม่รองรับ GPS ในเบราว์เซอร์');
+      return;
+    }
+    setIsTracking(true);
+    setNotice('เริ่มส่งตำแหน่ง GPS แบบเรียลไทม์แล้ว');
+  }, []);
+
+  const stopTracking = useCallback(() => {
+    setIsTracking(false);
+    setNotice('หยุดการส่งพิกัดชั่วคราว');
+  }, []);
+
+  useEffect(() => stopTracking, [stopTracking]);
+
+  const syncLocation = useCallback(async (pin: Pin) => {
+    const activeTrip = tripRef.current;
+    if (!activeTrip) return;
+    try {
+      await fetch('/api/trips/update-location', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tripId: activeTrip.tripId,
+          lineUserId,
+          lat: pin.lat,
+          lng: pin.lng,
+          speed: pin.speed,
+          heading: pin.heading,
+          timestamp: pin.timestamp,
+        }),
+      });
+    } catch (err) {
+      console.error('Location sync failed:', err);
+    }
+  }, [lineUserId]);
+
   useEffect(() => {
     const run = () => {
       void fetchTrip();
@@ -248,6 +285,42 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
       window.clearInterval(timer);
     };
   }, [fetchTrip]);
+
+  // Real-time updates via Pusher
+  useEffect(() => {
+    if (!trip?.tripId || !process.env.NEXT_PUBLIC_PUSHER_KEY) return;
+    const pusher = getPusherClient();
+    if (!pusher) return;
+
+    const channel = pusher.subscribe('fleet-tracking');
+    channel.bind('location-updated', (event: ActiveUnitEvent) => {
+      if (event.tripId !== trip.tripId) return;
+      const currentPin: Pin = {
+        lat: event.lat,
+        lng: event.lng,
+        speed: event.speed ?? null,
+        heading: event.heading ?? null,
+        timestamp: event.timestamp || Date.now(),
+        googleMapsUrl: `https://www.google.com/maps?q=${event.lat},${event.lng}`,
+      };
+      setTrip(prev => prev ? {
+        ...prev,
+        gpsSession: {
+          ...prev.gpsSession,
+          status: 'active',
+          isTracking: true,
+          lastPingAt: new Date().toISOString(),
+          currentPin,
+        },
+        gpsHistory: [...prev.gpsHistory.slice(-119), currentPin],
+      } : prev);
+    });
+
+    return () => {
+      channel.unbind_all();
+      pusher.unsubscribe('fleet-tracking');
+    };
+  }, [trip?.tripId]);
 
   // Passive Tracking for Drivers
   useEffect(() => {
@@ -284,80 +357,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     return () => {
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     };
-  }, [loading, !!trip, lineUserId, syncLocation]);
-
-  useEffect(() => {
-    if (!trip?.tripId || !process.env.NEXT_PUBLIC_PUSHER_KEY) return;
-    const pusher = getPusherClient();
-    if (!pusher) return;
-
-    const channel = pusher.subscribe('fleet-tracking');
-    channel.bind('location-updated', (event: ActiveUnitEvent) => {
-      if (event.tripId !== trip.tripId) return;
-      const currentPin = {
-        lat: event.lat,
-        lng: event.lng,
-        speed: event.speed ?? null,
-        heading: event.heading ?? null,
-        timestamp: event.timestamp || Date.now(),
-        googleMapsUrl: `https://www.google.com/maps?q=${event.lat},${event.lng}`,
-      };
-      setTrip(prev => prev ? {
-        ...prev,
-        gpsSession: {
-          ...prev.gpsSession,
-          status: 'active',
-          isTracking: true,
-          lastPingAt: new Date().toISOString(),
-          currentPin,
-        },
-        gpsHistory: [...prev.gpsHistory.slice(-119), currentPin],
-      } : prev);
-    });
-
-    return () => {
-      channel.unbind_all();
-      pusher.unsubscribe('fleet-tracking');
-    };
-  }, [trip?.tripId]);
-
-  const syncLocation = useCallback(async (pin: Pin) => {
-    const activeTrip = tripRef.current;
-    if (!activeTrip) return;
-    try {
-      await fetch('/api/trips/update-location', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tripId: activeTrip.tripId,
-          lineUserId,
-          lat: pin.lat,
-          lng: pin.lng,
-          speed: pin.speed,
-          heading: pin.heading,
-          timestamp: pin.timestamp,
-        }),
-      });
-    } catch (err) {
-      console.error('Location sync failed:', err);
-    }
-  }, [lineUserId]);
-
-  const startTracking = useCallback(() => {
-    if (!navigator.geolocation) {
-      setNotice('อุปกรณ์นี้ไม่รองรับ GPS ในเบราว์เซอร์');
-      return;
-    }
-    setIsTracking(true);
-    setNotice('เริ่มส่งตำแหน่ง GPS แบบเรียลไทม์แล้ว');
-  }, []);
-
-  const stopTracking = useCallback(() => {
-    setIsTracking(false);
-    setNotice('หยุดการส่งพิกัดชั่วคราว');
-  }, []);
-
-  useEffect(() => stopTracking, [stopTracking]);
+  }, [loading, trip, lineUserId, syncLocation]);
 
   const patchTrip = async (action: string, extra?: Record<string, unknown>) => {
     setActionLoading(action);
