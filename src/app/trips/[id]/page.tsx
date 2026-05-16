@@ -770,16 +770,6 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
         >
           <Volume2 size={22} />
         </button>
-
-        {(statusIndex(trip.opsStatus) === 1 || statusIndex(trip.opsStatus) === 3) && (
-          <button
-            onClick={openExternalNavigation}
-            className="h-12 w-12 rounded-2xl bg-indigo-600 shadow-xl flex items-center justify-center transition-all hover:bg-indigo-700 text-white animate-bounce-subtle"
-            title="Open Google Maps Navigation"
-          >
-            <Navigation size={22} />
-          </button>
-        )}
       </div>
 
       {/* FLOATING HEADER */}
