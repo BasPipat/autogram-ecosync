@@ -7,7 +7,7 @@ import {
   Navigation, MapPin, Battery, Activity, ShieldCheck, Map as MapIcon,
   LocateFixed, Settings2
 } from 'lucide-react';
-import { useJsApiLoader, GoogleMap, Marker } from '@react-google-maps/api';
+import { useJsApiLoader, GoogleMap, Marker, InfoWindow } from '@react-google-maps/api';
 import { getPusherClient } from '@/lib/pusher';
 import { ChevronDown, ChevronUp, Radio } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
@@ -84,6 +84,7 @@ export default function Dashboard() {
   const [isMapExpanded, setIsMapExpanded] = useState(false);
   const [activeUnits, setActiveUnits] = useState<Record<string, ActiveUnit>>({});
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
+  const [hoveredUnitId, setHoveredUnitId] = useState<string | null>(null);
 
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
@@ -381,6 +382,8 @@ export default function Dashboard() {
                             key={unit.tripId}
                             position={{ lat: unit.lat, lng: unit.lng }}
                             onClick={() => setSelectedUnitId(unit.tripId)}
+                            onMouseOver={() => setHoveredUnitId(unit.tripId)}
+                            onMouseOut={() => setHoveredUnitId(null)}
                             icon={{
                               path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z",
                               fillColor: selectedUnitId === unit.tripId ? "#3B82F6" : "#10b981",
@@ -390,7 +393,22 @@ export default function Dashboard() {
                               scale: 2.5,
                               anchor: (typeof window !== 'undefined' && window.google) ? new window.google.maps.Point(12, 22) : { x: 12, y: 22 } as any,
                             }}
-                          />
+                          >
+                            {hoveredUnitId === unit.tripId && (
+                              <InfoWindow
+                                position={{ lat: unit.lat, lng: unit.lng }}
+                                options={{
+                                  pixelOffset: (typeof window !== 'undefined' && window.google) ? new window.google.maps.Size(0, -45) : undefined,
+                                  disableAutoPan: true,
+                                }}
+                              >
+                                <div className="p-1 min-w-[120px]">
+                                  <p className="text-xs font-black text-slate-800 m-0 leading-tight">{unit.driverName || 'ไม่ระบุชื่อ'}</p>
+                                  <p className="text-[10px] font-bold text-slate-500 mt-1 mb-0 uppercase tracking-wider">{unit.licensePlate || 'ไม่ระบุทะเบียน'}</p>
+                                </div>
+                              </InfoWindow>
+                            )}
+                          </Marker>
                         ))}
                       </GoogleMap>
                     )}
