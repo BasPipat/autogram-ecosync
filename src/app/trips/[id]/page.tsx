@@ -97,6 +97,7 @@ type TripHub = {
     canViewFinancials: boolean;
     lineUserId?: string;
   };
+  driverLineUserId?: string | null;
 };
 
 type ActiveUnitEvent = {
@@ -239,10 +240,14 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
   const syncLocation = useCallback(async (pin: Pin) => {
     const activeTrip = tripRef.current;
     if (!activeTrip) return;
-    
-    // If we don't have a lineUserId in state, fallback to the one from the trip access data
-    const effectiveLineUserId = lineUserId || activeTrip.access?.lineUserId;
-    
+
+    // Priority: URL param lineUserId → trip's access.lineUserId → trip's driverLineUserId
+    const effectiveLineUserId = lineUserId || activeTrip.access?.lineUserId || activeTrip.driverLineUserId;
+    if (!effectiveLineUserId) {
+      console.warn('syncLocation: no lineUserId available, skipping sync');
+      return;
+    }
+
     try {
       await fetch('/api/trips/update-location', {
         method: 'POST',

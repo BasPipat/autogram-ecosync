@@ -366,6 +366,7 @@ async function serializeTrip(trip: LeanTrip, access: AccessInfo) {
         }
       : null,
     access,
+    driverLineUserId: trip.lineUserId || null,
   };
 }
 
