@@ -88,6 +88,35 @@ export async function GET() {
       status: t.status,
     }));
 
+    // Fetch initially active units for the map
+    const activeTripsRaw = await Trip.find({
+      'gpsSession.isTracking': true,
+      'gpsSession.currentPin.lat': { $exists: true }
+    }).select('tripId driverName licensePlate gpsSession.currentPin').lean();
+
+    const initialActiveUnits: Record<string, any> = {};
+    activeTripsRaw.forEach((t: any) => {
+      if (t.gpsSession?.currentPin) {
+        let lat = Number(t.gpsSession.currentPin.lat);
+        let lng = Number(t.gpsSession.currentPin.lng);
+        if (t.gpsSession.currentPin.lat?.$numberDecimal) lat = Number(t.gpsSession.currentPin.lat.$numberDecimal);
+        if (t.gpsSession.currentPin.lng?.$numberDecimal) lng = Number(t.gpsSession.currentPin.lng.$numberDecimal);
+
+        if (!isNaN(lat) && !isNaN(lng)) {
+          initialActiveUnits[t.tripId] = {
+            tripId: t.tripId,
+            driverName: t.driverName || 'ไม่ระบุชื่อ',
+            licensePlate: t.licensePlate || 'ไม่ระบุทะเบียน',
+            lat,
+            lng,
+            speed: t.gpsSession.currentPin.speed || 0,
+            heading: t.gpsSession.currentPin.heading || 0,
+            lastUpdate: t.gpsSession.currentPin.timestamp || Date.now(),
+          };
+        }
+      }
+    });
+
     return NextResponse.json({
       stats: {
         totalTrips,
@@ -97,6 +126,7 @@ export async function GET() {
       recentTrips: tripsWithDetails,
       statusBreakdown,
       carbonChart,
+      activeUnits: initialActiveUnits,
     }, { status: 200 });
 
   } catch (error: unknown) {

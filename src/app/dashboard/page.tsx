@@ -104,6 +104,10 @@ export default function Dashboard() {
         setTrips(data.recentTrips || []);
         setStatusBreakdown(data.statusBreakdown || []);
         setCarbonChart(data.carbonChart || []);
+        if (data.activeUnits) {
+          // Merge with any real-time updates that might have arrived before fetch completed
+          setActiveUnits(prev => ({ ...data.activeUnits, ...prev }));
+        }
         setFetchError(false);
       } else {
         setFetchError(true);
