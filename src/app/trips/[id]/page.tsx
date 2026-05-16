@@ -197,26 +197,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     tripRef.current = trip;
   }, [trip]);
 
-  useEffect(() => {
-    if (lineUserId) return;
-
-    const initLiff = async () => {
-      if (sessionStatus === 'authenticated') return;
-      const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || '2010054204-bv5oRtcL';
-      if (!liffId) return;
-      try {
-        await liff.init({ liffId });
-        if (liff.isLoggedIn()) {
-          const profile = await liff.getProfile();
-          setLineUserId(profile.userId);
-        }
-      } catch (err) {
-        console.error('LIFF trip hub init error:', err);
-      }
-    };
-
-    initLiff();
-  }, [lineUserId, sessionStatus]);
+  // Removed LIFF init since it's not being used and may cause issues
 
   const fetchTrip = useCallback(async () => {
     if (sessionStatus === 'loading') return;
@@ -228,6 +209,9 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'ไม่สามารถโหลดข้อมูลทริปได้');
       setTrip(data);
+      if (data.access?.lineUserId && !lineUserId) {
+        setLineUserId(data.access.lineUserId);
+      }
       setError(null);
     } catch (err) {
       setError(errorMessage(err, 'ไม่สามารถโหลดข้อมูลทริปได้'));
@@ -255,13 +239,17 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
   const syncLocation = useCallback(async (pin: Pin) => {
     const activeTrip = tripRef.current;
     if (!activeTrip) return;
+    
+    // If we don't have a lineUserId in state, fallback to the one from the trip access data
+    const effectiveLineUserId = lineUserId || activeTrip.access?.lineUserId;
+    
     try {
       await fetch('/api/trips/update-location', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tripId: activeTrip.tripId,
-          lineUserId,
+          lineUserId: effectiveLineUserId,
           lat: pin.lat,
           lng: pin.lng,
           speed: pin.speed,
@@ -324,7 +312,8 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
 
   // Passive Tracking for Drivers
   useEffect(() => {
-    if (loading || !trip || trip.access.role !== 'driver' || !lineUserId) return;
+    // Start passive tracking for drivers who are authorized
+    if (loading || !trip || trip.access.role !== 'driver') return;
 
     let watchId: number | null = null;
     if (navigator.geolocation) {
