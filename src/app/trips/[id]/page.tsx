@@ -243,24 +243,48 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     };
     const initial = window.setTimeout(run, 0);
     const timer = window.setInterval(run, 20000);
-    // Real-time local positioning for visualization
+    return () => {
+      window.clearTimeout(initial);
+      window.clearInterval(timer);
+    };
+  }, [fetchTrip]);
+
+  // Passive Tracking for Drivers
+  useEffect(() => {
+    if (loading || !trip || trip.access.role !== 'driver' || !lineUserId) return;
+
     let watchId: number | null = null;
     if (navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(
         (pos) => {
-          setLocalPin({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          const pin: Pin = {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            speed: pos.coords.speed,
+            heading: pos.coords.heading,
+            timestamp: pos.timestamp,
+          };
+          setLocalPin(pin);
+
+          const now = Date.now();
+          // Sync every 20 seconds if we have a valid driver session
+          if (now - lastSyncRef.current > 20000) {
+            lastSyncRef.current = now;
+            syncLocation(pin);
+          }
         },
-        (err) => console.log('Local location access denied or failed:', err),
-        { enableHighAccuracy: true, maximumAge: 10000 }
+        (err) => {
+          console.error('Passive tracking error:', err);
+          if (err.code === 1) setNotice('กรุณาอนุญาตการเข้าถึงตำแหน่ง GPS เพื่อให้ทีมงานเห็นตำแหน่งรถครับ');
+        },
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
       );
     }
 
     return () => {
-      window.clearTimeout(initial);
-      window.clearInterval(timer);
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     };
-  }, [fetchTrip]);
+  }, [loading, !!trip, lineUserId, syncLocation]);
 
   useEffect(() => {
     if (!trip?.tripId || !process.env.NEXT_PUBLIC_PUSHER_KEY) return;
@@ -324,51 +348,14 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
       setNotice('อุปกรณ์นี้ไม่รองรับ GPS ในเบราว์เซอร์');
       return;
     }
-    if (watchId !== null) return;
-
-    const id = navigator.geolocation.watchPosition(
-      position => {
-        const pin: Pin = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          speed: position.coords.speed,
-          heading: position.coords.heading,
-          timestamp: position.timestamp,
-        };
-        setTrip(prev => prev ? {
-          ...prev,
-          gpsSession: {
-            ...prev.gpsSession,
-            status: 'active',
-            isTracking: true,
-            lastPingAt: new Date().toISOString(),
-            currentPin: pin,
-          },
-          gpsHistory: [...prev.gpsHistory.slice(-119), pin],
-        } : prev);
-
-        const now = Date.now();
-        if (now - lastSyncRef.current > 15000) {
-          lastSyncRef.current = now;
-          syncLocation(pin);
-        }
-      },
-      err => {
-        setNotice(err.code === 1 ? 'กรุณาอนุญาตการเข้าถึงตำแหน่ง GPS' : 'ไม่สามารถอ่านพิกัด GPS ได้');
-      },
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 12000 }
-    );
-    setWatchId(id);
     setIsTracking(true);
-  }, [syncLocation, watchId]);
+    setNotice('เริ่มส่งตำแหน่ง GPS แบบเรียลไทม์แล้ว');
+  }, []);
 
   const stopTracking = useCallback(() => {
-    if (watchId !== null) {
-      navigator.geolocation.clearWatch(watchId);
-    }
-    setWatchId(null);
     setIsTracking(false);
-  }, [watchId]);
+    setNotice('หยุดการส่งพิกัดชั่วคราว');
+  }, []);
 
   useEffect(() => stopTracking, [stopTracking]);
 
