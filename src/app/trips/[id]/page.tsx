@@ -734,8 +734,8 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
         )}
       </div>
 
-      {/* FLOATING MAP TOOLS */}
-      <div className="absolute right-4 top-24 z-10 flex flex-col gap-2">
+      {/* FLOATING MAP TOOLS - positioned below header card */}
+      <div className="absolute right-4 top-52 z-10 flex flex-col gap-2">
         <button
           onClick={() => {
             setIsAutoTracking(true);
