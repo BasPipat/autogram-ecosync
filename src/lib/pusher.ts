@@ -1,12 +1,14 @@
 import PusherServer from 'pusher';
 import PusherClient from 'pusher-js';
 
+const PUSHER_CLUSTER = 'ap1';
+
 // Server-side instance (for API routes)
 export const pusherServer = new PusherServer({
   appId: process.env.PUSHER_APP_ID || '',
   key: process.env.NEXT_PUBLIC_PUSHER_KEY || '',
   secret: process.env.PUSHER_SECRET || '',
-  cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'ap1',
+  cluster: PUSHER_CLUSTER,
   useTLS: true,
 });
 
@@ -15,6 +17,6 @@ export const pusherServer = new PusherServer({
 export const getPusherClient = () => {
   if (typeof window === 'undefined') return null;
   return new PusherClient(process.env.NEXT_PUBLIC_PUSHER_KEY || '', {
-    cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'ap1',
+    cluster: PUSHER_CLUSTER,
   });
 };
