@@ -694,13 +694,13 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
                 }}
               />
             )}
-            {gpsPath.length > 1 && (
+            {isDriver && gpsPath.length > 1 && (
               <Polyline
                 path={gpsPath}
                 options={{ strokeColor: '#3b82f6', strokeOpacity: 0.9, strokeWeight: 5 }}
               />
             )}
-            {directions && (
+            {isDriver && directions && (
               <DirectionsRenderer
                 directions={directions}
                 options={{
