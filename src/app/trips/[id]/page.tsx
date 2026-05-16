@@ -186,6 +186,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
   const routeTargetRef = useRef<string | null>(null);
   const lastVoiceRef = useRef<string | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
+  const hasInitializedView = useRef(false);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -531,6 +532,28 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
       }
     );
   }, [isLoaded, maps, trip?.opsStatus, trip?.originPin, trip?.destinationPin, currentPin, localPin]);
+
+  useEffect(() => {
+    if (!mapInstance || !maps || !trip || hasInitializedView.current) return;
+    
+    if (trip.access.role === 'admin') {
+      setIsAutoTracking(false);
+      const bounds = new maps.LatLngBounds();
+      let count = 0;
+      if (trip.originPin) { bounds.extend(trip.originPin); count++; }
+      if (trip.destinationPin) { bounds.extend(trip.destinationPin); count++; }
+      if (currentPin) { bounds.extend(currentPin); count++; }
+      
+      if (count > 0) {
+        mapInstance.fitBounds(bounds, { top: 150, right: 100, bottom: 250, left: 100 });
+        hasInitializedView.current = true;
+      }
+    } else {
+      if (currentPin || localPin) {
+        hasInitializedView.current = true;
+      }
+    }
+  }, [mapInstance, maps, trip, currentPin, localPin]);
 
   const panToPoint = useCallback((pin?: Pin | null) => {
     console.log('Panning to:', pin);
