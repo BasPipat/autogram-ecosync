@@ -24,6 +24,7 @@ import {
   Truck,
   UserPlus,
   Search,
+  Volume2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { getPusherClient } from '@/lib/pusher';
@@ -180,7 +181,10 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
   const [localPin, setLocalPin] = useState<Pin | null>(null);
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
   const [isAutoTracking, setIsAutoTracking] = useState(true);
+  const [userZoom, setUserZoom] = useState(16);
   const routeTargetRef = useRef<string | null>(null);
+  const lastVoiceRef = useRef<string | null>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -404,6 +408,27 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     }
   };
 
+  const speak = useCallback((text: string) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'th-TH';
+    utterance.rate = 0.9;
+    window.speechSynthesis.speak(utterance);
+    lastVoiceRef.current = text;
+  }, []);
+
+  const repeatGuidance = useCallback(() => {
+    if (lastVoiceRef.current) {
+      speak(lastVoiceRef.current);
+    } else if (directions?.routes[0]?.legs[0]?.steps[0]) {
+      const firstStep = directions.routes[0].legs[0].steps[0];
+      const cleanInstruction = firstStep.instructions?.replace(/<[^>]*>/g, '') || 'เดินทางตามเส้นทางที่กำหนด';
+      speak(`เริ่มต้นเดินทาง ${cleanInstruction}`);
+    }
+  }, [directions, speak]);
+
   const bindDriver = async (selectedLineUserId: string) => {
     setActionLoading('binding_driver');
     try {
@@ -504,48 +529,65 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
 
   useEffect(() => {
     if (!mapInstance || !maps || !isAutoTracking) return;
-    const bounds = new maps.LatLngBounds();
-    let hasPoints = false;
-
-    // Smart Context-Aware Bounding based on Trip Status
-    const step = statusIndex(trip?.opsStatus || '');
     
-    // step 0 (accepted): Overview (Origin + Destination)
-    // step 1, 2 (pickup phase): Focus on Origin
-    // step 3, 4, 5 (dropoff phase): Focus on Destination
-    let showOrigin = step <= 2;
-    let showDestination = step === 0 || step >= 3;
-
-    // Smart Fallback: If we should show origin but it's missing, try to show destination instead so map isn't blank
-    if (showOrigin && !trip?.originPin && trip?.destinationPin) showDestination = true;
-    if (showDestination && !trip?.destinationPin && trip?.originPin) showOrigin = true;
-
-    if (showOrigin && trip?.originPin) {
-      bounds.extend({ lat: trip.originPin.lat, lng: trip.originPin.lng });
-      hasPoints = true;
-    }
-    if (showDestination && trip?.destinationPin) {
-      bounds.extend({ lat: trip.destinationPin.lat, lng: trip.destinationPin.lng });
-      hasPoints = true;
-    }
+    const driverLoc = currentPin || localPin;
     
-    // Always ensure the driver's location is in view
-    if (currentPin) {
-      bounds.extend({ lat: currentPin.lat, lng: currentPin.lng });
-      hasPoints = true;
-    } else if (localPin) {
-      bounds.extend({ lat: localPin.lat, lng: localPin.lng });
-      hasPoints = true;
-    }
-
-    if (hasPoints) {
-      // Add padding to ensure points aren't hidden behind the bottom sheet or the top card
-      mapInstance.fitBounds(bounds, { top: 220, right: 40, bottom: 350, left: 40 });
+    if (driverLoc) {
+      // Priority: Follow driver with user-defined zoom
+      mapInstance.panTo({ lat: driverLoc.lat, lng: driverLoc.lng });
+      // On first load or if zoom is very low, set to default userZoom
+      if (mapInstance.getZoom() !== userZoom) {
+        mapInstance.setZoom(userZoom);
+      }
     } else {
-      mapInstance.setCenter(defaultCenter);
-      mapInstance.setZoom(10);
+      // Fallback: Show phase overview if no driver location
+      const bounds = new maps.LatLngBounds();
+      let hasPoints = false;
+
+      const step = statusIndex(trip?.opsStatus || '');
+      let showOrigin = step <= 2;
+      let showDestination = step === 0 || step >= 3;
+
+      if (showOrigin && !trip?.originPin && trip?.destinationPin) showDestination = true;
+      if (showDestination && !trip?.destinationPin && trip?.originPin) showOrigin = true;
+
+      if (showOrigin && trip?.originPin) {
+        bounds.extend({ lat: trip.originPin.lat, lng: trip.originPin.lng });
+        hasPoints = true;
+      }
+      if (showDestination && trip?.destinationPin) {
+        bounds.extend({ lat: trip.destinationPin.lat, lng: trip.destinationPin.lng });
+        hasPoints = true;
+      }
+
+      if (hasPoints) {
+        mapInstance.fitBounds(bounds, { top: 220, right: 40, bottom: 350, left: 40 });
+      } else {
+        mapInstance.setCenter(defaultCenter);
+        mapInstance.setZoom(10);
+      }
     }
-  }, [mapInstance, maps, trip?.originPin, trip?.destinationPin, trip?.opsStatus, currentPin, localPin, isAutoTracking]);
+  }, [mapInstance, maps, trip?.originPin, trip?.destinationPin, trip?.opsStatus, currentPin, localPin, isAutoTracking, userZoom]);
+
+  // Voice Guidance Trigger
+  useEffect(() => {
+    if (!directions || !currentPin) return;
+    const steps = directions.routes[0]?.legs[0]?.steps;
+    if (!steps || steps.length === 0) return;
+
+    // Use the first upcoming step
+    const nextStep = steps[0];
+    const distanceText = nextStep.distance?.text?.replace('km', 'กิโลเมตร').replace('m', 'เมตร') || '';
+    const instruction = nextStep.instructions?.replace(/<[^>]*>/g, '') || '';
+    
+    // Create a natural sounding Thai guidance
+    const fullText = `อีก ${distanceText} ${instruction}`;
+    
+    // Only speak if the instruction is different from the last one
+    if (lastVoiceRef.current !== fullText) {
+      speak(fullText);
+    }
+  }, [directions, currentPin, speak]);
 
   if (loading) {
     return (
@@ -616,8 +658,19 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
               gestureHandling: 'greedy',
               maxZoom: 16,
             }}
-            onLoad={(map) => setMapInstance(map)}
+            onLoad={(map) => {
+              setMapInstance(map);
+              mapRef.current = map;
+            }}
             onDragStart={() => setIsAutoTracking(false)}
+            onZoomChanged={() => {
+              if (mapRef.current) {
+                const newZoom = mapRef.current.getZoom();
+                if (newZoom !== undefined) {
+                  setUserZoom(newZoom);
+                }
+              }
+            }}
           >
             {routePath.length === 2 && (
               <Polyline
@@ -686,6 +739,30 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
           title="Center on my location"
         >
           <LocateFixed size={22} />
+        </button>
+
+        <button
+          onClick={() => {
+            if (!mapInstance || !maps) return;
+            setIsAutoTracking(false);
+            const bounds = new maps.LatLngBounds();
+            if (trip.originPin) bounds.extend(trip.originPin);
+            if (trip.destinationPin) bounds.extend(trip.destinationPin);
+            if (currentPin) bounds.extend(currentPin);
+            mapInstance.fitBounds(bounds, { top: 100, right: 100, bottom: 100, left: 100 });
+          }}
+          className="h-12 w-12 rounded-2xl bg-white shadow-xl flex items-center justify-center transition-colors border border-slate-100 text-slate-600 active:text-blue-600"
+          title="Overview"
+        >
+          <Search size={22} />
+        </button>
+
+        <button
+          onClick={repeatGuidance}
+          className="h-12 w-12 rounded-2xl bg-white shadow-xl flex items-center justify-center transition-colors border border-slate-100 text-slate-600 active:text-blue-600"
+          title="Repeat Voice Guidance"
+        >
+          <Volume2 size={22} />
         </button>
       </div>
 
