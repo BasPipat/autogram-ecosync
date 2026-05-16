@@ -25,6 +25,7 @@ import {
   UserPlus,
   Search,
   Volume2,
+  ExternalLink,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { getPusherClient } from '@/lib/pusher';
@@ -429,6 +430,17 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     }
   }, [directions, speak]);
 
+  const openExternalNavigation = useCallback(() => {
+    const step = statusIndex(trip?.opsStatus || '');
+    let target = null;
+    if (step <= 2) target = trip?.originPin;
+    else if (step >= 3) target = trip?.destinationPin;
+
+    if (!target) return;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${target.lat},${target.lng}&travelmode=driving`;
+    window.open(url, '_blank');
+  }, [trip]);
+
   const bindDriver = async (selectedLineUserId: string) => {
     setActionLoading('binding_driver');
     try {
@@ -535,9 +547,12 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     if (driverLoc) {
       // Priority: Follow driver with user-defined zoom
       mapInstance.panTo({ lat: driverLoc.lat, lng: driverLoc.lng });
-      // On first load or if zoom is very low, set to default userZoom
-      if (mapInstance.getZoom() !== userZoom) {
-        mapInstance.setZoom(userZoom);
+      // If auto-tracking is on and we just started or speed is detected, 
+      // ensure we are at least at zoom 17 for street detail.
+      const currentZoom = mapInstance.getZoom();
+      if (currentZoom !== undefined && currentZoom < 17) {
+        mapInstance.setZoom(17);
+        setUserZoom(17);
       }
     } else {
       // Fallback: Show phase overview if no driver location
@@ -588,6 +603,27 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
       speak(fullText);
     }
   }, [directions, currentPin, speak]);
+
+  // Status Change Voice Prompt
+  useEffect(() => {
+    if (!trip?.opsStatus) return;
+    const step = statusIndex(trip.opsStatus);
+    let prompt = '';
+    
+    if (trip.opsStatus === 'en_route_pickup') {
+      prompt = `เริ่มนำทางไปยังจุดรับสินค้า ${trip.origin} ระยะทางประมาณ ${trip.distance} กิโลเมตร`;
+    } else if (trip.opsStatus === 'en_route_dropoff') {
+      prompt = `เริ่มนำทางไปยังจุดส่งสินค้า ${trip.destination} ระยะทางประมาณ ${trip.distance} กิโลเมตร`;
+    } else if (trip.opsStatus === 'arrived_pickup') {
+      prompt = 'คุณเดินทางถึงจุดรับสินค้าแล้ว กรุณาตรวจสอบสินค้าและเอกสารต้นทาง';
+    } else if (trip.opsStatus === 'delivered') {
+      prompt = 'ส่งสินค้าสำเร็จแล้ว อย่าลืมอัปโหลดรูปภาพหลักฐานการส่งสินค้าครับ';
+    }
+
+    if (prompt) {
+      speak(prompt);
+    }
+  }, [trip?.opsStatus, trip?.origin, trip?.destination, trip?.distance, speak]);
 
   if (loading) {
     return (
@@ -764,6 +800,16 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
         >
           <Volume2 size={22} />
         </button>
+
+        {(statusIndex(trip.opsStatus) === 1 || statusIndex(trip.opsStatus) === 3) && (
+          <button
+            onClick={openExternalNavigation}
+            className="h-12 w-12 rounded-2xl bg-indigo-600 shadow-xl flex items-center justify-center transition-all hover:bg-indigo-700 text-white animate-bounce-subtle"
+            title="Open Google Maps Navigation"
+          >
+            <Navigation size={22} />
+          </button>
+        )}
       </div>
 
       {/* FLOATING HEADER */}
