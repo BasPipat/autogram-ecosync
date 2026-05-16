@@ -1,31 +1,83 @@
 export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
-
+import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Trip } from '@/models/Trip';
 import { CarbonLedger } from '@/models/CarbonLedger';
 import { IntegrityVault } from '@/models/IntegrityVault';
+import { getSessionToken, isInternalRole } from '@/lib/access';
 
 export const revalidate = 30; // 30 seconds caching to align with dashboard polling
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const token = await getSessionToken(req);
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const tripQuery: any = {};
+    if (!isInternalRole(token.role)) {
+      const conditions = [];
+      if (token.companyId) {
+        if (mongoose.Types.ObjectId.isValid(token.companyId)) {
+          conditions.push({ companyId: new mongoose.Types.ObjectId(token.companyId) });
+        }
+        conditions.push({ companyId: token.companyId });
+      }
+      if (token.companyName) {
+        conditions.push({ companyName: token.companyName });
+      }
+      
+      if (conditions.length > 0) {
+        tripQuery.$or = conditions;
+      } else {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    }
+
     await connectToDatabase();
 
-    // 1. Fetch Stats in parallel
-    const [totalTrips, ledgerTotal, tripTotal, verifiedPODsCount] = await Promise.all([
-      Trip.countDocuments(),
-      CarbonLedger.aggregate([{ $group: { _id: null, total: { $sum: "$emissionsKgCO2" } } }]),
-      Trip.aggregate([{ $group: { _id: null, total: { $sum: "$carbon" } } }]),
-      IntegrityVault.countDocuments({ isVerified: true })
+    // 1. Fetch Stats in parallel (Tenant Scoped)
+    const [totalTrips, tripAgg, vaultAgg] = await Promise.all([
+      Trip.countDocuments(tripQuery),
+      Trip.aggregate([
+        { $match: tripQuery },
+        {
+          $lookup: {
+            from: 'carbonledgers',
+            localField: 'tripId',
+            foreignField: 'tripId',
+            as: 'ledger'
+          }
+        },
+        { $unwind: { path: '$ledger', preserveNullAndEmptyArrays: true } },
+        { 
+          $group: { 
+            _id: null, 
+            totalLedger: { $sum: '$ledger.emissionsKgCO2' },
+            totalTripCarbon: { $sum: '$carbon' }
+          }
+        }
+      ]),
+      Trip.aggregate([
+        { $match: tripQuery },
+        {
+          $lookup: {
+            from: 'integrityvaults',
+            localField: 'tripId',
+            foreignField: 'tripId',
+            as: 'vault'
+          }
+        },
+        { $unwind: '$vault' },
+        { $match: { 'vault.isVerified': true } },
+        { $count: 'verifiedCount' }
+      ])
     ]);
 
-    // Calculate total carbon with fallback to legacy 'carbon' field if ledger is partially empty
-    // To be most accurate, we use the MAX of the two or prefer ledger. 
-    // Given the migration, ledger should eventually be > trip.carbon.
-    const ledgerSum = ledgerTotal.length > 0 ? ledgerTotal[0].total : 0;
-    const tripSum = tripTotal.length > 0 ? tripTotal[0].total : 0;
+    const ledgerSum = tripAgg.length > 0 ? (tripAgg[0].totalLedger || 0) : 0;
+    const tripSum = tripAgg.length > 0 ? (tripAgg[0].totalTripCarbon || 0) : 0;
     const finalTotal = Math.max(ledgerSum, tripSum);
+    const verifiedPODsCount = vaultAgg.length > 0 ? vaultAgg[0].verifiedCount : 0;
 
     const totalCarbon = finalTotal.toLocaleString('en-US', { 
       minimumFractionDigits: 2, 
@@ -38,7 +90,7 @@ export async function GET() {
       : 0;
 
     // 2. Fetch Recent Trips
-    const recentTrips = await Trip.find().select('-locationHistory').sort({ createdAt: -1 }).limit(5).lean();
+    const recentTrips = await Trip.find(tripQuery).select('-locationHistory').sort({ createdAt: -1 }).limit(5).lean();
     const tripIds = recentTrips.map(t => t.tripId);
 
     // BUG-01: Fix N+1 Query - Batch fetch related data
@@ -90,6 +142,7 @@ export async function GET() {
 
     // Fetch initially active units for the map
     const activeTripsRaw = await Trip.find({
+      ...tripQuery,
       'gpsSession.isTracking': true,
       'gpsSession.currentPin.lat': { $exists: true }
     }).select('tripId driverName licensePlate gpsSession.currentPin').lean();
