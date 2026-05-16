@@ -694,12 +694,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
                 }}
               />
             )}
-            {isDriver && gpsPath.length > 1 && (
-              <Polyline
-                path={gpsPath}
-                options={{ strokeColor: '#3b82f6', strokeOpacity: 0.9, strokeWeight: 5 }}
-              />
-            )}
+            {/* GPS breadcrumb trail hidden — DirectionsRenderer provides cleaner route display */}
             {isDriver && directions && (
               <DirectionsRenderer
                 directions={directions}
@@ -740,7 +735,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
       </div>
 
       {/* FLOATING MAP TOOLS */}
-      <div className="absolute right-4 top-24 z-10 flex flex-col gap-2 pointer-events-none">
+      <div className="absolute right-4 top-24 z-10 flex flex-col gap-2">
         <button
           onClick={() => {
             setIsAutoTracking(true);
