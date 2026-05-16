@@ -472,10 +472,11 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
 
   const center = useMemo(() => (
     trip?.gpsSession.currentPin ||
+    localPin ||
     trip?.originPin ||
     trip?.destinationPin ||
     defaultCenter
-  ), [trip]);
+  ), [trip, localPin]);
 
   const routePath = useMemo(() => {
     const points = [trip?.originPin, trip?.destinationPin].filter(Boolean) as Pin[];
@@ -688,7 +689,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
           <GoogleMap
             mapContainerStyle={{ width: '100%', height: '100%' }}
             center={center}
-            zoom={currentPin ? 13 : 10}
+            zoom={userZoom}
             options={{ 
               disableDefaultUI: true, 
               gestureHandling: 'greedy',
