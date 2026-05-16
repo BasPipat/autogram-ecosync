@@ -446,13 +446,12 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
   const currentPin = trip?.gpsSession?.currentPin;
   const maps = typeof window !== 'undefined' ? (window as GoogleMapsWindow).google?.maps : undefined;
 
-  const center = useMemo(() => (
-    trip?.gpsSession.currentPin ||
-    localPin ||
+  // Static initial center - only used once on mount, fitBounds/panTo handles subsequent moves
+  const initialCenter = useRef(
     trip?.originPin ||
     trip?.destinationPin ||
     defaultCenter
-  ), [trip, localPin]);
+  );
 
   const routePath = useMemo(() => {
     const points = [trip?.originPin, trip?.destinationPin].filter(Boolean) as Pin[];
@@ -517,69 +516,44 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
   }, [mapInstance]);
 
   useEffect(() => {
-    if (!mapInstance || !maps || !isAutoTracking) return;
-    
+    if (!mapInstance || !maps) return;
+
     const isAdmin = trip?.access.role === 'admin';
-    const driverLoc = currentPin || localPin;
-    
-    if (driverLoc && !isAdmin) {
-      // Driver View: Follow closely with high zoom for street detail
-      mapInstance.panTo({ lat: driverLoc.lat, lng: driverLoc.lng });
-      const currentZoom = mapInstance.getZoom();
-      if (currentZoom !== undefined && currentZoom < 17) {
-        mapInstance.setZoom(17);
-        setUserZoom(17);
-      }
-    } else {
-      // Admin View OR Fallback: Show comprehensive overview
+
+    if (isAdmin) {
+      // Admin View: Always show the full overview (A + B + driver) via fitBounds
       const bounds = new maps.LatLngBounds();
       let hasPoints = false;
 
-      if (isAdmin) {
-        // Admin always sees Point A and Point B
-        if (trip?.originPin) {
-          bounds.extend({ lat: trip.originPin.lat, lng: trip.originPin.lng });
-          hasPoints = true;
-        }
-        if (trip?.destinationPin) {
-          bounds.extend({ lat: trip.destinationPin.lat, lng: trip.destinationPin.lng });
-          hasPoints = true;
-        }
-      } else {
-        // Driver phase-based fallback (when no GPS yet)
-        const step = statusIndex(trip?.opsStatus || '');
-        let showOrigin = step <= 2;
-        let showDestination = step === 0 || step >= 3;
-
-        if (showOrigin && !trip?.originPin && trip?.destinationPin) showDestination = true;
-        if (showDestination && !trip?.destinationPin && trip?.originPin) showOrigin = true;
-
-        if (showOrigin && trip?.originPin) {
-          bounds.extend({ lat: trip.originPin.lat, lng: trip.originPin.lng });
-          hasPoints = true;
-        }
-        if (showDestination && trip?.destinationPin) {
-          bounds.extend({ lat: trip.destinationPin.lat, lng: trip.destinationPin.lng });
-          hasPoints = true;
-        }
+      if (trip?.originPin) {
+        bounds.extend({ lat: trip.originPin.lat, lng: trip.originPin.lng });
+        hasPoints = true;
       }
-
-      // Always include the driver if available
+      if (trip?.destinationPin) {
+        bounds.extend({ lat: trip.destinationPin.lat, lng: trip.destinationPin.lng });
+        hasPoints = true;
+      }
+      const driverLoc = currentPin || localPin;
       if (driverLoc) {
         bounds.extend({ lat: driverLoc.lat, lng: driverLoc.lng });
         hasPoints = true;
       }
 
       if (hasPoints) {
-        // Increase padding for Admin overview to ensure everything fits nicely
-        const padding = isAdmin ? { top: 120, right: 60, bottom: 320, left: 60 } : { top: 220, right: 40, bottom: 350, left: 40 };
-        mapInstance.fitBounds(bounds, padding);
-      } else {
-        mapInstance.setCenter(defaultCenter);
-        mapInstance.setZoom(10);
+        mapInstance.fitBounds(bounds, { top: 120, right: 60, bottom: 320, left: 60 });
+      }
+    } else if (isAutoTracking) {
+      // Driver View: Follow closely with high zoom
+      const driverLoc = localPin || currentPin;
+      if (driverLoc) {
+        mapInstance.panTo({ lat: driverLoc.lat, lng: driverLoc.lng });
+        const currentZoom = mapInstance.getZoom();
+        if (currentZoom !== undefined && currentZoom < 17) {
+          mapInstance.setZoom(17);
+        }
       }
     }
-  }, [mapInstance, maps, trip?.originPin, trip?.destinationPin, trip?.opsStatus, trip?.access.role, currentPin, localPin, isAutoTracking, userZoom]);
+  }, [mapInstance, maps, trip?.originPin, trip?.destinationPin, trip?.access.role, currentPin, localPin, isAutoTracking]);
 
   // Voice Guidance Trigger
   useEffect(() => {
@@ -684,12 +658,11 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
         ) : (
           <GoogleMap
             mapContainerStyle={{ width: '100%', height: '100%' }}
-            center={center}
+            center={initialCenter.current}
             zoom={userZoom}
             options={{ 
               disableDefaultUI: true, 
               gestureHandling: 'greedy',
-              maxZoom: 16,
             }}
             onLoad={(map) => {
               setMapInstance(map);
