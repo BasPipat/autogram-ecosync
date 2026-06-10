@@ -40,5 +40,17 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# private/temp keys and scripts
+*.key
+temp_*
+*.pptx
+view-images.html
+shif_onboarding_*
+photo/
+create_pptx_manual.py
+query-acme-user.js
+
+
+
 .vercel
 .env*.local

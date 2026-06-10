@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 140">
+  <!-- SHIF Logo — No Tagline variant for sidebar/header use -->
+
+  <!-- ===== S ===== -->
+  <path d="M 72,22 L 120,22 Q 130,22 130,32 L 130,52 Q 130,62 120,62 L 72,62 Q 62,62 62,72 L 62,92 Q 62,102 72,102 L 120,102" 
+        fill="none" stroke="#3D424A" stroke-width="22" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Green infinity ∞ -->
+  <g transform="translate(74, 42)">
+    <path d="M 0,14 C 0,6 6,0 14,0 C 22,0 28,6 28,14 C 28,22 22,28 14,28 C 6,28 0,22 0,14 Z" 
+          fill="none" stroke="#9EFF00" stroke-width="5" stroke-linecap="round"/>
+    <path d="M 28,14 C 28,6 34,0 42,0 C 50,0 56,6 56,14 C 56,22 50,28 42,28 C 34,28 28,22 28,14 Z" 
+          fill="none" stroke="#9EFF00" stroke-width="5" stroke-linecap="round"/>
+  </g>
+
+  <!-- ===== H ===== -->
+  <rect x="168" y="18" width="22" height="88" rx="2" fill="#3D424A"/>
+  <rect x="230" y="18" width="22" height="88" rx="2" fill="#3D424A"/>
+  <rect x="190" y="52" width="40" height="20" rx="2" fill="#3D424A"/>
+  <rect x="168" y="18" width="5" height="88" rx="1" fill="#9EFF00"/>
+  <rect x="230" y="18" width="5" height="88" rx="1" fill="#9EFF00"/>
+
+  <!-- ===== I ===== -->
+  <rect x="285" y="36" width="22" height="70" rx="2" fill="#3D424A"/>
+  <rect x="302" y="36" width="5" height="70" rx="1" fill="#9EFF00"/>
+  <path d="M 296,28 C 284,16 280,10 280,2 C 280,-7 287,-14 296,-14 C 305,-14 312,-7 312,2 C 312,10 308,16 296,28 Z" 
+        fill="#9EFF00" transform="translate(0, 20)"/>
+  <circle cx="296" cy="22" r="5" fill="#2D3039" transform="translate(0, 0)"/>
+
+  <!-- ===== F ===== -->
+  <rect x="345" y="18" width="22" height="88" rx="2" fill="#3D424A"/>
+  <rect x="367" y="18" width="58" height="20" rx="2" fill="#3D424A"/>
+  <rect x="367" y="52" width="42" height="20" rx="2" fill="#3D424A"/>
+  <rect x="367" y="33" width="58" height="5" rx="1" fill="#9EFF00"/>
+  <rect x="367" y="67" width="42" height="5" rx="1" fill="#9EFF00"/>
+</svg>

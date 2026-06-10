@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { Trip } from '@/models/Trip';
 import { Location } from '@/models/Location';
+import { DriverDocument } from '@/models/DriverDocument';
 import mongoose from 'mongoose';
 import { getSessionToken, isInternalRole } from '@/lib/access';
 
@@ -17,7 +18,18 @@ export async function GET(req: NextRequest) {
     await connectToDatabase();
     let query: Record<string, any> = {};
     if (!isInternalRole(token.role)) {
-      if (token.companyId) {
+      if (token.role === 'corp_admin' || token.role === 'coordinator') {
+        if (token.companyName) {
+          query = {
+            $or: [
+              { companyName: token.companyName },
+              { customerName: token.companyName }
+            ]
+          };
+        } else {
+          return NextResponse.json([]);
+        }
+      } else if (token.companyId) {
         try {
           query = { companyId: new mongoose.Types.ObjectId(token.companyId) };
         } catch {
@@ -30,8 +42,55 @@ export async function GET(req: NextRequest) {
       }
     }
     const trips = await Trip.find(query).select('-locationHistory').sort({ createdAt: -1 });
-    return NextResponse.json(trips);
-  } catch {
+    
+    // Find driver documents for these trips to attach POD and Video IDs
+    const tripIds = trips.map(t => t._id);
+    const lineUserIds = trips.map(t => t.lineUserId).filter(Boolean);
+
+    // Primary: match by tripId; Secondary: match by lineUserId for docs without tripId
+    const [docsByTrip, docsByUser] = await Promise.all([
+      DriverDocument.find({
+        tripId: { $in: tripIds },
+        documentType: { $in: ['pod_image', 'delivery_documents_video'] },
+      }).select('_id tripId lineUserId documentType createdAt').lean(),
+      lineUserIds.length > 0
+        ? DriverDocument.find({
+            lineUserId: { $in: lineUserIds },
+            tripId: { $exists: false },
+            documentType: { $in: ['pod_image', 'delivery_documents_video'] },
+          }).select('_id tripId lineUserId documentType createdAt').lean()
+        : Promise.resolve([]),
+    ]);
+
+    const allDocs = [...docsByTrip, ...docsByUser];
+
+    const tripsWithDocs = trips.map(trip => {
+      const tripObj = trip.toObject();
+
+      // First try to match by tripId
+      let podDoc = allDocs.find(d => String(d.tripId) === String(trip._id) && d.documentType === 'pod_image');
+      let videoDoc = allDocs.find(d => String(d.tripId) === String(trip._id) && d.documentType === 'delivery_documents_video');
+
+      // Fallback: match by lineUserId (docs that were saved without a tripId reference)
+      if (!podDoc && trip.lineUserId) {
+        podDoc = allDocs
+          .filter(d => d.lineUserId === trip.lineUserId && d.documentType === 'pod_image' && !d.tripId)
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      }
+      if (!videoDoc && trip.lineUserId) {
+        videoDoc = allDocs
+          .filter(d => d.lineUserId === trip.lineUserId && d.documentType === 'delivery_documents_video' && !d.tripId)
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      }
+
+      tripObj.podDocId = podDoc ? String(podDoc._id) : undefined;
+      tripObj.videoDocId = videoDoc ? String(videoDoc._id) : undefined;
+      return tripObj;
+    });
+
+    return NextResponse.json(tripsWithDocs);
+  } catch (error) {
+    console.error("GET trips admin error:", error);
     return NextResponse.json({ error: 'ดึงข้อมูลไม่สำเร็จ' }, { status: 500 });
   }
 }
@@ -50,13 +109,19 @@ export async function POST(req: NextRequest) {
     const count = Math.max(1, parseInt(data.vehicleCount) || 1);
 
     // Populate tenant info
-    if (token.companyId) {
-      try {
-        data.companyId = new mongoose.Types.ObjectId(token.companyId);
-      } catch (e) {}
-    }
-    if (token.companyName) {
-      data.companyName = token.companyName;
+    if (token.role === 'corp_admin' || token.role === 'coordinator') {
+      data.customerName = token.companyName;
+      data.companyName = 'SHIF CO., LTD.'; // Assign to the main logistics carrier
+      data.companyId = undefined;
+    } else {
+      if (token.companyId) {
+        try {
+          data.companyId = new mongoose.Types.ObjectId(token.companyId);
+        } catch (e) {}
+      }
+      if (token.companyName) {
+        data.companyName = token.companyName;
+      }
     }
 
     // Extract coordinates for GeoJSON indexing
@@ -86,6 +151,23 @@ export async function POST(req: NextRequest) {
 
     const createdTrips = [];
 
+    // Lookup payment terms from Customer Master
+    const { Customer } = await import('@/models/Customer');
+    let cust = null;
+    if (data.customerName) {
+      cust = await Customer.findOne({ companyName: data.customerName }).lean();
+    }
+    if (!cust && token.companyId) {
+      try {
+        cust = await Customer.findOne({ companyId: new mongoose.Types.ObjectId(token.companyId) }).lean();
+      } catch (e) {}
+    }
+    if (!cust && token.companyName) {
+      cust = await Customer.findOne({ companyName: token.companyName }).lean();
+    }
+
+    const customerPaymentType = cust?.paymentType || 'cash';
+
     for (let i = 0; i < count; i++) {
       const tripData = { ...data };
       // If count > 1, add a suffix to tripId to make them unique and sequential
@@ -93,6 +175,17 @@ export async function POST(req: NextRequest) {
       
       // Each trip record should represent 1 vehicle in the system for tracking
       tripData.vehicleCount = 1; 
+
+      // Apply inherited payment terms
+      tripData.paymentType = customerPaymentType;
+      tripData.paymentStatus = 'unpaid';
+
+      if (customerPaymentType === 'cash') {
+        tripData.jobSheetReleased = false;
+        tripData.isPublic = false; // Block dispatch
+      } else {
+        tripData.jobSheetReleased = true;
+      }
 
       const newTrip = await Trip.create(tripData);
       createdTrips.push(newTrip);

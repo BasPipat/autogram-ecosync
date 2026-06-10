@@ -47,7 +47,7 @@ export default function NewsPage() {
           </Link>
           <div className="flex items-center gap-2">
             <Leaf size={20} className="text-emerald-500" />
-            <span className="font-bold text-slate-900">Eco-Sync News</span>
+            <span className="font-bold text-slate-900">SHIF News</span>
           </div>
           <div className="w-20" /> {/* Spacer */}
         </div>

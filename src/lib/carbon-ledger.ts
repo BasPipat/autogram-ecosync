@@ -13,8 +13,14 @@ function monthKey(year: number, month: number): string {
 }
 
 export async function getActiveMasterSetting() {
-  const setting = await Setting.findOne({ isActive: true }).sort({ effectiveFrom: -1 }).lean();
-  return setting || {
+  const setting = await Setting.findOne({ isActive: true, scope: 'global', key: 'master-default' }).sort({ effectiveFrom: -1 }).lean();
+  if (setting) {
+    if (setting.fuelEfficiencyKmPerLiterDefault === undefined) {
+      setting.fuelEfficiencyKmPerLiterDefault = 3.0;
+    }
+    return setting;
+  }
+  return {
     fuelEfficiencyKmPerLiterDefault: 3.0,
     emissionFactorKgCo2PerLiter: 2.68,
     standardReference: 'TGO',
@@ -33,7 +39,8 @@ export async function generateMonthlyLedgers() {
         _id: { 
           y: { $year: '$createdAt' }, 
           m: { $month: '$createdAt' },
-          companyId: '$companyId'
+          companyId: '$companyId',
+          companyName: '$companyName'
         },
         totalTrips: { $sum: 1 },
         totalDistanceKm: { $sum: { $ifNull: ['$distance', 0] } },
@@ -46,6 +53,7 @@ export async function generateMonthlyLedgers() {
     const year = item._id.y;
     const month = item._id.m;
     const companyId = item._id.companyId;
+    const companyName = item._id.companyName;
     const distance = Number(item.totalDistanceKm || 0);
     const fuelForecast = distance / Number(setting.fuelEfficiencyKmPerLiterDefault || 1);
     const emission = fuelForecast * Number(setting.emissionFactorKgCo2PerLiter || 0);
@@ -53,7 +61,8 @@ export async function generateMonthlyLedgers() {
       updateOne: {
         filter: { 
           monthKey: monthKey(year, month),
-          companyId: companyId 
+          companyId: companyId,
+          companyName: companyName
         },
         update: {
           $set: {
@@ -61,6 +70,7 @@ export async function generateMonthlyLedgers() {
             month,
             monthKey: monthKey(year, month),
             companyId,
+            companyName,
             totalTrips: Number(item.totalTrips || 0),
             totalDistanceKm: to2(distance),
             totalFuelLitersForecast: to2(fuelForecast),

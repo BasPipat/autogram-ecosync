@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     await connectToDatabase();
 
     // 1. Fetch Stats in parallel (Tenant Scoped)
-    const [totalTrips, tripAgg, vaultAgg] = await Promise.all([
+    const [totalTrips, tripAgg, verifiedPODsCount, activeTrips] = await Promise.all([
       Trip.countDocuments(tripQuery),
       Trip.aggregate([
         { $match: tripQuery },
@@ -58,26 +58,16 @@ export async function GET(req: NextRequest) {
           }
         }
       ]),
-      Trip.aggregate([
-        { $match: tripQuery },
-        {
-          $lookup: {
-            from: 'integrityvaults',
-            localField: 'tripId',
-            foreignField: 'tripId',
-            as: 'vault'
-          }
-        },
-        { $unwind: '$vault' },
-        { $match: { 'vault.isVerified': true } },
-        { $count: 'verifiedCount' }
-      ])
+      Trip.countDocuments({ ...tripQuery, status: 'Verified' }),
+      Trip.countDocuments({
+        ...tripQuery,
+        lineAssignmentStatus: { $in: ['accepted', 'in_progress', 'arrived_pickup', 'en_route_pickup', 'en_route_dropoff'] }
+      })
     ]);
 
     const ledgerSum = tripAgg.length > 0 ? (tripAgg[0].totalLedger || 0) : 0;
     const tripSum = tripAgg.length > 0 ? (tripAgg[0].totalTripCarbon || 0) : 0;
     const finalTotal = Math.max(ledgerSum, tripSum);
-    const verifiedPODsCount = vaultAgg.length > 0 ? vaultAgg[0].verifiedCount : 0;
 
     const totalCarbon = finalTotal.toLocaleString('en-US', { 
       minimumFractionDigits: 2, 
@@ -90,7 +80,7 @@ export async function GET(req: NextRequest) {
       : 0;
 
     // 2. Fetch Recent Trips
-    const recentTrips = await Trip.find(tripQuery).select('-locationHistory').sort({ createdAt: -1 }).limit(5).lean();
+    const recentTrips = await Trip.find(tripQuery).select('-locationHistory').sort({ createdAt: -1 }).limit(10).lean();
     const tripIds = recentTrips.map(t => t.tripId);
 
     // BUG-01: Fix N+1 Query - Batch fetch related data
@@ -106,7 +96,9 @@ export async function GET(req: NextRequest) {
     const tripsWithDetails = recentTrips.map((trip) => {
       const ledgerEntry = carbonMap.get(trip.tripId);
       const vault = vaultMap.get(trip.tripId);
-      const status = vault ? (vault.isVerified ? 'Verified' : 'Pending') : 'No POD';
+      const status = vault 
+        ? (vault.isVerified ? 'Verified' : 'Pending') 
+        : (trip.status || 'No POD');
       
       // Fallback: If ledgerEntry is missing, use trip.carbon (legacy) or trip.emissionKgCo2e
       const carbonVal = ledgerEntry 
@@ -122,10 +114,12 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Chart data: POD status breakdown for Pie Chart
-    const verifiedCount = vaultRecords.filter(v => v.isVerified).length;
-    const pendingCount = vaultRecords.filter(v => !v.isVerified).length;
-    const noPodCount = Math.max(0, recentTrips.length - vaultRecords.length);
+    // Chart data: POD status breakdown for Pie Chart across ALL trips in DB
+    const [verifiedCount, pendingCount, noPodCount] = await Promise.all([
+      Trip.countDocuments({ ...tripQuery, status: 'Verified' }),
+      Trip.countDocuments({ ...tripQuery, status: 'Pending' }),
+      Trip.countDocuments({ ...tripQuery, status: { $nin: ['Verified', 'Pending'] } })
+    ]);
 
     const statusBreakdown = [
       { name: 'Verified', value: verifiedCount, color: '#10B981' },
@@ -170,16 +164,47 @@ export async function GET(req: NextRequest) {
       }
     });
 
+    // 3. Billing Stats (parallel calculation)
+    const [
+      unpaidCashTrips,
+      pendingCashTrips,
+      unpaidCreditTrips,
+      pendingBatchesCount
+    ] = await Promise.all([
+      Trip.find({ ...tripQuery, paymentType: 'cash', paymentStatus: 'unpaid' }).select('acceptedFreightPrice').lean(),
+      Trip.countDocuments({ ...tripQuery, paymentType: 'cash', paymentStatus: 'pending_verification' }),
+      Trip.find({ ...tripQuery, paymentType: 'credit', paymentStatus: 'unpaid' }).select('acceptedFreightPrice').lean(),
+      Trip.distinct('paymentBatchId', { ...tripQuery, paymentType: 'cash', paymentStatus: 'pending_verification' })
+    ]);
+
+    const unpaidCashAmount = unpaidCashTrips.reduce((s, t) => s + (Number(t.acceptedFreightPrice) || 0), 0);
+    const unpaidCreditAmount = unpaidCreditTrips.reduce((s, t) => s + (Number(t.acceptedFreightPrice) || 0), 0);
+
+    const activeTripsList = await Trip.find({ ...tripQuery })
+    .select('_id tripId driverName licensePlate tailLicensePlate origin destination opsStatus lineAssignmentStatus updatedAt lineUserId gpsSession.lastPingAt companyName customerName')
+    .sort({ createdAt: -1 })
+    .lean();
+
     return NextResponse.json({
+      userRole: token.role,
       stats: {
         totalTrips,
+        activeTrips,
         totalCarbon,
         verifiedPODs: podComplianceRate,
+        billing: {
+          unpaidCashAmount,
+          unpaidCashCount: unpaidCashTrips.length,
+          pendingCashCount: pendingCashTrips,
+          unpaidCreditAmount,
+          pendingVerificationSlipsCount: pendingBatchesCount.length
+        }
       },
       recentTrips: tripsWithDetails,
       statusBreakdown,
       carbonChart,
       activeUnits: initialActiveUnits,
+      liveTrips: activeTripsList,
     }, { status: 200 });
 
   } catch (error: unknown) {

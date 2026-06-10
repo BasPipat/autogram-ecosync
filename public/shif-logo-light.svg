@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 400" width="100%" height="100%">
+  <!-- Definitions for 3D shaders, metallic gradients, and glow filters (Light Theme) -->
+  <defs>
+    <!-- Light Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#F8FAFC" />
+      <stop offset="100%" stop-color="#E2E8F0" />
+    </linearGradient>
+
+    <!-- Glowing neon-green tube gradient -->
+    <linearGradient id="neonGreenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#76D300" />
+      <stop offset="100%" stop-color="#4E9A00" />
+    </linearGradient>
+
+    <!-- Gunmetal Steel Base Gradient for H, I, F -->
+    <linearGradient id="gunmetalGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#475569" />
+      <stop offset="45%" stop-color="#1E293B" />
+      <stop offset="100%" stop-color="#0F172A" />
+    </linearGradient>
+
+    <!-- Green metallic gradient on the left side of H -->
+    <linearGradient id="hLeftGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#76D300" opacity="0.35" />
+      <stop offset="100%" stop-color="#475569" opacity="0" />
+    </linearGradient>
+
+    <!-- 3D Bevel/Chisel Shader Simulation (Inner bevel highlights) -->
+    <linearGradient id="bevelLight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.4" />
+    </linearGradient>
+
+    <!-- Volumetric green neon glow filter -->
+    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComponentTransfer in="blur" result="glow">
+        <feFuncA type="linear" slope="0.45" />
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode in="glow" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Drop shadow for metallic letters -->
+    <filter id="heavyShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#0F172A" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="url(#bgGrad)" rx="16" />
+
+  <!-- Logo Group -->
+  <g transform="translate(60, 20)" filter="url(#heavyShadow)">
+    
+    <!-- ================= S (Neon Tube Outline) ================= -->
+    <path d="M 245,138 C 190,138 165,140 165,178 C 165,216 245,200 245,238 C 245,276 220,278 165,278" 
+          fill="none" 
+          stroke="url(#neonGreenGrad)" 
+          stroke-width="26" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" 
+          filter="url(#neonGlow)" />
+    <path d="M 245,138 C 190,138 165,140 165,178 C 165,216 245,200 245,238 C 245,276 220,278 165,278" 
+          fill="none" 
+          stroke="#FFFFFF" 
+          stroke-width="6" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" 
+          opacity="0.8" />
+
+    <!-- ================= H (3D Beveled Metallic) ================= -->
+    <g transform="translate(300, 118)">
+      <path d="M 0,0 L 36,0 L 36,60 L 92,60 L 92,0 L 128,0 L 128,160 L 92,160 L 92,100 L 36,100 L 36,160 L 0,160 Z" fill="url(#gunmetalGrad)" />
+      <path d="M 0,0 L 36,0 L 36,60 L 92,60 L 92,0 L 128,0 L 128,160 L 92,160 L 92,100 L 36,100 L 36,160 L 0,160 Z" fill="url(#bevelLight)" opacity="0.3" style="mix-blend-mode: overlay;" />
+      <path d="M 0,0 L 36,0 L 36,160 L 0,160 Z" fill="url(#hLeftGrad)" />
+      <path d="M 0,0 L 36,0 L 36,60 L 92,60 L 92,0 L 128,0 L 128,160 L 92,160 L 92,100 L 36,100 L 36,160 L 0,160 Z" fill="none" stroke="#0F172A" stroke-width="2" />
+    </g>
+
+    <!-- ================= I (3D Steel Stem with V-Cut & Glowing Location Pin) ================= -->
+    <g transform="translate(488, 118)">
+      <path d="M 0,32 L 18,12 L 36,32 L 36,160 L 0,160 Z" fill="url(#gunmetalGrad)" />
+      <path d="M 0,32 L 18,12 L 36,32 L 36,160 L 0,160 Z" fill="url(#bevelLight)" opacity="0.3" style="mix-blend-mode: overlay;" />
+      <path d="M 0,32 L 18,12 L 36,32 L 36,160 L 0,160 Z" fill="none" stroke="#0F172A" stroke-width="2" />
+      
+      <!-- Glowing Location Pin Dot -->
+      <path d="M 18,0 C 4,-14 0,-22 0,-30 C 0,-40 8,-49 18,-49 C 28,-49 36,-40 36,-30 C 36,-22 32,-14 18,0 Z M 18, -36 A 6,6 0 1,0 18,-24 A 6,6 0 1,0 18,-36 Z" 
+            fill="url(#neonGreenGrad)" 
+            fill-rule="evenodd" 
+            filter="url(#neonGlow)" />
+    </g>
+
+    <!-- ================= F (3D Beveled Metallic with Speed Slants) ================= -->
+    <g transform="translate(584, 118)">
+      <path d="M 0,0 L 128,0 L 108,36 L 36,36 L 36,64 L 98,64 L 78,100 L 36,100 L 36,160 L 0,160 Z" fill="url(#gunmetalGrad)" />
+      <path d="M 0,0 L 128,0 L 108,36 L 36,36 L 36,64 L 98,64 L 78,100 L 36,100 L 36,160 L 0,160 Z" fill="url(#bevelLight)" opacity="0.3" style="mix-blend-mode: overlay;" />
+      <path d="M 0,0 L 128,0 L 108,36 L 36,36 L 36,64 L 98,64 L 78,100 L 36,100 L 36,160 L 0,160 Z" fill="none" stroke="#0F172A" stroke-width="2" />
+    </g>
+
+  </g>
+</svg>

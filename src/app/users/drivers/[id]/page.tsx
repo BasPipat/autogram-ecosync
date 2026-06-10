@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import SidebarLayout from '@/components/SidebarLayout';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 
 interface IDriverDetail {
   driver: any;
@@ -23,6 +24,8 @@ interface IDriverDetail {
 }
 
 export default function DriverProfileDeepDive({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+  const { data: session } = useSession();
+  const isAdmin = session?.user && ((session.user as any).role === 'system_owner' || (session.user as any).role === 'admin');
   const router = useRouter();
   const [params, setParams] = React.useState<{ id: string } | null>(null);
   const [data, setData] = useState<IDriverDetail | null>(null);
@@ -185,78 +188,81 @@ export default function DriverProfileDeepDive({ params: paramsPromise }: { param
   };
 
   if (loading) {
-    return (
-      <SidebarLayout>
-        <div className="min-h-screen flex items-center justify-center">
-          <Loader2 className="animate-spin text-emerald-500" size={40} />
-        </div>
-      </SidebarLayout>
+    const loader = (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin text-emerald-500" size={40} />
+      </div>
     );
+    return isAdmin ? <SidebarLayout>{loader}</SidebarLayout> : loader;
   }
 
   if (!data) {
-    return (
-      <SidebarLayout>
-        <div className="p-10 text-center">
-          <AlertCircle size={48} className="mx-auto text-rose-500 mb-4" />
-          <h2 className="text-xl font-bold">ไม่พบข้อมูลคนขับ</h2>
-          <button onClick={() => router.back()} className="mt-4 text-blue-500 hover:underline">ย้อนกลับ</button>
-        </div>
-      </SidebarLayout>
+    const errorState = (
+      <div className="p-10 text-center">
+        <AlertCircle size={48} className="mx-auto text-rose-500 mb-4" />
+        <h2 className="text-xl font-bold">ไม่พบข้อมูลคนขับ</h2>
+        <button onClick={() => router.back()} className="mt-4 text-blue-500 hover:underline">ย้อนกลับ</button>
+      </div>
     );
+    return isAdmin ? <SidebarLayout>{errorState}</SidebarLayout> : errorState;
   }
 
   const { driver, truck, documents, stats } = data;
 
-  return (
-    <SidebarLayout>
-      <div className="min-h-screen p-6 bg-slate-50">
+  const content = (
+    <div className="min-h-screen p-6 bg-slate-50">
         {/* Breadcrumb & Quick Actions */}
-        <div className="flex items-center justify-between mb-8 animate-fade-in">
-          <button 
-            onClick={() => router.back()}
-            className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors font-bold text-sm"
-          >
-            <ChevronLeft size={18} />
-            กลับหน้าจัดการผู้ใช้
-          </button>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={toggleVerification}
-              disabled={updating}
-              className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-sm border ${
-                driver.isDocumentsVerified 
-                  ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
-                  : 'bg-white text-slate-400 border-slate-200'
-              }`}
+        {isAdmin ? (
+          <div className="flex items-center justify-between mb-8 animate-fade-in">
+            <button 
+              onClick={() => router.back()}
+              className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors font-bold text-sm"
             >
-              {driver.isDocumentsVerified ? <ShieldCheck size={16} /> : <Clock size={16} />}
-              {driver.isDocumentsVerified ? 'เอกสารตรวจสอบแล้ว' : 'ยังไม่ได้ตรวจสอบเอกสาร'}
+              <ChevronLeft size={18} />
+              กลับหน้าจัดการผู้ใช้
             </button>
-            
-            <div className="h-6 w-[1px] bg-slate-200 mx-2" />
 
-            {driver.status !== 'approved' && (
+            <div className="flex items-center gap-3">
               <button
-                onClick={() => handleUpdateStatus('approved')}
+                onClick={toggleVerification}
                 disabled={updating}
-                className="px-6 py-2 bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100"
+                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-2 shadow-sm border ${
+                  driver.isDocumentsVerified 
+                    ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                    : 'bg-white text-slate-400 border-slate-200'
+                }`}
               >
-                อนุมัติคนขับ
+                {driver.isDocumentsVerified ? <ShieldCheck size={16} /> : <Clock size={16} />}
+                {driver.isDocumentsVerified ? 'เอกสารตรวจสอบแล้ว' : 'ยังไม่ได้ตรวจสอบเอกสาร'}
               </button>
-            )}
-            {driver.status !== 'rejected' && (
-              <button
-                onClick={() => handleUpdateStatus('rejected')}
-                disabled={updating}
-                className="px-6 py-2 bg-rose-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-rose-600 transition-all shadow-lg shadow-rose-100"
-              >
-                ไม่ผ่าน
-              </button>
-            )}
+              
+              <div className="h-6 w-[1px] bg-slate-200 mx-2" />
+
+              {driver.status !== 'approved' && (
+                <button
+                  onClick={() => handleUpdateStatus('approved')}
+                  disabled={updating}
+                  className="px-6 py-2 bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-100"
+                >
+                  อนุมัติคนขับ
+                </button>
+              )}
+              {driver.status !== 'rejected' && (
+                <button
+                  onClick={() => handleUpdateStatus('rejected')}
+                  disabled={updating}
+                  className="px-6 py-2 bg-rose-500 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-rose-600 transition-all shadow-lg shadow-rose-100"
+                >
+                  ไม่ผ่าน
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center justify-between mb-8 animate-fade-in">
+            <h1 className="text-xl font-black text-slate-800">แก้ไขข้อมูลโปรไฟล์คนขับ</h1>
+          </div>
+        )}
 
         {/* Header Profile Section */}
         <div className="bg-white rounded-[32px] p-8 shadow-xl shadow-slate-200/50 mb-8 border border-slate-100 animate-fade-in">
@@ -646,16 +652,21 @@ export default function DriverProfileDeepDive({ params: paramsPromise }: { param
                         <td className="px-8 py-5 text-slate-600">{new Date(trip.createdAt).toLocaleDateString('th-TH')}</td>
                         <td className="px-8 py-5 font-mono text-xs font-bold text-blue-500">{trip._id.slice(-8).toUpperCase()}</td>
                         <td className="px-8 py-5 font-bold text-slate-700">
-                          {trip.pickupName} → {trip.dropoffName}
+                          {trip.origin || 'ไม่ระบุ'} → {trip.destination || 'ไม่ระบุ'}
                         </td>
-                        <td className="px-8 py-5 font-black text-slate-900">฿{(trip.freightPrice || 0).toLocaleString()}</td>
+                        <td className="px-8 py-5 font-black text-slate-900">฿{(trip.acceptedFreightPrice || 0).toLocaleString()}</td>
                         <td className="px-8 py-5">
-                          <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${
-                            trip.status === 'completed' ? 'bg-emerald-50 text-emerald-500' : 'bg-slate-100 text-slate-400'
+                          <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${
+                            trip.status === 'Verified' 
+                              ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                              : trip.status === 'Pending'
+                              ? 'bg-amber-50 text-amber-600 border-amber-100'
+                              : 'bg-rose-50 text-rose-600 border-rose-100'
                           }`}>
-                            {trip.status}
+                            {trip.status === 'Verified' ? 'สำเร็จ (Verified)' : trip.status === 'Pending' ? 'รอดำเนินการ (Pending)' : 'ไม่มี POD (No POD)'}
                           </span>
                         </td>
+
                       </tr>
                     ))
                   )}
@@ -665,8 +676,9 @@ export default function DriverProfileDeepDive({ params: paramsPromise }: { param
           )}
         </div>
       </div>
-    </SidebarLayout>
   );
+
+  return isAdmin ? <SidebarLayout>{content}</SidebarLayout> : content;
 }
 
 function EditableInfoRow({ label, value, isEditing, field, editForm, setEditForm, type = "text" }: any) {

@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 450 180" width="100%" height="100%">
+  <!-- SHIF Logo - Navy & Orange Color Split with Double Polygon Chevrons (Official Brand Asset) -->
+  <defs>
+    <!-- Mask for the top/left parts (Deep Navy Blue #00205B) -->
+    <mask id="maskTop">
+      <rect x="-100" y="-100" width="700" height="400" fill="#ffffff" />
+      <polygon points="0,106 380,61 380,250 0,250" fill="#000000" />
+      <line x1="0" y1="106" x2="380" y2="61" stroke="#000000" stroke-width="6" stroke-linecap="round" />
+    </mask>
+
+    <!-- Mask for the bottom/right parts (Vibrant Orange #FF5B00) -->
+    <mask id="maskBottom">
+      <rect x="-100" y="-100" width="700" height="400" fill="#000000" />
+      <polygon points="0,106 380,61 380,250 0,250" fill="#ffffff" />
+      <line x1="0" y1="106" x2="380" y2="61" stroke="#000000" stroke-width="6" stroke-linecap="round" />
+    </mask>
+
+    <!-- Mask for F (Entirely Deep Blue, but with physical cut gap) -->
+    <mask id="maskGapOnly">
+      <rect x="-100" y="-100" width="700" height="400" fill="#ffffff" />
+      <line x1="0" y1="106" x2="380" y2="61" stroke="#000000" stroke-width="6" stroke-linecap="round" />
+    </mask>
+  </defs>
+
+  <!-- Logo Group skewed to match the italic geometry -->
+  <g transform="skewX(-16) translate(30, 0)">
+    
+    <!-- Navy Blue Parts (S, H, I above the cut) -->
+    <g mask="url(#maskTop)" fill="#00205B">
+      <!-- S -->
+      <path d="M 20,30 L 85,30 L 85,52 L 42,52 L 42,79 L 85,79 L 85,150 L 20,150 L 20,128 L 63,128 L 63,101 L 20,101 Z" />
+      <!-- H -->
+      <path d="M 105,30 L 127,30 L 127,79 L 148,79 L 148,30 L 170,30 L 170,150 L 148,150 L 148,101 L 127,101 L 127,150 L 105,150 Z" />
+      <!-- I -->
+      <path d="M 190,30 L 212,30 L 212,150 L 190,150 Z" />
+    </g>
+
+    <!-- Vibrant Orange Parts (S, H, I below the cut) -->
+    <g mask="url(#maskBottom)" fill="#FF5B00">
+      <!-- S -->
+      <path d="M 20,30 L 85,30 L 85,52 L 42,52 L 42,79 L 85,79 L 85,150 L 20,150 L 20,128 L 63,128 L 63,101 L 20,101 Z" />
+      <!-- H -->
+      <path d="M 105,30 L 127,30 L 127,79 L 148,79 L 148,30 L 170,30 L 170,150 L 148,150 L 148,101 L 127,101 L 127,150 L 105,150 Z" />
+      <!-- I -->
+      <path d="M 190,30 L 212,30 L 212,150 L 190,150 Z" />
+    </g>
+
+    <!-- F (Entirely Deep Navy Blue with physical cut gap) -->
+    <path d="M 232,30 L 295,30 L 295,52 L 254,52 L 254,79 L 282,79 L 282,101 L 254,101 L 254,150 L 232,150 Z" fill="#00205B" mask="url(#maskGapOnly)" />
+
+    <!-- Double Thick Polygon Chevrons (Vibrant Orange) -->
+    <g fill="#FF5B00">
+      <!-- Inner chevron -->
+      <polygon points="285,30 305,30 340,70 305,110 285,110 320,70" />
+      <!-- Outer chevron -->
+      <polygon points="313,30 333,30 368,70 333,110 313,110 348,70" />
+    </g>
+
+  </g>
+</svg>

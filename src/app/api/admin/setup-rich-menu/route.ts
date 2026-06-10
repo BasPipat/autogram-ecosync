@@ -12,17 +12,21 @@ const lineConfig = {
   channelSecret: process.env.LINE_CHANNEL_SECRET || '',
 };
 
-const lineClient = new Client(lineConfig);
+let lineClient: Client | null = null;
+function getLineClient() {
+  if (!lineClient) {
+    lineClient = new Client(lineConfig);
+  }
+  return lineClient;
+}
 
 export async function GET() {
   try {
     await connectToDatabase();
-    const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || '2010054204-bv5oRtcL';
-
     // 0. Cleanup: Delete all old rich menus to free up quota
-    const oldMenus = await lineClient.getRichMenuList();
+    const oldMenus = await getLineClient().getRichMenuList();
     for (const menu of oldMenus) {
-      await lineClient.deleteRichMenu(menu.richMenuId);
+      await getLineClient().deleteRichMenu(menu.richMenuId);
     }
 
     // 1. Create DRIVER RICH MENU (This is the only one we need)
@@ -33,16 +37,16 @@ export async function GET() {
       chatBarText: 'เมนูคนขับรถ',
       areas: [
         { bounds: { x: 0, y: 0, width: 1250, height: 843 }, action: { type: 'message', text: 'งานของฉัน' } },
-        { bounds: { x: 1250, y: 0, width: 1250, height: 843 }, action: { type: 'uri', uri: `https://liff.line.me/${liffId}/driver/jobs` } },
-        { bounds: { x: 0, y: 843, width: 1250, height: 843 }, action: { type: 'uri', uri: `https://liff.line.me/${liffId}/driver/profile` } },
+        { bounds: { x: 1250, y: 0, width: 1250, height: 843 }, action: { type: 'message', text: 'ดูงาน' } },
+        { bounds: { x: 0, y: 843, width: 1250, height: 843 }, action: { type: 'message', text: 'โปรไฟล์ของฉัน' } },
         { bounds: { x: 1250, y: 843, width: 1250, height: 843 }, action: { type: 'message', text: 'ข้อมูลรถ/เอกสาร' } }
       ]
     };
 
-    const driverId = await lineClient.createRichMenu(driverMenu);
+    const driverId = await getLineClient().createRichMenu(driverMenu);
 
     // 2. Upload Driver Image (2500x1686)
-    const driverImgBuffer = fs.readFileSync(path.join(process.cwd(), 'public/assets/line/rich-menu-driver-v7.jpg'));
+    const driverImgBuffer = fs.readFileSync(path.join(process.cwd(), 'public/assets/line/rich-menu-driver-v8.jpg'));
 
     const uploadRes = await fetch(`https://api-data.line.me/v2/bot/richmenu/${driverId}/content`, {
       method: 'POST',
@@ -77,7 +81,7 @@ export async function GET() {
     for (const driver of approvedDrivers) {
       if (driver.lineUserId && driver.lineUserId.startsWith('U')) {
         try {
-          await lineClient.linkRichMenuToUser(driver.lineUserId, driverId);
+          await getLineClient().linkRichMenuToUser(driver.lineUserId, driverId);
           syncResults.success++;
         } catch (e) {
           console.error(`Failed to link menu for ${driver.lineUserId}:`, e);

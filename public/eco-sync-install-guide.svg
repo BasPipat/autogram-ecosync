@@ -1,0 +1,426 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="100%" height="100%">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&amp;family=Inter:wght@400;500;600;700;800;900&amp;display=swap');
+      
+      .thai-font { font-family: 'Prompt', 'Inter', sans-serif; }
+      .eng-font { font-family: 'Inter', sans-serif; }
+      
+      .bold { font-weight: 700; }
+      .semibold { font-weight: 600; }
+      .medium { font-weight: 500; }
+      .black { font-weight: 900; }
+      
+      .hover-scale {
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transform-origin: center;
+        transform-box: fill-box;
+      }
+      .hover-scale:hover {
+        transform: scale(1.03);
+      }
+    </style>
+
+    <!-- Base Gradients -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F6FDF9"/>
+      <stop offset="50%" stop-color="#ECFDF5"/>
+      <stop offset="100%" stop-color="#D1FAE5"/>
+    </linearGradient>
+
+    <!-- Header Gradients -->
+    <linearGradient id="androidHeader" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#047857"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+
+    <linearGradient id="iosHeader" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#065F46"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+
+    <linearGradient id="desktopHeader" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#1E293B"/>
+    </linearGradient>
+
+    <!-- Button & Highlights -->
+    <linearGradient id="btnGreen" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#10B981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    
+    <linearGradient id="btnBlue" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+
+    <!-- Drop Shadows -->
+    <filter id="cardShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.06"/>
+    </filter>
+    
+    <filter id="dialogShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#0F172A" flood-opacity="0.1"/>
+    </filter>
+
+    <filter id="glowGreen" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#10B981" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- ════════════════ BACKGROUND & TOPOGRAPHY ════════════════ -->
+  <rect width="1200" height="900" fill="url(#bgGrad)"/>
+
+  <!-- Topographic Contour Lines (Eco Theme) -->
+  <g fill="none" stroke="#A7F3D0" stroke-width="1.5" opacity="0.4">
+    <path d="M-50,200 C50,220 120,300 100,400 C80,500 -10,550 -50,600"/>
+    <path d="M-50,250 C80,270 160,360 140,480 C120,600 10,650 -50,700"/>
+    <path d="M-50,300 C110,320 200,420 180,560 C160,700 30,750 -50,800"/>
+    <path d="M1250,100 C1150,120 1080,200 1100,300 C1120,400 1210,450 1250,500" />
+    <path d="M1250,150 C1120,170 1040,260 1060,380 C1080,500 1190,550 1250,600" />
+  </g>
+
+  <!-- Leaf Ornaments -->
+  <g fill="#10B981" opacity="0.15">
+    <path d="M80,60 Q60,85 40,100 Q70,80 80,60 Z" />
+    <path d="M95,70 Q80,95 55,110 Q85,90 95,70 Z" />
+    <path d="M1120,60 Q1100,85 1080,100 Q1110,80 1120,60 Z" />
+    <path d="M1135,70 Q1120,95 1095,110 Q1125,90 1135,70 Z" />
+  </g>
+
+  <!-- ════════════════ MAIN HEADER ════════════════ -->
+  <g transform="translate(600, 70)" text-anchor="middle">
+    <!-- Icon / Badge -->
+    <rect x="-140" y="-35" width="280" height="30" rx="15" fill="#D1FAE5" />
+    <text y="-15" class="thai-font bold" font-size="13" fill="#065F46">PWA APPLICATION INSTALLATION GUIDE</text>
+
+    <!-- Main Title -->
+    <text y="25" class="thai-font bold" font-size="34" fill="#0F172A">คู่มือการติดตั้งแอป SOCZ</text>
+    <text y="65" class="thai-font bold" font-size="24" fill="#059669">บนมือถือ แท็บเล็ต และคอมพิวเตอร์</text>
+    
+    <!-- Subtitle Description -->
+    <text y="100" class="thai-font" font-size="14.5" fill="#374151">
+      คุณสามารถติดตั้งแอปพลิเคชันไว้บนหน้าจอได้ง่ายๆ โดยไม่ต้องดาวน์โหลดผ่าน App Store หรือ Google Play Store
+    </text>
+  </g>
+
+
+  <!-- ════════════════ COLUMN 1: ANDROID (LEFT) ════════════════ -->
+  <g transform="translate(50, 220)">
+    <g class="hover-scale">
+      <!-- Card Base -->
+    <rect width="350" height="610" rx="24" fill="#FFFFFF" filter="url(#cardShadow)"/>
+    
+    <!-- Header Badge -->
+    <rect width="350" height="70" rx="24" fill="url(#androidHeader)"/>
+    <rect y="46" width="350" height="24" fill="url(#androidHeader)"/> <!-- square corner fix -->
+    
+    <!-- Header Content -->
+    <g transform="translate(25, 22)">
+      <!-- Android Robot Icon SVG -->
+      <g fill="#FFFFFF" transform="translate(0, 2) scale(0.85)">
+        <path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM11.1 2.37l-1.3-1.3a.47.47 0 0 0-.66 0 .47.47 0 0 0 0 .66l1.37 1.37C8.94 4.09 7.6 5.89 7.51 8h8.98c-.09-2.11-1.43-3.91-3.01-4.6l1.37-1.37a.47.47 0 0 0 0-.66.47.47 0 0 0-.66 0l-1.3 1.3c-.61-.24-1.28-.37-1.79-.37s-1.18.13-1.79.37zM9 5.5a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5zm6 0a.75.75 0 1 1 0-1.5.75.75 0 0 1 0 1.5z"/>
+      </g>
+      <text x="35" y="20" class="thai-font bold" font-size="18" fill="#FFFFFF">ระบบ Android</text>
+      <text x="35" y="38" class="thai-font" font-size="11.5" fill="#A7F3D0">(มือถือ &amp; แท็บเล็ต Samsung, Xiaomi, Oppo)</text>
+    </g>
+
+    <!-- Browser Recommended Bar -->
+    <g transform="translate(20, 85)">
+      <rect width="310" height="34" rx="8" fill="#ECFDF5" stroke="#10B981" stroke-width="1"/>
+      <g transform="translate(10, 7) scale(0.65)">
+        <!-- Chrome Logo Icon -->
+        <circle cx="16" cy="16" r="14" fill="#FFF"/>
+        <path d="M16,2 A14,14 0 0,1 28.12,23 L20.06,18.35 A6,6 0 0,0 16,8 Z" fill="#EA4335"/>
+        <path d="M28.12,23 A14,14 0 0,1 3.88,23 L11.94,18.35 A6,6 0 0,0 20.06,18.35 Z" fill="#FBBC05"/>
+        <path d="M3.88,23 A14,14 0 0,1 16,2 L16,8 A6,6 0 0,0 11.94,18.35 Z" fill="#34A853"/>
+        <circle cx="16" cy="16" r="6" fill="#FFF"/>
+        <circle cx="16" cy="16" r="5" fill="#4285F4"/>
+      </g>
+      <text x="36" y="21" class="thai-font bold" font-size="11.5" fill="#047857">แนะนำให้ใช้เบราว์เซอร์ Google Chrome</text>
+    </g>
+
+    <!-- Step 1 -->
+    <g transform="translate(25, 140)">
+      <circle cx="15" cy="15" r="13" fill="#10B981" />
+      <text x="15" y="19" text-anchor="middle" class="eng-font bold" font-size="13" fill="#FFFFFF">1</text>
+      <text x="38" y="14" class="thai-font bold" font-size="13" fill="#1F2937">คัดลอกลิงก์เปิดใน Chrome</text>
+      <text x="38" y="30" class="thai-font" font-size="11.5" fill="#4B5563">คัดลอกลิงก์แอปพลิเคชันไปเปิดใน Chrome</text>
+    </g>
+
+    <!-- Step 2 -->
+    <g transform="translate(25, 205)">
+      <circle cx="15" cy="15" r="13" fill="#10B981" />
+      <text x="15" y="19" text-anchor="middle" class="eng-font bold" font-size="13" fill="#FFFFFF">2</text>
+      <text x="38" y="14" class="thai-font bold" font-size="13" fill="#1F2937">กดสัญลักษณ์ จุด 3 จุด (⋮)</text>
+      <text x="38" y="30" class="thai-font" font-size="11.5" fill="#4B5563">มองที่มุมบนขวาของหน้าจอเบราว์เซอร์</text>
+    </g>
+
+    <!-- Step 3 -->
+    <g transform="translate(25, 270)">
+      <circle cx="15" cy="15" r="13" fill="#10B981" />
+      <text x="15" y="19" text-anchor="middle" class="eng-font bold" font-size="13" fill="#FFFFFF">3</text>
+      <text x="38" y="14" class="thai-font bold" font-size="13" fill="#1F2937">เลือกเมนู "ติดตั้งแอป"</text>
+      <text x="38" y="30" class="thai-font" font-size="11.5" fill="#4B5563">หรือเลือก "เพิ่มลงในหน้าจอหลัก" (Add to Home screen)</text>
+    </g>
+
+    <!-- Step 4 -->
+    <g transform="translate(25, 335)">
+      <circle cx="15" cy="15" r="13" fill="#10B981" />
+      <text x="15" y="19" text-anchor="middle" class="eng-font bold" font-size="13" fill="#FFFFFF">4</text>
+      <text x="38" y="14" class="thai-font bold" font-size="13" fill="#1F2937">กด "ติดตั้ง" เพื่อยืนยันอีกครั้ง</text>
+      <text x="38" y="30" class="thai-font" font-size="11.5" fill="#4B5563">ระบบจะสร้างไอคอนเข้าแอป SOCZ ทันที</text>
+    </g>
+
+    <!-- Phone Mockup Graphic for Android -->
+    <g transform="translate(100, 395)" filter="url(#dialogShadow)">
+      <!-- Phone Frame -->
+      <rect width="150" height="190" rx="16" fill="#1E293B" stroke="#475569" stroke-width="2"/>
+      <rect x="5" y="5" width="140" height="180" rx="12" fill="#F8FAFC"/>
+      
+      <!-- Chrome Address Bar -->
+      <rect x="12" y="15" width="126" height="20" rx="4" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
+      <circle cx="22" cy="25" r="2.5" fill="#10B981" />
+      <text x="32" y="28" class="eng-font semibold" font-size="8.5" fill="#475569">socz.app/login...</text>
+      
+      <!-- Chrome ⋮ Menu Highlight -->
+      <circle cx="128" cy="25" r="1" fill="#475569"/>
+      <circle cx="128" cy="21" r="1" fill="#475569"/>
+      <circle cx="128" cy="29" r="1" fill="#475569"/>
+      <circle cx="128" cy="25" r="7" fill="none" stroke="#F59E0B" stroke-width="1" stroke-dasharray="2,2"/>
+      
+      <!-- Dialog box simulation -->
+      <g transform="translate(12, 60)" filter="url(#dialogShadow)">
+        <rect width="126" height="90" rx="8" fill="#FFFFFF" stroke="#D1FAE5" stroke-width="1"/>
+        <text x="10" y="18" class="thai-font bold" font-size="8.5" fill="#065F46">ติดตั้งแอปพลิเคชัน</text>
+        <text x="10" y="32" class="thai-font" font-size="7.5" fill="#6B7280">คุณต้องการเพิ่ม</text>
+        <text x="10" y="44" class="thai-font bold" font-size="10" fill="#111827">SOCZ</text>
+        <text x="10" y="54" class="thai-font" font-size="7.5" fill="#6B7280">ลงบนหน้าจอหลักหรือไม่?</text>
+        
+        <!-- Button Install -->
+        <rect x="68" y="66" width="48" height="18" rx="4" fill="url(#btnGreen)" filter="url(#glowGreen)"/>
+        <text x="92" y="78" text-anchor="middle" class="thai-font bold" font-size="8" fill="#FFFFFF">ติดตั้ง</text>
+        <text x="35" y="78" text-anchor="middle" class="thai-font" font-size="8" fill="#9CA3AF">ยกเลิก</text>
+      </g>
+    </g>
+    </g>
+  </g>
+
+
+  <!-- ════════════════ COLUMN 2: iOS / IPADOS (MIDDLE) ════════════════ -->
+  <g transform="translate(425, 220)">
+    <g class="hover-scale">
+      <!-- Card Base -->
+    <rect width="350" height="610" rx="24" fill="#FFFFFF" filter="url(#cardShadow)"/>
+    
+    <!-- Header Badge -->
+    <rect width="350" height="70" rx="24" fill="url(#iosHeader)"/>
+    <rect y="46" width="350" height="24" fill="url(#iosHeader)"/> <!-- square corner fix -->
+    
+    <!-- Header Content -->
+    <g transform="translate(25, 22)">
+      <!-- iOS Apple Icon SVG -->
+      <g fill="#FFFFFF" transform="translate(0, 0) scale(0.9)">
+        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 4.17c.66-.81 1.11-1.93.99-3.06-.96.04-2.13.64-2.82 1.45-.6.7-1.13 1.84-.99 2.94.1.08.21.12.32.12.87 0 1.96-.59 2.5-1.45"/>
+      </g>
+      <text x="35" y="20" class="thai-font bold" font-size="18" fill="#FFFFFF">ระบบ iOS / iPadOS</text>
+      <text x="35" y="38" class="thai-font" font-size="11.5" fill="#A7F3D0">(มือถือ &amp; แท็บเล็ต iPhone, iPad)</text>
+    </g>
+
+    <!-- Browser Recommended Bar -->
+    <g transform="translate(20, 85)">
+      <rect width="310" height="34" rx="8" fill="#ECFDF5" stroke="#10B981" stroke-width="1"/>
+      <g transform="translate(10, 7) scale(0.65)">
+        <!-- Safari Compass Icon -->
+        <circle cx="16" cy="16" r="14" fill="#10B981"/>
+        <circle cx="16" cy="16" r="12" fill="none" stroke="#FFF" stroke-width="1" stroke-dasharray="2,2"/>
+        <polygon points="11,21 21,11 18,18" fill="#EF4444"/>
+        <polygon points="11,21 21,11 14,14" fill="#FFF"/>
+      </g>
+      <text x="36" y="21" class="thai-font bold" font-size="11.5" fill="#047857">แนะนำให้ใช้เบราว์เซอร์ Safari เท่านั้น</text>
+    </g>
+
+    <!-- Step 1 -->
+    <g transform="translate(25, 140)">
+      <circle cx="15" cy="15" r="13" fill="#10B981" />
+      <text x="15" y="19" text-anchor="middle" class="eng-font bold" font-size="13" fill="#FFFFFF">1</text>
+      <text x="38" y="14" class="thai-font bold" font-size="13" fill="#1F2937">คัดลอกลิงก์เปิดใน Safari</text>
+      <text x="38" y="30" class="thai-font" font-size="11.5" fill="#4B5563">นำลิงก์แอปพลิเคชันไปเปิดในแอป Safari</text>
+    </g>
+
+    <!-- Step 2 -->
+    <g transform="translate(25, 205)">
+      <circle cx="15" cy="15" r="13" fill="#10B981" />
+      <text x="15" y="19" text-anchor="middle" class="eng-font bold" font-size="13" fill="#FFFFFF">2</text>
+      <text x="38" y="14" class="thai-font bold" font-size="13" fill="#1F2937">กดปุ่ม "แชร์" (Share) (📤)</text>
+      <text x="38" y="30" class="thai-font" font-size="11.5" fill="#4B5563">ปุ่มสี่เหลี่ยมที่มีลูกศรชี้ขึ้นตรงขอบล่างจอ</text>
+    </g>
+
+    <!-- Step 3 -->
+    <g transform="translate(25, 270)">
+      <circle cx="15" cy="15" r="13" fill="#10B981" />
+      <text x="15" y="19" text-anchor="middle" class="eng-font bold" font-size="13" fill="#FFFFFF">3</text>
+      <text x="38" y="14" class="thai-font bold" font-size="13" fill="#1F2937">เลือก "เพิ่มลงในหน้าจอหลัก"</text>
+      <text x="38" y="30" class="thai-font" font-size="11.5" fill="#4B5563">เลื่อนหน้าจอลงแล้วเลือก Add to Home Screen</text>
+    </g>
+
+    <!-- Step 4 -->
+    <g transform="translate(25, 335)">
+      <circle cx="15" cy="15" r="13" fill="#10B981" />
+      <text x="15" y="19" text-anchor="middle" class="eng-font bold" font-size="13" fill="#FFFFFF">4</text>
+      <text x="38" y="14" class="thai-font bold" font-size="13" fill="#1F2937">กดปุ่ม "เพิ่ม" (Add) มุมขวาบน</text>
+      <text x="38" y="30" class="thai-font" font-size="11.5" fill="#4B5563">ไอคอนแอปจะไปแสดงอยู่บนหน้าจอพร้อมใช้งาน</text>
+    </g>
+
+    <!-- Phone Mockup Graphic for iOS -->
+    <g transform="translate(100, 395)" filter="url(#dialogShadow)">
+      <!-- Phone Frame -->
+      <rect width="150" height="190" rx="16" fill="#1E293B" stroke="#475569" stroke-width="2"/>
+      <rect x="5" y="5" width="140" height="180" rx="12" fill="#F8FAFC"/>
+      
+      <!-- Bottom Safari Bar -->
+      <rect x="5" y="150" width="140" height="30" fill="#E2E8F0" opacity="0.9"/>
+      <g transform="translate(70, 160) scale(1.1)">
+        <!-- Share button -->
+        <rect x="-5" y="-2" width="10" height="10" rx="1.5" fill="none" stroke="#10B981" stroke-width="1.2"/>
+        <path d="M0,-6 L0,3 M-3,-3 L0,-6 L3,-3" fill="none" stroke="#10B981" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="0" cy="1" r="7" fill="none" stroke="#F59E0B" stroke-width="1" stroke-dasharray="2,2"/>
+      </g>
+      
+      <!-- Dialog menu simulation -->
+      <g transform="translate(12, 45)" filter="url(#dialogShadow)">
+        <rect width="126" height="92" rx="8" fill="#FFFFFF" stroke="#D1FAE5" stroke-width="1"/>
+        <text x="10" y="16" class="thai-font bold" font-size="8" fill="#065F46">เพิ่มลงในหน้าจอหลัก</text>
+        <line x1="8" y1="22" x2="118" y2="22" stroke="#E5E7EB" stroke-width="0.8"/>
+        
+        <!-- App Icon -->
+        <rect x="8" y="28" width="18" height="18" rx="4" fill="#10B981"/>
+        <!-- SOCZ text representation -->
+        <text x="17" y="39" text-anchor="middle" class="eng-font bold" font-size="8" fill="#FFFFFF">S</text>
+        
+        <text x="32" y="36" class="thai-font bold" font-size="9" fill="#111827">SOCZ</text>
+        <text x="32" y="44" class="eng-font" font-size="6" fill="#6B7280">https://socz.app</text>
+        
+        <text x="10" y="60" class="thai-font" font-size="6.5" fill="#4B5563">ไอคอนจะถูกติดตั้งบนหน้าจอโฮมพร้อมใช้งานทันที</text>
+        
+        <!-- Button Add -->
+        <rect x="74" y="68" width="44" height="18" rx="4" fill="url(#btnGreen)" filter="url(#glowGreen)"/>
+        <text x="96" y="80" text-anchor="middle" class="thai-font bold" font-size="8" fill="#FFFFFF">เพิ่ม</text>
+        <text x="45" y="80" text-anchor="middle" class="thai-font" font-size="8" fill="#9CA3AF">ยกเลิก</text>
+      </g>
+    </g>
+    </g>
+  </g>
+
+
+  <!-- ════════════════ COLUMN 3: COMPUTER (RIGHT) ════════════════ -->
+  <g transform="translate(800, 220)">
+    <g class="hover-scale">
+      <!-- Card Base -->
+    <rect width="350" height="610" rx="24" fill="#FFFFFF" filter="url(#cardShadow)"/>
+    
+    <!-- Header Badge -->
+    <rect width="350" height="70" rx="24" fill="url(#desktopHeader)"/>
+    <rect y="46" width="350" height="24" fill="url(#desktopHeader)"/> <!-- square corner fix -->
+    
+    <!-- Header Content -->
+    <g transform="translate(25, 22)">
+      <!-- Desktop Icon SVG -->
+      <g fill="#FFFFFF" transform="translate(0, 2) scale(0.85)">
+        <path d="M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"/>
+      </g>
+      <text x="35" y="20" class="thai-font bold" font-size="18" fill="#FFFFFF">คอมพิวเตอร์ / โน้ตบุ๊ก</text>
+      <text x="35" y="38" class="thai-font" font-size="11.5" fill="#94A3B8">(PC, Desktop &amp; Laptop Windows / Mac)</text>
+    </g>
+
+    <!-- Browser Recommended Bar -->
+    <g transform="translate(20, 85)">
+      <rect width="310" height="34" rx="8" fill="#F1F5F9" stroke="#64748B" stroke-width="1"/>
+      <g transform="translate(10, 7) scale(0.65)">
+        <!-- Chrome and Edge dual mini icon -->
+        <circle cx="10" cy="10" r="10" fill="#3B82F6"/>
+        <circle cx="22" cy="10" r="10" fill="#10B981"/>
+      </g>
+      <text x="36" y="21" class="thai-font bold" font-size="11.5" fill="#334155">ใช้ Google Chrome หรือ Microsoft Edge</text>
+    </g>
+
+    <!-- Step 1 -->
+    <g transform="translate(25, 140)">
+      <circle cx="15" cy="15" r="13" fill="#475569" />
+      <text x="15" y="19" text-anchor="middle" class="eng-font bold" font-size="13" fill="#FFFFFF">1</text>
+      <text x="38" y="14" class="thai-font bold" font-size="13" fill="#1F2937">เปิดลิงก์บนคอมพิวเตอร์</text>
+      <text x="38" y="30" class="thai-font" font-size="11.5" fill="#4B5563">เปิดลิงก์แอปพลิเคชันระบบบนเบราว์เซอร์</text>
+    </g>
+
+    <!-- Step 2 -->
+    <g transform="translate(25, 205)">
+      <circle cx="15" cy="15" r="13" fill="#475569" />
+      <text x="15" y="19" text-anchor="middle" class="eng-font bold" font-size="13" fill="#FFFFFF">2</text>
+      <text x="38" y="14" class="thai-font bold" font-size="13" fill="#1F2937">หาไอคอนคอมพิวเตอร์พร้อมลูกศร</text>
+      <text x="38" y="30" class="thai-font" font-size="11.5" fill="#4B5563">มองที่ช่องกรอกเว็บ (Address Bar) ด้านบนขวา</text>
+    </g>
+
+    <!-- Step 3 -->
+    <g transform="translate(25, 270)">
+      <circle cx="15" cy="15" r="13" fill="#475569" />
+      <text x="15" y="19" text-anchor="middle" class="eng-font bold" font-size="13" fill="#FFFFFF">3</text>
+      <text x="38" y="14" class="thai-font bold" font-size="13" fill="#1F2937">คลิกเลือก "ติดตั้ง SOCZ"</text>
+      <text x="38" y="30" class="thai-font" font-size="11.5" fill="#4B5563">เลือกเมนู Install SOCZ หรือกด จุด 3 จุดเพื่อหาเมนู</text>
+    </g>
+
+    <!-- Step 4 -->
+    <g transform="translate(25, 335)">
+      <circle cx="15" cy="15" r="13" fill="#475569" />
+      <text x="15" y="19" text-anchor="middle" class="eng-font bold" font-size="13" fill="#FFFFFF">4</text>
+      <text x="38" y="14" class="thai-font bold" font-size="13" fill="#1F2937">เปิดใช้งานผ่าน Desktop</text>
+      <text x="38" y="30" class="thai-font" font-size="11.5" fill="#4B5563">ระบบจะสร้าง Shortcut บน Desktop เข้าถึงสะดวกรวดเร็ว</text>
+    </g>
+
+    <!-- Laptop/Desktop Mockup Graphic -->
+    <g transform="translate(70, 395)" filter="url(#dialogShadow)">
+      <!-- Desktop Screen frame -->
+      <rect width="210" height="135" rx="8" fill="#1E293B" stroke="#475569" stroke-width="2"/>
+      <rect x="5" y="5" width="200" height="125" rx="6" fill="#F8FAFC"/>
+      
+      <!-- Screen Stand -->
+      <path d="M95,140 L115,140 L120,165 L90,165 Z" fill="#475569"/>
+      <rect x="75" y="165" width="60" height="5" rx="2" fill="#334155"/>
+      
+      <!-- Address Bar Mockup -->
+      <rect x="12" y="12" width="186" height="16" rx="4" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
+      <text x="18" y="23" class="eng-font semibold" font-size="7.5" fill="#9CA3AF">https://socz.app</text>
+      
+      <!-- Install Icon highlight inside Address Bar -->
+      <g transform="translate(170, 14) scale(0.6)">
+        <rect x="0" y="0" width="12" height="10" rx="1.5" fill="none" stroke="#10B981" stroke-width="1.2"/>
+        <path d="M2,12 L10,12" stroke="#10B981" stroke-width="1.2"/>
+        <path d="M6,2 L6,8 M4,6 L6,8 L8,6" fill="none" stroke="#10B981" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>
+        <circle cx="6" cy="6" r="6" fill="none" stroke="#F59E0B" stroke-width="1" stroke-dasharray="2,2"/>
+      </g>
+      
+      <!-- Pop-up dialog for install -->
+      <g transform="translate(45, 32)" filter="url(#dialogShadow)">
+        <rect width="130" height="70" rx="6" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1"/>
+        <text x="10" y="15" class="thai-font bold" font-size="8" fill="#111827">ติดตั้งแอปพลิเคชัน?</text>
+        <text x="10" y="27" class="thai-font" font-size="7" fill="#6B7280">ติดตั้ง SOCZ</text>
+        
+        <rect x="10" y="38" width="22" height="22" rx="4" fill="#10B981"/>
+        <!-- SOCZ App icon in dialog -->
+        <text x="21" y="52" text-anchor="middle" class="eng-font bold" font-size="10" fill="#FFFFFF">S</text>
+        
+        <!-- Button Actions -->
+        <rect x="74" y="44" width="46" height="18" rx="4" fill="url(#btnGreen)" filter="url(#glowGreen)"/>
+        <text x="97" y="56" text-anchor="middle" class="thai-font bold" font-size="8" fill="#FFFFFF">ติดตั้ง</text>
+        <text x="54" y="56" text-anchor="middle" class="thai-font" font-size="8" fill="#9CA3AF">ไม่ใช่</text>
+      </g>
+    </g>
+    </g>
+  </g>
+
+  <!-- ════════════════ FOOTER / NOTES ════════════════ -->
+  <g transform="translate(600, 860)" text-anchor="middle">
+    <rect x="-350" y="-20" width="700" height="30" rx="15" fill="#ECFDF5" stroke="#A7F3D0" stroke-width="1"/>
+    <text y="0" class="thai-font bold" font-size="12" fill="#047857">💡 สะดวก ปลอดภัย ไม่เปลืองพื้นที่เครื่อง โหลดข้อมูลรวดเร็ว พร้อมอัปเดตอัตโนมัติ!</text>
+  </g>
+</svg>

@@ -45,9 +45,35 @@ interface TruckMarker {
 }
 
 export default function OverviewPage() {
+  const [apiKey, setApiKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/config')
+      .then(res => res.json())
+      .then(data => setApiKey(data.googleMapsApiKey || ''))
+      .catch(() => setApiKey(''));
+  }, []);
+
+  if (apiKey === null) {
+    return (
+      <SidebarLayout>
+        <div className="h-[600px] flex items-center justify-center text-slate-400 flex-col gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center">
+            <Loader2 className="w-6 h-6 text-emerald-500 animate-spin" />
+          </div>
+          <p className="font-bold text-sm uppercase tracking-widest">Calibrating Satellite Feed...</p>
+        </div>
+      </SidebarLayout>
+    );
+  }
+
+  return <OverviewContent googleMapsApiKey={apiKey} />;
+}
+
+function OverviewContent({ googleMapsApiKey }: { googleMapsApiKey: string }) {
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    googleMapsApiKey: googleMapsApiKey,
     libraries: ['places'],
   });
 

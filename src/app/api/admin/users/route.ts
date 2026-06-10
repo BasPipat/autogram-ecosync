@@ -20,7 +20,14 @@ export async function GET(req: NextRequest) {
     if (isInternalRole(token.role)) {
       // owner: ดูได้ทุกคน
       query = {};
-    } else if (token.companyId) {
+    } else if (token.role === 'corp_admin' || token.role === 'coordinator') {
+      // ลูกค้า: กรองตาม companyName ของตัวเอง
+      if (token.companyName) {
+        query = { companyName: token.companyName };
+      } else {
+        query = { email: token.email };
+      }
+    } else if (token.companyId && ObjectId.isValid(token.companyId)) {
       // มี companyId: กรองตาม company
       query = { companyId: new ObjectId(token.companyId) };
     } else if (token.companyName) {
@@ -33,7 +40,8 @@ export async function GET(req: NextRequest) {
 
     const users = await User.find(query).select('-password').sort({ createdAt: -1 });
     return NextResponse.json(users);
-  } catch {
+  } catch (error: any) {
+    console.error("GET users API error:", error);
     return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
   }
 }
@@ -44,7 +52,7 @@ export async function POST(req: NextRequest) {
     const token = await getSessionToken(req);
     if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const canCreate = token.role === 'system_owner' || token.role === 'owner' || token.role === 'admin';
+    const canCreate = token.role === 'system_owner' || token.role === 'owner' || token.role === 'admin' || token.role === 'corp_admin';
     if (!canCreate) return NextResponse.json({ error: 'ไม่มีสิทธิ์เพิ่มสมาชิก' }, { status: 403 });
 
     const { name, email, password, role, companyName } = await req.json();
@@ -57,12 +65,28 @@ export async function POST(req: NextRequest) {
     if (existing) return NextResponse.json({ error: 'อีเมลนี้ถูกใช้งานแล้ว' }, { status: 400 });
 
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    let targetRole = role || 'coordinator';
+    let targetCompanyName = companyName;
+
+    if (token.role === 'corp_admin') {
+      if (!['corp_admin', 'coordinator'].includes(targetRole)) {
+        targetRole = 'coordinator';
+      }
+      targetCompanyName = token.companyName;
+    } else {
+      if (!targetCompanyName && token.role !== 'owner' && token.role !== 'system_owner') {
+        targetCompanyName = token.companyName;
+      }
+    }
+
     const newUser = await User.create({
       name,
       email,
       password: hashedPassword,
-      role: role || 'coordinator',
-      companyName: companyName || (token.role !== 'owner' ? token.companyName : undefined),
+      role: targetRole,
+      companyName: targetCompanyName,
+      companyId: token.role === 'corp_admin' ? null : (token.companyId && ObjectId.isValid(token.companyId) ? new ObjectId(token.companyId) : undefined),
     });
 
     return NextResponse.json({ message: 'เพิ่มสมาชิกสำเร็จ', user: { _id: newUser._id, name, email, role: newUser.role } }, { status: 201 });
@@ -84,10 +108,20 @@ export async function PUT(req: NextRequest) {
 
     const updateData: Record<string, string> = {};
     if (username !== undefined) updateData.username = username;
+    
     const targetRole = newRole || role;
-    if (targetRole) updateData.role = targetRole;
+    if (targetRole) {
+      if (token.role === 'corp_admin') {
+        if (['corp_admin', 'coordinator'].includes(targetRole)) {
+          updateData.role = targetRole;
+        }
+      } else {
+        updateData.role = targetRole;
+      }
+    }
+
     if (name !== undefined) updateData.name = name;
-    if (companyName !== undefined) updateData.companyName = companyName;
+    if (companyName !== undefined && token.role !== 'corp_admin') updateData.companyName = companyName;
     if (phone !== undefined) updateData.phone = phone;
     
     if (password && password.trim() !== "") {
@@ -95,9 +129,23 @@ export async function PUT(req: NextRequest) {
       updateData.password = hashedPassword;
     }
 
-    const scope = isInternalRole(token.role)
-      ? { _id: userId }
-      : { _id: userId, companyId: new ObjectId(token.companyId) };
+    const scope: any = {};
+    if (isInternalRole(token.role)) {
+      scope._id = userId;
+    } else if (token.role === 'corp_admin') {
+      if (token.companyName) {
+        scope._id = userId;
+        scope.companyName = token.companyName;
+      } else {
+        return NextResponse.json({ error: 'ไม่มีสิทธิ์แก้ไขผู้ใช้' }, { status: 403 });
+      }
+    } else {
+      scope._id = userId;
+      if (token.companyId && ObjectId.isValid(token.companyId)) {
+        scope.companyId = new ObjectId(token.companyId);
+      }
+    }
+
     const updatedUser = await User.findOneAndUpdate(scope, updateData, { new: true }).select('-password');
     if (!updatedUser) {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์แก้ไขผู้ใช้ข้ามบริษัท' }, { status: 403 });
@@ -127,9 +175,24 @@ export async function DELETE(req: NextRequest) {
     }
 
     await connectToDatabase();
-    const scope = isInternalRole(token.role)
-      ? { _id: userId }
-      : { _id: userId, companyId: new ObjectId(token.companyId) };
+    
+    const scope: any = {};
+    if (isInternalRole(token.role)) {
+      scope._id = userId;
+    } else if (token.role === 'corp_admin') {
+      if (token.companyName) {
+        scope._id = userId;
+        scope.companyName = token.companyName;
+      } else {
+        return NextResponse.json({ error: 'ไม่มีสิทธิ์ลบผู้ใช้' }, { status: 403 });
+      }
+    } else {
+      scope._id = userId;
+      if (token.companyId && ObjectId.isValid(token.companyId)) {
+        scope.companyId = new ObjectId(token.companyId);
+      }
+    }
+
     const deleted = await User.findOneAndDelete(scope);
     if (!deleted) {
       return NextResponse.json({ error: 'ไม่พบผู้ใช้งานที่เลือกหรือไม่มีสิทธิ์ลบ' }, { status: 404 });

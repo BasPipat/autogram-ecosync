@@ -145,7 +145,7 @@ function ProfileContent() {
 
       {/* Version Tag */}
       <p className="text-center text-[10px] text-slate-300 mt-10 font-bold uppercase tracking-widest">
-        Autogram Eco-Sync v1.1.0
+        SHIF v1.1.0
       </p>
     </div>
   );

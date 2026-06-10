@@ -2,17 +2,19 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Menu, X, LayoutDashboard, Truck, Leaf, FileBarChart,
-  Settings, Users, LogOut, ChevronRight, Calculator, Search, Navigation
+  Settings, Users, LogOut, ChevronRight, Calculator, Search, Navigation, DollarSign
 } from 'lucide-react';
+import ShifLogo from '@/components/ShifLogo';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/driver/jobs', label: 'Load Board', icon: Search, role: 'system_owner' },
   { href: '/admin/trips', label: 'Trip Management', icon: Truck },
-  { href: '/admin/active-trips', label: 'Live Tracker', icon: Navigation },
+  { href: '/admin/active-trips', label: 'Live Tracker', icon: Navigation, role: 'system_owner' },
+  { href: '/admin/billing', label: 'Billing & Payments', icon: DollarSign, alertKey: 'billing' },
   { href: '/report-center', label: 'Carbon Intelligence', icon: Leaf },
   { href: '/system-owner/modeling', label: 'Financial Modeling', icon: Calculator, role: 'system_owner' },
   { href: '/master-settings', label: 'Master Settings', icon: Settings },
@@ -23,6 +25,22 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const pathname = usePathname();
   const { data: session } = useSession();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [paymentAlerts, setPaymentAlerts] = useState({ driverPayouts: 0, pendingSlips: 0, total: 0 });
+
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      try {
+        const res = await fetch('/api/admin/payment-alerts');
+        if (res.ok) {
+          const data = await res.json();
+          setPaymentAlerts(data);
+        }
+      } catch { /* silent */ }
+    };
+    fetchAlerts();
+    const interval = setInterval(fetchAlerts, 60000); // refresh every 60s
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/' });
@@ -30,8 +48,13 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
 
   const isActive = (href: string) => pathname === href;
 
+  const getBadgeCount = (alertKey?: string) => {
+    if (alertKey === 'billing') return paymentAlerts.total;
+    return 0;
+  };
+
   return (
-    <div className="flex min-h-screen" style={{ background: 'var(--bg-base)' }}>
+    <div className="flex min-h-screen overflow-x-hidden" style={{ background: 'var(--bg-base)' }}>
       {/* ─── Desktop Sidebar ─── */}
       <aside
         className="hidden md:flex w-[260px] flex-col fixed h-full z-30 border-r"
@@ -43,33 +66,23 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         }}
       >
         {/* Logo */}
-        <div className="px-6 py-6" style={{ borderBottom: '1px solid var(--border-light)' }}>
-          <div className="flex items-center gap-3">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center"
-              style={{
-                background: 'linear-gradient(135deg, #10B981, #059669)',
-                boxShadow: '0 4px 12px rgba(16,185,129,0.25)',
-              }}
-            >
-              <Leaf className="text-white" size={18} />
-            </div>
-            <div>
-              <h1 className="text-[15px] font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-                Autogram
-              </h1>
-              <p className="text-[11px] font-medium -mt-0.5" style={{ color: 'var(--accent)' }}>
-                eco-sync
-              </p>
-            </div>
-          </div>
+        <div className="px-6 py-5 flex items-center justify-start" style={{ borderBottom: '1px solid var(--border-light)' }}>
+          <Link href="/dashboard" className="flex items-center">
+            <ShifLogo showTagline={false} variant="color" size="md" />
+          </Link>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV_ITEMS.filter(item => !item.role || session?.user?.role === item.role).map((item) => {
+          {NAV_ITEMS.filter(item => {
+            if (item.role && session?.user?.role !== item.role) return false;
+            if (item.href === '/master-settings' && !['system_owner', 'owner', 'admin', 'operator', 'corp_admin'].includes(session?.user?.role || '')) return false;
+            if (item.href === '/users' && !['system_owner', 'owner', 'admin', 'operator', 'corp_admin'].includes(session?.user?.role || '')) return false;
+            return true;
+          }).map((item) => {
             const active = isActive(item.href);
             const Icon = item.icon;
+            const badge = getBadgeCount(item.alertKey);
             return (
               <Link
                 key={item.href}
@@ -96,7 +109,12 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
               >
                 <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
                 <span className="flex-1">{item.label}</span>
-                {active && (
+                {badge > 0 && (
+                  <span className="min-w-[20px] h-5 px-1 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center animate-pulse">
+                    {badge > 99 ? '99+' : badge}
+                  </span>
+                )}
+                {active && badge === 0 && (
                   <ChevronRight size={14} style={{ opacity: 0.5 }} />
                 )}
               </Link>
@@ -150,18 +168,9 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             }}
           >
             <div className="px-6 py-5 flex justify-between items-center" style={{ borderBottom: '1px solid var(--border-light)' }}>
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}
-                >
-                  <Leaf className="text-white" size={16} />
-                </div>
-                <div>
-                  <h1 className="text-[15px] font-bold" style={{ color: 'var(--text-primary)' }}>Autogram</h1>
-                  <p className="text-[11px] font-medium -mt-0.5" style={{ color: 'var(--accent)' }}>eco-sync</p>
-                </div>
-              </div>
+              <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center">
+                <ShifLogo showTagline={false} variant="color" size="md" />
+              </Link>
               <button
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="p-1.5 rounded-lg"
@@ -172,9 +181,15 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             </div>
 
             <nav className="flex-1 px-3 py-4 space-y-1">
-              {NAV_ITEMS.filter(item => !item.role || session?.user?.role === item.role).map((item) => {
+              {NAV_ITEMS.filter(item => {
+                if (item.role && session?.user?.role !== item.role) return false;
+                if (item.href === '/master-settings' && !['system_owner', 'owner', 'admin', 'operator', 'corp_admin'].includes(session?.user?.role || '')) return false;
+                if (item.href === '/users' && !['system_owner', 'owner', 'admin', 'operator', 'corp_admin'].includes(session?.user?.role || '')) return false;
+                return true;
+              }).map((item) => {
                 const active = isActive(item.href);
                 const Icon = item.icon;
+                const badge = getBadgeCount(item.alertKey);
                 return (
                   <Link
                     key={item.href}
@@ -189,7 +204,12 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
                     }}
                   >
                     <Icon size={18} />
-                    <span>{item.label}</span>
+                    <span className="flex-1">{item.label}</span>
+                    {badge > 0 && (
+                      <span className="min-w-[20px] h-5 px-1 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center">
+                        {badge > 99 ? '99+' : badge}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
@@ -213,7 +233,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
       )}
 
       {/* ─── Main Content ─── */}
-      <main className="flex-1 md:ml-[260px] pb-20 md:pb-0">
+      <main className="flex-1 min-w-0 w-full overflow-x-hidden md:ml-[260px] pb-20 md:pb-0">
         {/* Mobile Header */}
         <div
           className="md:hidden flex items-center justify-between px-4 py-3"
@@ -232,18 +252,20 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
           >
             <Menu size={22} />
           </button>
-          <div className="flex items-center gap-2">
-            <div
-              className="w-6 h-6 rounded-md flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}
-            >
-              <Leaf className="text-white" size={12} />
-            </div>
-            <span className="text-[14px] font-bold" style={{ color: 'var(--text-primary)' }}>
-              Autogram
-            </span>
+          <div className="flex items-center justify-center">
+            <ShifLogo showTagline={false} variant="color" size="md" />
           </div>
-          <div className="w-6" />
+          {/* Billing alert dot for mobile header */}
+          {paymentAlerts.total > 0 ? (
+            <Link href="/admin/billing" className="relative">
+              <DollarSign size={22} style={{ color: 'var(--text-secondary)' }} />
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-black flex items-center justify-center">
+                {paymentAlerts.total > 9 ? '9+' : paymentAlerts.total}
+              </span>
+            </Link>
+          ) : (
+            <div className="w-6" />
+          )}
         </div>
 
         {children}
@@ -265,7 +287,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             ...(session?.user?.role === 'system_owner' ? [{ href: '/driver/jobs', icon: Search, label: 'Loads' }] : []),
             { href: '/admin/trips', icon: Truck, label: 'Trips' },
             { href: '/report-center', icon: Leaf, label: 'Carbon' },
-            { href: '/master-settings', icon: Settings, label: 'Settings' },
+            ...(['system_owner', 'owner', 'admin', 'operator', 'corp_admin'].includes(session?.user?.role || '') ? [{ href: '/master-settings', icon: Settings, label: 'Settings' }] : []),
           ].map((item) => {
             const active = isActive(item.href);
             const Icon = item.icon;

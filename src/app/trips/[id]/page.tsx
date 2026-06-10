@@ -147,6 +147,9 @@ function shortCoordinate(pin?: Pin | null) {
 }
 
 function statusIndex(status: string) {
+  if (['payment_requested', 'paid'].includes(status)) {
+    return 5;
+  }
   const index = timeline.findIndex(step => step.key === status);
   return index >= 0 ? index : 0;
 }
@@ -182,11 +185,16 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
   const [isBottomSheetExpanded, setIsBottomSheetExpanded] = useState(false);
   const [localPin, setLocalPin] = useState<Pin | null>(null);
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
+  const [mainRouteDirections, setMainRouteDirections] = useState<google.maps.DirectionsResult | null>(null);
   const [isAutoTracking, setIsAutoTracking] = useState(true);
   const [userZoom, setUserZoom] = useState(16);
   const routeTargetRef = useRef<string | null>(null);
+  const mainRouteRef = useRef<string | null>(null);
   const lastVoiceRef = useRef<string | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
+  const hasInitiallyCentered = useRef<Record<string, boolean>>({});
+  const activeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const lastSpokenStatusRef = useRef<string | null>(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
@@ -320,6 +328,15 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     // Start passive tracking for drivers who are authorized
     if (loading || !trip || trip.access.role !== 'driver') return;
 
+    // Do not run passive tracking if the trip is already delivered / completed / paid
+    const inactiveStatuses = ['delivered', 'documents_submitted', 'payment_requested', 'completed', 'paid'];
+    if (
+      inactiveStatuses.includes(trip.lineAssignmentStatus || '') ||
+      inactiveStatuses.includes(trip.opsStatus || '')
+    ) {
+      return;
+    }
+
     let watchId: number | null = null;
     if (navigator.geolocation) {
       watchId = navigator.geolocation.watchPosition(
@@ -366,7 +383,10 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
       if (!res.ok) throw new Error(data.error || 'อัปเดตสถานะไม่สำเร็จ');
       setTrip(data.trip);
       if (action === 'start_to_pickup') startTracking();
-      if (action === 'request_pod') setNotice('ระบบตั้งค่าให้ส่ง POD ผ่าน LINE แล้ว พี่ส่งรูปหลักฐานในแชทนี้ได้เลย');
+      if (action === 'request_pod') {
+        setNotice('ระบบตั้งค่าให้ส่ง POD ผ่าน LINE แล้ว พี่ส่งรูปหลักฐานในแชทนี้ได้เลย');
+        window.location.href = 'line://oaMessage/@782wnmvm/';
+      }
       if (action === 'submit_pod_url') {
         setNotice('บันทึก POD แล้ว');
         setPodUrl('');
@@ -391,14 +411,39 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
   };
 
   const speak = useCallback((text: string) => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
-    // Cancel any ongoing speech
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'th-TH';
-    utterance.rate = 0.9;
-    window.speechSynthesis.speak(utterance);
+    if (typeof window === 'undefined') return;
     lastVoiceRef.current = text;
+
+    try {
+      // Stop currently playing audio if any
+      if (activeAudioRef.current) {
+        activeAudioRef.current.pause();
+        activeAudioRef.current = null;
+      }
+
+      // 1. Try playing high-quality Thai TTS using our backend proxy (bypasses all browser referrer restrictions)
+      const url = `/api/tts?text=${encodeURIComponent(text)}`;
+      const audio = new Audio(url);
+      activeAudioRef.current = audio;
+      
+      audio.play().catch((audioErr) => {
+        console.warn('Backend Audio play failed, falling back to Web Speech API:', audioErr);
+        
+        // 2. Fallback to Web Speech API if Audio play is blocked by user interaction requirements
+        if (window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = 'th-TH';
+          utterance.rate = 0.95;
+          const voices = window.speechSynthesis.getVoices();
+          const thaiVoice = voices.find(v => v.lang === 'th-TH' || v.lang.startsWith('th') || v.lang.includes('TH'));
+          if (thaiVoice) utterance.voice = thaiVoice;
+          window.speechSynthesis.speak(utterance);
+        }
+      });
+    } catch (err) {
+      console.error('Speech synthesis error:', err);
+    }
   }, []);
 
   const repeatGuidance = useCallback(() => {
@@ -411,16 +456,6 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     }
   }, [directions, speak]);
 
-  const openExternalNavigation = useCallback(() => {
-    const step = statusIndex(trip?.opsStatus || '');
-    let target = null;
-    if (step <= 2) target = trip?.originPin;
-    else if (step >= 3) target = trip?.destinationPin;
-
-    if (!target) return;
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${target.lat},${target.lng}&travelmode=driving`;
-    window.open(url, '_blank');
-  }, [trip]);
 
   const bindDriver = async (selectedLineUserId: string) => {
     setActionLoading('binding_driver');
@@ -472,6 +507,8 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     
     const step = statusIndex(trip?.opsStatus || '');
     const currentLoc = currentPin || localPin;
+
+    // Only calculate active navigation route if driver has GPS position
     if (!currentLoc) return;
 
     let targetLoc: Pin | null | undefined = null;
@@ -491,8 +528,10 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
       return;
     }
 
-    // Only calculate if target changes
-    if (routeTargetRef.current === targetId) return;
+    // Recalculate when driver moves significantly (every 500m) or target changes
+    const locKey = `${Math.round(currentLoc.lat * 200) / 200},${Math.round(currentLoc.lng * 200) / 200}`;
+    const newKey = `${targetId}:${locKey}`;
+    if (routeTargetRef.current === newKey) return;
 
     const directionsService = new maps.DirectionsService();
     directionsService.route(
@@ -504,13 +543,41 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
       (result, status) => {
         if (status === maps.DirectionsStatus.OK && result) {
           setDirections(result);
-          routeTargetRef.current = targetId;
+          routeTargetRef.current = newKey;
         } else {
           console.error(`Error fetching directions: ${status}`);
         }
       }
     );
   }, [isLoaded, maps, trip?.opsStatus, trip?.originPin, trip?.destinationPin, currentPin, localPin]);
+
+  // Fetch main trip route directions (Origin -> Destination)
+  useEffect(() => {
+    if (!isLoaded || !maps || !trip?.originPin || !trip?.destinationPin) return;
+
+    const originKey = `${trip.originPin.lat},${trip.originPin.lng}`;
+    const destKey = `${trip.destinationPin.lat},${trip.destinationPin.lng}`;
+    const cacheKey = `${originKey}->${destKey}`;
+    
+    if (mainRouteRef.current === cacheKey) return;
+
+    const directionsService = new maps.DirectionsService();
+    directionsService.route(
+      {
+        origin: { lat: trip.originPin.lat, lng: trip.originPin.lng },
+        destination: { lat: trip.destinationPin.lat, lng: trip.destinationPin.lng },
+        travelMode: maps.TravelMode.DRIVING,
+      },
+      (result, status) => {
+        if (status === maps.DirectionsStatus.OK && result) {
+          setMainRouteDirections(result);
+          mainRouteRef.current = cacheKey;
+        } else {
+          console.error(`Error fetching main route directions: ${status}`);
+        }
+      }
+    );
+  }, [isLoaded, maps, trip?.originPin, trip?.destinationPin]);
 
   const panToPoint = useCallback((pin?: Pin | null) => {
     console.log('Panning to:', pin);
@@ -520,45 +587,103 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
     setIsBottomSheetExpanded(false);
   }, [mapInstance]);
 
-  useEffect(() => {
-    if (!mapInstance || !maps) return;
+  const startInSystemNavigation = useCallback(() => {
+    setIsAutoTracking(true);
+    setIsBottomSheetExpanded(false);
 
-    const isAdmin = trip?.access.role === 'admin';
-
-    if (isAdmin) {
-      // Admin View: Always show the full overview (A + B + driver) via fitBounds
-      const bounds = new maps.LatLngBounds();
-      let hasPoints = false;
-
-      if (trip?.originPin) {
-        bounds.extend({ lat: trip.originPin.lat, lng: trip.originPin.lng });
-        hasPoints = true;
-      }
-      if (trip?.destinationPin) {
-        bounds.extend({ lat: trip.destinationPin.lat, lng: trip.destinationPin.lng });
-        hasPoints = true;
-      }
-      const driverLoc = currentPin || localPin;
-      if (driverLoc) {
-        bounds.extend({ lat: driverLoc.lat, lng: driverLoc.lng });
-        hasPoints = true;
-      }
-
-      if (hasPoints) {
-        mapInstance.fitBounds(bounds, { top: 120, right: 60, bottom: 320, left: 60 });
-      }
-    } else if (isAutoTracking) {
-      // Driver View: Follow closely with high zoom
-      const driverLoc = localPin || currentPin;
-      if (driverLoc) {
-        mapInstance.panTo({ lat: driverLoc.lat, lng: driverLoc.lng });
-        const currentZoom = mapInstance.getZoom();
-        if (currentZoom !== undefined && currentZoom < 17) {
-          mapInstance.setZoom(17);
-        }
+    const driverLoc = localPin || currentPin;
+    if (driverLoc && mapInstance) {
+      mapInstance.panTo({ lat: driverLoc.lat, lng: driverLoc.lng });
+      mapInstance.setZoom(17);
+    } else if (trip && mapInstance) {
+      const step = statusIndex(trip.opsStatus || '');
+      const targetPin = step <= 2 ? trip.originPin : trip.destinationPin;
+      if (targetPin) {
+        mapInstance.panTo({ lat: targetPin.lat, lng: targetPin.lng });
+        mapInstance.setZoom(17);
       }
     }
-  }, [mapInstance, maps, trip?.originPin, trip?.destinationPin, trip?.access.role, currentPin, localPin, isAutoTracking]);
+
+    const step = statusIndex(trip?.opsStatus || '');
+    const targetName = step <= 2 ? 'จุดรับสินค้า' : 'จุดส่งสินค้า';
+    speak(`เริ่มนำทางไปยัง${targetName}ในระบบ`);
+  }, [mapInstance, localPin, currentPin, trip, speak]);
+
+  useEffect(() => {
+    if (!mapInstance || !maps || !trip) return;
+
+    const isAdmin = trip.access.role === 'admin';
+    const driverLoc = currentPin || localPin;
+    const currentStatus = trip.opsStatus || 'accepted';
+
+    // Center/Focus ONCE when entering a new stage.
+    if (!hasInitiallyCentered.current[currentStatus]) {
+      const step = statusIndex(currentStatus);
+
+      if (isAdmin) {
+        // Admin View: fit bounds once to show A + B + driver
+        const bounds = new maps.LatLngBounds();
+        let hasPoints = false;
+
+        if (trip.originPin) {
+          bounds.extend({ lat: trip.originPin.lat, lng: trip.originPin.lng });
+          hasPoints = true;
+        }
+        if (trip.destinationPin) {
+          bounds.extend({ lat: trip.destinationPin.lat, lng: trip.destinationPin.lng });
+          hasPoints = true;
+        }
+        if (driverLoc) {
+          bounds.extend({ lat: driverLoc.lat, lng: driverLoc.lng });
+          hasPoints = true;
+        }
+
+        if (hasPoints) {
+          mapInstance.fitBounds(bounds, { top: 120, right: 60, bottom: 320, left: 60 });
+          hasInitiallyCentered.current[currentStatus] = true;
+        }
+      } else {
+        // Driver View: Center on driver once, or fallback target once
+        if (driverLoc) {
+          mapInstance.panTo({ lat: driverLoc.lat, lng: driverLoc.lng });
+          mapInstance.setZoom(16);
+          hasInitiallyCentered.current[currentStatus] = true;
+        } else {
+          // No driver GPS lock yet: center on the relevant target or fit bounds
+          if (step === 0) {
+            // Fit both A & B
+            const bounds = new maps.LatLngBounds();
+            let hasPoints = false;
+            if (trip.originPin) {
+              bounds.extend({ lat: trip.originPin.lat, lng: trip.originPin.lng });
+              hasPoints = true;
+            }
+            if (trip.destinationPin) {
+              bounds.extend({ lat: trip.destinationPin.lat, lng: trip.destinationPin.lng });
+              hasPoints = true;
+            }
+            if (hasPoints) {
+              mapInstance.fitBounds(bounds, { top: 120, right: 60, bottom: 320, left: 60 });
+              hasInitiallyCentered.current[currentStatus] = true;
+            }
+          } else if ((step === 1 || step === 2) && trip.originPin) {
+            // Focus on Point A
+            mapInstance.panTo({ lat: trip.originPin.lat, lng: trip.originPin.lng });
+            mapInstance.setZoom(16);
+            hasInitiallyCentered.current[currentStatus] = true;
+          } else if ((step === 3 || step === 4) && trip.destinationPin) {
+            // Focus on Point B
+            mapInstance.panTo({ lat: trip.destinationPin.lat, lng: trip.destinationPin.lng });
+            mapInstance.setZoom(16);
+            hasInitiallyCentered.current[currentStatus] = true;
+          }
+        }
+      }
+    } else if (isAutoTracking && driverLoc) {
+      // Subsequent GPS updates: pan to driver but DO NOT override zoom!
+      mapInstance.panTo({ lat: driverLoc.lat, lng: driverLoc.lng });
+    }
+  }, [mapInstance, maps, trip, currentPin, localPin, isAutoTracking]);
 
   // Voice Guidance Trigger
   useEffect(() => {
@@ -583,9 +708,12 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
   // Status Change Voice Prompt
   useEffect(() => {
     if (!trip?.opsStatus) return;
-    const step = statusIndex(trip.opsStatus);
-    let prompt = '';
     
+    // Only speak when the status actually changes to a new status
+    if (lastSpokenStatusRef.current === trip.opsStatus) return;
+    lastSpokenStatusRef.current = trip.opsStatus;
+
+    let prompt = '';
     if (trip.opsStatus === 'en_route_pickup') {
       prompt = `เริ่มนำทางไปยังจุดรับสินค้า ${trip.origin} ระยะทางประมาณ ${trip.distance} กิโลเมตร`;
     } else if (trip.opsStatus === 'en_route_dropoff') {
@@ -683,7 +811,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
               }
             }}
           >
-            {routePath.length === 2 && (
+            {routePath.length === 2 && !mainRouteDirections && (
               <Polyline
                 path={routePath}
                 options={{
@@ -694,15 +822,32 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
                 }}
               />
             )}
-            {/* GPS breadcrumb trail hidden — DirectionsRenderer provides cleaner route display */}
-            {isDriver && directions && (
+            {/* Main Trip Route (Origin -> Destination) */}
+            {mainRouteDirections && (
+              <DirectionsRenderer
+                directions={mainRouteDirections}
+                options={{
+                  suppressMarkers: true,
+                  preserveViewport: true,
+                  polylineOptions: {
+                    strokeColor: '#94a3b8', // slate-400
+                    strokeOpacity: 0.65,
+                    strokeWeight: 5,
+                    zIndex: 5,
+                  }
+                }}
+              />
+            )}
+            {/* Active Navigation Route (Current location -> Target) */}
+            {directions && (
               <DirectionsRenderer
                 directions={directions}
                 options={{
                   suppressMarkers: true,
+                  preserveViewport: true,
                   polylineOptions: {
-                    strokeColor: '#4f46e5', // indigo-600
-                    strokeOpacity: 0.9,
+                    strokeColor: '#2563eb', // blue-600
+                    strokeOpacity: 0.95,
                     strokeWeight: 6,
                     zIndex: 10,
                   }
@@ -812,18 +957,206 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
         isBottomSheetExpanded ? 'translate-y-0' : 'translate-y-[calc(100%-80px)]'
       }`}>
         <div 
-          className="flex h-20 w-full cursor-pointer items-center justify-center rounded-t-3xl bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.1)] md:hidden border-b border-slate-100"
-          onClick={() => setIsBottomSheetExpanded(!isBottomSheetExpanded)}
+          className="flex h-20 w-full flex-col justify-between rounded-t-3xl bg-white shadow-[0_-10px_40px_rgba(0,0,0,0.1)] md:hidden border-b border-slate-100 px-4 pb-2"
         >
-          <div className="flex flex-col items-center gap-2">
+          {/* Drag handle area - clicking this toggles the bottom sheet */}
+          <div 
+            className="flex w-full cursor-pointer items-center justify-center py-2"
+            onClick={() => setIsBottomSheetExpanded(!isBottomSheetExpanded)}
+          >
             <div className="h-1.5 w-12 rounded-full bg-slate-200" />
-            <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">
-              {isBottomSheetExpanded ? 'ซ่อนรายละเอียด' : 'ดูรายละเอียดงาน'}
-            </span>
           </div>
+
+          {/* Quick Actions Row when collapsed */}
+          {!isBottomSheetExpanded ? (
+            <div className="flex items-center gap-2 w-full pb-1">
+              {/* Left: small expand button or info */}
+              <button
+                type="button"
+                onClick={() => setIsBottomSheetExpanded(true)}
+                className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-500 border border-slate-100"
+              >
+                <Clock size={16} />
+              </button>
+
+              {/* Center/Right: Primary Action and Navigation */}
+              <div className="flex flex-1 items-center gap-2">
+                {currentStep === 0 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); patchTrip('start_to_pickup'); }}
+                    disabled={actionLoading === 'start_to_pickup'}
+                    className="h-10 flex-1 rounded-xl bg-blue-600 text-white text-xs font-black flex items-center justify-center gap-1.5 transition active:scale-95 shadow-md shadow-blue-200"
+                  >
+                    {actionLoading === 'start_to_pickup' ? <Loader2 className="animate-spin" size={12} /> : <Play size={12} />}
+                    เริ่มเดินทาง
+                  </button>
+                )}
+
+                {currentStep === 1 && (
+                  <>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); startInSystemNavigation(); }}
+                      className="h-10 w-10 flex items-center justify-center rounded-xl bg-indigo-600 text-white transition active:scale-95 shadow-md shadow-indigo-200 animate-pulse"
+                      title="เริ่มนำทางบนแผนที่"
+                    >
+                      <Navigation size={14} />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); patchTrip('arrive_pickup'); }}
+                      disabled={actionLoading === 'arrive_pickup'}
+                      className="h-10 flex-1 rounded-xl bg-amber-500 text-white text-xs font-black flex items-center justify-center gap-1.5 transition active:scale-95 shadow-md shadow-amber-200"
+                    >
+                      {actionLoading === 'arrive_pickup' ? <Loader2 className="animate-spin" size={12} /> : <MapPin size={12} />}
+                      ถึงจุดรับ
+                    </button>
+                  </>
+                )}
+
+                {currentStep === 2 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); patchTrip('start_to_dropoff'); }}
+                    disabled={actionLoading === 'start_to_dropoff'}
+                    className="h-10 flex-1 rounded-xl bg-blue-600 text-white text-xs font-black flex items-center justify-center gap-1.5 transition active:scale-95 shadow-md shadow-blue-200"
+                  >
+                    {actionLoading === 'start_to_dropoff' ? <Loader2 className="animate-spin" size={12} /> : <Navigation size={12} />}
+                    ออกไปจุดส่ง
+                  </button>
+                )}
+
+                {currentStep === 3 && (
+                  <>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); startInSystemNavigation(); }}
+                      className="h-10 w-10 flex items-center justify-center rounded-xl bg-indigo-600 text-white transition active:scale-95 shadow-md shadow-indigo-200 animate-pulse"
+                      title="เริ่มนำทางบนแผนที่"
+                    >
+                      <Navigation size={14} />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); patchTrip('complete_delivery'); }}
+                      disabled={actionLoading === 'complete_delivery'}
+                      className="h-10 flex-1 rounded-xl bg-emerald-600 text-white text-xs font-black flex items-center justify-center gap-1.5 transition active:scale-95 shadow-md shadow-emerald-200"
+                    >
+                      {actionLoading === 'complete_delivery' ? <Loader2 className="animate-spin" size={12} /> : <FileCheck size={12} />}
+                      ส่งของสำเร็จ
+                    </button>
+                  </>
+                )}
+
+                {currentStep === 4 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); patchTrip('request_pod'); }}
+                    disabled={actionLoading === 'request_pod'}
+                    className="h-10 flex-1 rounded-xl bg-blue-600 text-white text-xs font-black flex items-center justify-center gap-1.5 transition active:scale-95 shadow-md shadow-blue-200"
+                  >
+                    {actionLoading === 'request_pod' ? <Loader2 className="animate-spin" size={12} /> : <Camera size={12} />}
+                    ส่งหลักฐานผ่าน LINE
+                  </button>
+                )}
+
+                {currentStep >= 5 && (
+                  <div className="h-10 flex-1 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-xs font-bold text-slate-400">
+                    สิ้นสุดงานแล้ว
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div 
+              className="flex w-full cursor-pointer items-center justify-center pb-2"
+              onClick={() => setIsBottomSheetExpanded(false)}
+            >
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                ซ่อนรายละเอียด
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="h-[70vh] overflow-y-auto bg-white p-5 pb-24 md:h-full md:p-8 custom-scrollbar">
+          
+          {/* Driver Actions (Moved to Top) */}
+          {(isDriver || trip.access.role === 'admin') && (
+            <section className="mb-8 rounded-3xl border border-blue-100 bg-blue-50/50 p-5">
+              <h2 className="mb-4 text-[10px] font-black uppercase tracking-widest text-blue-600">
+                {trip.access.role === 'admin' ? 'ขั้นตอนการดำเนินงาน (มุมมองแอดมิน)' : 'ขั้นตอนการดำเนินงาน'}
+              </h2>
+              <div className="grid gap-3">
+                <ActionButton icon={Play} label="เริ่มเดินทาง" disabled={currentStep !== 0} loading={actionLoading === 'start_to_pickup'} onClick={() => patchTrip('start_to_pickup')} tone="blue" />
+                
+                <ActionButton icon={MapPin} label="ถึงจุดรับ" disabled={currentStep !== 1} loading={actionLoading === 'arrive_pickup'} onClick={() => patchTrip('arrive_pickup')} tone="amber" />
+                {currentStep === 1 && (
+                  <button
+                    type="button"
+                    onClick={startInSystemNavigation}
+                    className="h-12 rounded-2xl bg-indigo-600 text-white font-black text-sm flex items-center justify-center gap-2 transition hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 animate-pulse"
+                  >
+                    <Navigation size={16} />
+                    🧭 เริ่มการนำทางในระบบ
+                  </button>
+                )}
+
+                <ActionButton icon={Navigation} label="ออกไปจุดส่ง" disabled={currentStep !== 2} loading={actionLoading === 'start_to_dropoff'} onClick={() => patchTrip('start_to_dropoff')} tone="blue" />
+                
+                <ActionButton icon={FileCheck} label="ส่งของสำเร็จ" disabled={currentStep !== 3} loading={actionLoading === 'complete_delivery'} onClick={() => patchTrip('complete_delivery')} tone="emerald" />
+                {currentStep === 3 && (
+                  <button
+                    type="button"
+                    onClick={startInSystemNavigation}
+                    className="h-12 rounded-2xl bg-indigo-600 text-white font-black text-sm flex items-center justify-center gap-2 transition hover:bg-indigo-700 shadow-lg shadow-indigo-600/20 animate-pulse"
+                  >
+                    <Navigation size={16} />
+                    🧭 เริ่มการนำทางในระบบ
+                  </button>
+                )}
+                
+                {isDriver && (
+                  <button
+                    type="button"
+                    onClick={() => isTracking ? stopTracking() : startTracking()}
+                    className={`mt-2 h-12 rounded-2xl border-2 px-4 text-sm font-black flex items-center justify-center gap-2 transition-all ${
+                      isTracking 
+                        ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100' 
+                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+                    }`}
+                  >
+                    {isTracking ? <Square size={16} /> : <LocateFixed size={16} />}
+                    {isTracking ? 'หยุดส่ง GPS ชั่วคราว' : 'เริ่มส่ง GPS'}
+                  </button>
+                )}
+              </div>
+
+              {isDriver && (
+                <div className="mt-5 border-t border-blue-100 pt-5">
+                  <button
+                    type="button"
+                    onClick={() => patchTrip('request_pod')}
+                    disabled={actionLoading === 'request_pod'}
+                    className="mb-3 h-12 w-full rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/20 text-sm font-black flex items-center justify-center gap-2 transition hover:bg-blue-700 disabled:opacity-50 disabled:shadow-none"
+                  >
+                    {actionLoading === 'request_pod' ? <Loader2 className="animate-spin" size={16} /> : <Camera size={16} />}
+                    ส่งหลักฐาน (รูป/วิดีโอ) ผ่าน LINE
+                  </button>
+                  <div className="flex gap-2">
+                    <input
+                      value={podUrl}
+                      onChange={event => setPodUrl(event.target.value)}
+                      placeholder="วางลิงก์ไฟล์ POD ที่นี่"
+                      className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                    />
+                    <button
+                      type="button"
+                      disabled={!podUrl || actionLoading === 'submit_pod_url'}
+                      onClick={() => patchTrip('submit_pod_url', { podUrl })}
+                      className="h-12 rounded-2xl bg-slate-900 px-5 text-sm font-black text-white transition hover:bg-slate-800 disabled:opacity-40"
+                    >
+                      บันทึก
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
           
           {/* Timeline */}
           <section className="mb-8">
@@ -871,6 +1204,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
                 contact={trip.originContactName} 
                 phone={trip.originContactPhone} 
                 onClick={() => panToPoint(trip.originPin)}
+                pin={trip.originPin}
               />
               <RoutePoint 
                 tone="emerald" 
@@ -880,6 +1214,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
                 contact={trip.destinationContactName} 
                 phone={trip.destinationContactPhone} 
                 onClick={() => panToPoint(trip.destinationPin)}
+                pin={trip.destinationPin}
               />
             </div>
           </section>
@@ -953,59 +1288,7 @@ export default function DigitalTripHubPage({ params }: { params: Promise<{ id: s
             </div>
           </section>
 
-          {/* Driver Actions */}
-          {isDriver && (
-            <section className="mb-8 rounded-3xl border border-blue-100 bg-blue-50/50 p-5">
-              <h2 className="mb-4 text-[10px] font-black uppercase tracking-widest text-blue-600">Driver Actions</h2>
-              <div className="grid gap-3">
-                <ActionButton icon={Play} label="เริ่มเดินทาง" disabled={currentStep > 0} loading={actionLoading === 'start_to_pickup'} onClick={() => patchTrip('start_to_pickup')} tone="blue" />
-                <ActionButton icon={MapPin} label="ถึงจุดรับ" disabled={currentStep > 2} loading={actionLoading === 'arrive_pickup'} onClick={() => patchTrip('arrive_pickup')} tone="amber" />
-                <ActionButton icon={Navigation} label="ออกไปจุดส่ง" disabled={currentStep > 3} loading={actionLoading === 'start_to_dropoff'} onClick={() => patchTrip('start_to_dropoff')} tone="blue" />
-                <ActionButton icon={FileCheck} label="ส่งของสำเร็จ" disabled={currentStep > 4} loading={actionLoading === 'complete_delivery'} onClick={() => patchTrip('complete_delivery')} tone="emerald" />
-                
-                <button
-                  type="button"
-                  onClick={() => isTracking ? stopTracking() : startTracking()}
-                  className={`mt-2 h-12 rounded-2xl border-2 px-4 text-sm font-black flex items-center justify-center gap-2 transition-all ${
-                    isTracking 
-                      ? 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100' 
-                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300'
-                  }`}
-                >
-                  {isTracking ? <Square size={16} /> : <LocateFixed size={16} />}
-                  {isTracking ? 'หยุดส่ง GPS ชั่วคราว' : 'เริ่มส่ง GPS'}
-                </button>
-              </div>
-
-              <div className="mt-5 border-t border-blue-100 pt-5">
-                <button
-                  type="button"
-                  onClick={() => patchTrip('request_pod')}
-                  disabled={actionLoading === 'request_pod'}
-                  className="mb-3 h-12 w-full rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/20 text-sm font-black flex items-center justify-center gap-2 transition hover:bg-blue-700 disabled:opacity-50 disabled:shadow-none"
-                >
-                  {actionLoading === 'request_pod' ? <Loader2 className="animate-spin" size={16} /> : <Camera size={16} />}
-                  เปิดรับ POD ผ่าน LINE
-                </button>
-                <div className="flex gap-2">
-                  <input
-                    value={podUrl}
-                    onChange={event => setPodUrl(event.target.value)}
-                    placeholder="วางลิงก์ไฟล์ POD ที่นี่"
-                    className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
-                  />
-                  <button
-                    type="button"
-                    disabled={!podUrl || actionLoading === 'submit_pod_url'}
-                    onClick={() => patchTrip('submit_pod_url', { podUrl })}
-                    className="h-12 rounded-2xl bg-slate-900 px-5 text-sm font-black text-white transition hover:bg-slate-800 disabled:opacity-40"
-                  >
-                    บันทึก
-                  </button>
-                </div>
-              </div>
-            </section>
-          )}
+          {/* Driver Actions moved to top */}
 
           {/* Admin Tools */}
           {trip.access.canViewFinancials && trip.financials && (
@@ -1055,7 +1338,25 @@ function Metric({ icon: Icon, label, value, tone }: { icon?: LucideIcon; label: 
   );
 }
 
-function RoutePoint({ tone, label, title, time, contact, phone, onClick }: { tone: 'amber' | 'emerald'; label: string; title: string; time: string; contact?: string; phone?: string; onClick: () => void }) {
+function RoutePoint({ 
+  tone, 
+  label, 
+  title, 
+  time, 
+  contact, 
+  phone, 
+  onClick,
+  pin
+}: { 
+  tone: 'amber' | 'emerald'; 
+  label: string; 
+  title: string; 
+  time: string; 
+  contact?: string; 
+  phone?: string; 
+  onClick: () => void;
+  pin?: Pin | null;
+}) {
   const dot = tone === 'amber' ? 'bg-amber-400' : 'bg-emerald-500';
   return (
     <div 
@@ -1075,6 +1376,19 @@ function RoutePoint({ tone, label, title, time, contact, phone, onClick }: { ton
         </p>
         <p className="mt-1 text-xs font-bold text-slate-500">{time}</p>
         {(contact || phone) && <p className="mt-1.5 text-[11px] font-bold text-slate-400">{contact || '-'} · {phone || '-'}</p>}
+        {pin && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick();
+            }}
+            className="mt-2.5 flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-blue-600 transition hover:bg-blue-100"
+          >
+            <Navigation size={10} />
+            นำทางบนแผนที่ในระบบ
+          </button>
+        )}
       </div>
     </div>
   );

@@ -39,13 +39,13 @@ export async function POST(req: NextRequest) {
       });
 
       const mailOptions = {
-        from: `"Autogram Eco-Sync" <${process.env.EMAIL_USER}>`,
+        from: `"SHIF" <${process.env.EMAIL_USER}>`,
         to: 'l3aspipat@gmail.com', // อีเมลของ System Owner
         subject: `[New Lead] มีผู้สนใจนัดหมายสาธิตระบบจาก ${companyName}`,
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px;">
             <h2 style="color: #10b981; margin-top: 0;">คำขอสาธิตระบบใหม่ (Request a Demo)</h2>
-            <p>มีผู้ใช้งานใหม่สนใจระบบ Autogram Eco-Sync รายละเอียดดังนี้:</p>
+            <p>มีผู้ใช้งานใหม่สนใจระบบ SHIF รายละเอียดดังนี้:</p>
             <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
               <tr>
                 <td style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; color: #6b7280; width: 120px;">ชื่อ-นามสกุล:</td>

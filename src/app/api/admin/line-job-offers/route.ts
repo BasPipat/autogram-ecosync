@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
-import { FlexMessage } from '@line/bot-sdk';
+import { TextMessage } from '@line/bot-sdk';
 import { connectToDatabase } from '@/lib/mongodb';
 import { getSessionToken, isInternalRole } from '@/lib/access';
 import { getLineClient } from '@/lib/line';
@@ -97,57 +97,60 @@ function serializeOffer(offer: IJobOffer) {
   };
 }
 
-function jobOfferFlex(offer: IJobOffer): FlexMessage {
-  // Ensure we have valid Google Maps URLs or fallback
-  const originUrl = ensureHttps(offer.originMapUrl) || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(offer.origin)}`;
-  const destUrl = ensureHttps(offer.destinationMapUrl) || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(offer.destination)}`;
+function formatThaiDate(date: Date | undefined): string {
+  if (!date) return '-';
+  const d = new Date(date);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = String((d.getFullYear() + 543) % 100).padStart(2, '0');
+  return `${day}.${month}.${year}`;
+}
+
+function getDayLabel(date: Date | undefined): string {
+  if (!date) return 'วันวิ่ง';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(date);
+  target.setHours(0, 0, 0, 0);
+  const diffTime = target.getTime() - today.getTime();
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) return 'วันนี้';
+  if (diffDays === 1) return 'พรุ่งนี้';
+  
+  const days = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+  return `วัน${days[target.getDay()]}`;
+}
+
+function jobOfferText(offer: IJobOffer, trip: any): TextMessage {
+  const dateStr = formatThaiDate(trip.scheduledOriginDate);
+  const dayLabel = getDayLabel(trip.scheduledOriginDate);
+  
+  const weightStr = trip.weight ? `${trip.weight} ตัน` : '';
+  const cargoSuffix = trip.cargoType === 'ตู้' ? 'รวมตู้' : (trip.cargoType || '');
+  const cargoStr = weightStr ? `${weightStr}${cargoSuffix}` : cargoSuffix;
+
+  const priceStr = `${offer.basePrice.toLocaleString()}-1% (เงินสด)`;
+  const acceptLink = `https://line.me/R/oaMessage/${process.env.LINE_OA_ID || '@782wnmvm'}/?%E0%B8%A3%E0%B8%B1%E0%B8%9A%E0%B8%87%E0%B8%B2%E0%B8%99%20${offer.tripCode}`;
+  
+  const lines = [
+    `🔊รับ${dayLabel} ${dateStr} 🔊`,
+    '',
+    `${offer.origin} - ${offer.destination}`,
+    '',
+    cargoStr,
+    '',
+    priceStr,
+    '',
+    `${trip.vehicleCount || 1} คัน`,
+    '',
+    'กดรับงานที่นี่ 👇',
+    acceptLink
+  ].filter(line => line !== undefined);
 
   return {
-    type: 'flex',
-    altText: `มีงานใหม่ ${offer.origin} ไป ${offer.destination}`,
-    contents: {
-      type: 'bubble',
-      header: {
-        type: 'box',
-        layout: 'vertical',
-        backgroundColor: '#10B981',
-        contents: [
-          { type: 'text', text: 'งานใหม่พร้อมรับ', color: '#ffffff', weight: 'bold', size: 'lg' },
-          { type: 'text', text: offer.tripCode, color: '#D1FAE5', size: 'xs', margin: 'sm' },
-        ],
-      },
-      body: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'md',
-        contents: [
-          { type: 'text', text: `${offer.origin} → ${offer.destination}`, weight: 'bold', size: 'md', wrap: true },
-          
-          { type: 'separator', margin: 'lg' },
-
-          { type: 'text', text: `ราคาเสนอหลังหัก 1%: ${formatCurrency(offer.driverPrice)}`, color: '#059669', weight: 'bold', size: 'sm', margin: 'md' },
-          { type: 'text', text: `ราคาตั้งต้น: ${formatCurrency(offer.basePrice)}`, color: '#94A3B8', size: 'xs' },
-        ],
-      },
-      footer: {
-        type: 'box',
-        layout: 'vertical',
-        spacing: 'sm',
-        contents: [
-          {
-            type: 'button',
-            style: 'primary',
-            color: '#10B981',
-            action: {
-              type: 'postback',
-              label: 'รับงานนี้',
-              data: `action=accept_job&offerId=${offer._id.toString()}`,
-              displayText: `รับงาน ${offer.tripCode}`,
-            },
-          },
-        ],
-      },
-    },
+    type: 'text',
+    text: lines.join('\n')
   };
 }
 
@@ -169,61 +172,123 @@ export async function POST(req: NextRequest) {
     const auth = await requireInternal(req);
     if ('response' in auth) return auth.response;
 
-    const body = await req.json() as CreateOfferBody;
-    const tripId = text(body.tripId);
-    const basePrice = amount(body.basePrice);
+    const body = await req.json();
+    let offersData: { tripId: string; basePrice: number; expiresAt?: string }[] = [];
 
-    if (!mongoose.Types.ObjectId.isValid(tripId) || basePrice === null) {
-      return NextResponse.json({ error: 'กรุณาระบุงานและราคาตั้งต้นให้ถูกต้อง' }, { status: 400 });
+    if (body && Array.isArray(body.offers)) {
+      offersData = body.offers.map((o: any) => ({
+        tripId: text(o.tripId),
+        basePrice: amount(o.basePrice) as number,
+        expiresAt: o.expiresAt ? text(o.expiresAt) : undefined,
+      }));
+    } else if (body) {
+      const tripId = text(body.tripId);
+      const basePrice = amount(body.basePrice);
+      if (tripId && basePrice !== null) {
+        offersData = [{
+          tripId,
+          basePrice,
+          expiresAt: body.expiresAt ? text(body.expiresAt) : undefined,
+        }];
+      }
+    }
+
+    if (offersData.length === 0) {
+      return NextResponse.json({ error: 'ข้อมูลงานหรือราคาไม่ถูกต้อง' }, { status: 400 });
+    }
+
+    // Validate all items
+    for (const item of offersData) {
+      if (!mongoose.Types.ObjectId.isValid(item.tripId) || item.basePrice === null || item.basePrice <= 0) {
+        return NextResponse.json({ error: 'ข้อมูลงานและราคาไม่ถูกต้องสำหรับบางรายการ' }, { status: 400 });
+      }
     }
 
     await connectToDatabase();
-    const trip = await Trip.findById(tripId);
-    if (!trip) {
-      return NextResponse.json({ error: 'ไม่พบงานขนส่ง' }, { status: 404 });
+    const createdOffers = [];
+    const lineMessages = [];
+
+    for (const item of offersData) {
+      const trip = await Trip.findById(item.tripId);
+      if (!trip) continue;
+
+      const driverPrice = Math.round(item.basePrice * 0.99);
+      const expiresAt = item.expiresAt ? new Date(item.expiresAt) : undefined;
+
+      const offer = await JobOffer.findOneAndUpdate(
+        { tripId: trip._id, status: 'open' },
+        {
+          tripId: trip._id,
+          tripCode: trip.tripId,
+          origin: trip.origin,
+          originMapUrl: ensureHttps(trip.originMapUrl),
+          destination: trip.destination,
+          destinationMapUrl: ensureHttps(trip.destinationMapUrl),
+          basePrice: item.basePrice,
+          driverPrice,
+          discountPercent: 1,
+          status: 'open',
+          sentAt: new Date(),
+          expiresAt,
+          createdBy: auth.token.email,
+        },
+        { upsert: true, new: true }
+      );
+
+      await Trip.findByIdAndUpdate(trip._id, {
+        lineAssignmentStatus: 'offered',
+        lineJobOfferId: offer._id,
+      });
+
+      createdOffers.push(offer);
+      lineMessages.push(jobOfferText(offer, trip));
     }
 
-    const driverPrice = Math.round(basePrice * 0.99);
-    const expiresAtText = text(body.expiresAt);
-    const expiresAt = expiresAtText ? new Date(expiresAtText) : undefined;
+    if (createdOffers.length === 0) {
+      return NextResponse.json({ error: 'ไม่พบงานขนส่งตามที่ระบุ' }, { status: 404 });
+    }
 
-    const offer = await JobOffer.findOneAndUpdate(
-      { tripId: trip._id, status: 'open' },
-      {
-        tripId: trip._id,
-        tripCode: trip.tripId,
-        origin: trip.origin,
-        originMapUrl: ensureHttps(trip.originMapUrl),
-        destination: trip.destination,
-        destinationMapUrl: ensureHttps(trip.destinationMapUrl),
-        basePrice,
-        driverPrice,
-        discountPercent: 1,
-        status: 'open',
-        sentAt: new Date(),
-        expiresAt,
-        createdBy: auth.token.email,
-      },
-      { upsert: true, new: true }
-    );
+    const groupIdsStr = process.env.LINE_NOTIFICATION_GROUP_ID || '';
+    const groupIds = groupIdsStr.split(',').map(id => id.trim()).filter(Boolean);
+    let sentCount = 0;
+    let message = '';
+    const lineClient = getLineClient();
 
-    await Trip.findByIdAndUpdate(trip._id, {
-      lineAssignmentStatus: 'offered',
-      lineJobOfferId: offer._id,
-    });
-
-    const drivers = await LineDriver.find({ status: 'approved' }).select('lineUserId');
-    const lineUserIds = drivers.map(driver => driver.lineUserId).filter(Boolean);
-    if (lineUserIds.length > 0) {
-      await getLineClient().multicast(lineUserIds, jobOfferFlex(offer));
+    if (groupIds.length > 0) {
+      for (const msg of lineMessages) {
+        for (const gid of groupIds) {
+          try {
+            await lineClient.pushMessage(gid, msg);
+          } catch (err) {
+            console.error(`Failed to send message to group ${gid}:`, err);
+          }
+        }
+        sentCount++;
+      }
+      message = `ส่งงานเข้ากลุ่ม LINE สำเร็จทั้งหมด ${sentCount} งาน (ส่งเข้า ${groupIds.length} กลุ่ม)`;
+    } else {
+      const drivers = await LineDriver.find({ status: 'approved' }).select('lineUserId');
+      const lineUserIds = drivers.map(driver => driver.lineUserId).filter(Boolean);
+      if (lineUserIds.length > 0) {
+        for (const msg of lineMessages) {
+          try {
+            await lineClient.multicast(lineUserIds, msg);
+            sentCount++;
+          } catch (err) {
+            console.error('Failed to multicast message:', err);
+          }
+        }
+      }
+      message = `ส่งงานให้รถร่วมสำเร็จทั้งหมด ${sentCount} งาน (Fallback Multicast)`;
     }
 
     return NextResponse.json({
-      message: `ส่งงานให้รถร่วม ${lineUserIds.length} คนสำเร็จ`,
-      offer: serializeOffer(offer),
-      sentCount: lineUserIds.length,
+      message,
+      sentCount,
+      offers: createdOffers.map(serializeOffer),
     }, { status: 201 });
-  } catch {
-    return NextResponse.json({ error: 'ส่งงานให้รถร่วมไม่สำเร็จ' }, { status: 500 });
+  } catch (error) {
+    console.error('Job offer post error:', error);
+    return NextResponse.json({ error: 'ส่งงานไม่สำเร็จ' }, { status: 500 });
   }
 }

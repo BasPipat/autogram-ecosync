@@ -1,4 +1,4 @@
-# PROGRESS.md - Autogram Eco-Sync
+# PROGRESS.md - SOCZ
 
 ## ขั้นตอนการพัฒนา (Development Steps)
 - **Step 1: Asset-Light Operating Model**

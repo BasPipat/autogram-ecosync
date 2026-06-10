@@ -76,8 +76,8 @@ export async function GET(req: NextRequest) {
       return {
         label: new Date(trip.createdAt as Date).toISOString().slice(0, 10),
         tripId: trip.tripId,
-        originName: trip.origin?.name || '-',
-        destinationName: trip.destination?.name || '-',
+        originName: (trip.origin && typeof trip.origin === 'object' ? (trip.origin as any).name : trip.origin) || '-',
+        destinationName: (trip.destination && typeof trip.destination === 'object' ? (trip.destination as any).name : trip.destination) || '-',
         weightTon: asNumber(trip.weight, 0),
         distanceKm: Number(distance.toFixed(2)),
         fuelForecastLiters: Number(fuelForecast.toFixed(2)),

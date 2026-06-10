@@ -1,13 +1,13 @@
 # Stage 1: Install dependencies
-FROM node:18-alpine AS deps
+FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install
 
 # Stage 2: Build the application
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -15,11 +15,16 @@ COPY . .
 # Set environment variables for build time if needed
 ENV NEXT_TELEMETRY_DISABLED 1
 ENV NODE_ENV production
+ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="AIzaSyBfwbqpTooEUNwaGcnuGjYU-sTbGqutKb4"
+ENV NEXT_PUBLIC_LINE_LIFF_ID="2010054204-bv5oRtcL"
+ENV NEXT_PUBLIC_PUSHER_CLUSTER="ap1"
+ENV NEXT_PUBLIC_PUSHER_KEY="962b0ef0f196539fac89"
+ENV NEXT_PUBLIC_APP_URL="https://eco-sync-web-479170608103.asia-southeast1.run.app"
 
 RUN npm run build
 
 # Stage 3: Production runner
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV production

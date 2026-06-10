@@ -26,7 +26,7 @@ export async function GET(req: Request) {
 
     // 2. SSOT: Query Trip directly by lineUserId and active statuses.
     // We ignore driver.activeTripId to avoid sync issues.
-    const activeStatuses = ['accepted', 'in_progress', 'arrived_pickup', 'en_route_pickup', 'en_route_dropoff', 'delivered', 'documents_submitted'];
+    const activeStatuses = ['accepted', 'in_progress', 'arrived_pickup', 'en_route_pickup', 'en_route_dropoff'];
     
     // Find the most recent trip that is still in an active state for this driver
     const activeTrip = await Trip.findOne({

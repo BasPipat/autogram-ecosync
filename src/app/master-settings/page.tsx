@@ -100,7 +100,7 @@ export default function MasterSettingsPage() {
     y += 10;
     doc.setFontSize(8);
     doc.setTextColor(colors.gray[0], colors.gray[1], colors.gray[2]);
-    doc.text('Verified by Eco-Sync Intelligence System. This document serves as an official reference for GHG audit compliance.', 14, y);
+    doc.text('Verified by SHIF Intelligence System. This document serves as an official reference for GHG audit compliance.', 14, y);
     
     doc.save(`Standard-Config-${form.version}.pdf`);
   };

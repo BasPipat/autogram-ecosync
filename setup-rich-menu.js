@@ -31,7 +31,7 @@ if (!LINE_ACCESS_TOKEN) {
 }
 
 // 🔴 เปลี่ยนเป็น URL ตรงของ Vercel ตามคำแนะนำของคุณ
-const BASE_URL = 'https://autogram-ecosync.vercel.app';
+const BASE_URL = 'https://shif-ecosync.vercel.app';
 const URL_MY_MISSION = `${BASE_URL}/driver/my-mission`;
 const URL_JOBS = `${BASE_URL}/driver/jobs`;
 const URL_PROFILE = `${BASE_URL}/driver/profile`;
@@ -57,7 +57,7 @@ const richMenuData = {
     },
     {
       bounds: { x: 1250, y: 0, width: 1250, height: 843 }, // ขวาบน (ดูงาน)
-      action: { type: "uri", uri: `https://liff.line.me/2010054204-bv5oRtcL/driver/jobs` }
+      action: { type: "message", text: "ดูงาน" }
     },
     {
       bounds: { x: 0, y: 843, width: 1250, height: 843 }, // ซ้ายล่าง (โปรไฟล์ของฉัน)

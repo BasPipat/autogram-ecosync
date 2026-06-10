@@ -10,19 +10,19 @@ export async function GET() {
     await connectToDatabase();
 
     // เช็กก่อนว่ามีไอดีนี้อยู่แล้วหรือยัง จะได้ไม่สร้างซ้ำ
-    const existingAdmin = await User.findOne({ email: 'admin@autogram.co.th' });
+    const existingAdmin = await User.findOne({ email: 'admin@shif.co' });
     
     if (existingAdmin) {
       return NextResponse.json({ message: 'มีไอดี Admin นี้ในระบบอยู่แล้วครับบอส!' });
     }
 
     // เข้ารหัสผ่านเพื่อความปลอดภัย
-    const hashedPassword = await bcrypt.hash('Autogram2026!', 10);
+    const hashedPassword = await bcrypt.hash('Shif2026!', 10);
 
     // สร้างไอดี Admin
     const adminUser = await User.create({
       name: 'Pipat (Super Admin)',
-      email: 'admin@autogram.co.th',
+      email: 'admin@shif.co',
       password: hashedPassword,
       role: 'admin',
     });

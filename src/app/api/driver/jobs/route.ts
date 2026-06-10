@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
 
     // 2. Query Public Jobs (ANY trip without a truck/driver assigned)
     let query: any = { 
+      jobSheetReleased: { $ne: false },
       $and: [
         { $or: [{ licensePlate: { $exists: false } }, { licensePlate: null }, { licensePlate: '' }] },
         { $or: [{ lineUserId: { $exists: false } }, { lineUserId: null }, { lineUserId: '' }] }

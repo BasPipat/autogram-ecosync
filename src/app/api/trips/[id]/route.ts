@@ -9,6 +9,7 @@ import { JobOffer } from '@/models/JobOffer';
 import { LineDriver } from '@/models/LineDriver';
 import { SharedTruck } from '@/models/SharedTruck';
 import { Trip } from '@/models/Trip';
+import { getLineClient } from '@/lib/line';
 
 type AccessInfo = {
   role: 'admin' | 'driver';
@@ -182,14 +183,18 @@ async function authorizeTrip(req: NextRequest, trip: LeanTrip, explicitLineUserI
     if (isInternalRole(token.role)) {
       return { role: 'admin', canViewFinancials: token.role === 'system_owner' || token.role === 'owner' };
     }
-    // For other internal roles, check tenant if available, or just allow if it's admin role
-    if (token.role === 'admin' || sameTenant(token, trip)) {
-      return { role: 'admin', canViewFinancials: false };
+    if (token.role === 'corp_admin' || token.role === 'coordinator' || token.role === 'admin' || token.role === 'operator') {
+      if (sameTenant(token, trip)) {
+        return { role: 'admin', canViewFinancials: false };
+      }
+      return null;
     }
   }
 
   const lineUserId = explicitLineUserId || req.nextUrl.searchParams.get('lineUserId')?.trim();
   if (!lineUserId) return null;
+
+
 
   const driver = await LineDriver.findOne({ lineUserId }).select('activeTripId lineUserId').lean() as LeanDriver | null;
   const ownsByTrip = trip.lineUserId === lineUserId;
@@ -418,10 +423,30 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       set['gpsSession.status'] = 'stopped';
       set['gpsSession.isTracking'] = false;
       set['gpsSession.stoppedAt'] = now;
+      const targetLineUserId = result.trip.lineUserId || lineUserId;
+      if (targetLineUserId) {
+        await LineDriver.findOneAndUpdate({ lineUserId: targetLineUserId }, { activeTripId: undefined });
+      }
     } else if (action === 'request_pod') {
       const targetLineUserId = result.trip.lineUserId || lineUserId;
       if (targetLineUserId) {
-        await LineDriver.findOneAndUpdate({ lineUserId: targetLineUserId }, { pendingDocumentType: 'pod_image' });
+        await LineDriver.findOneAndUpdate({ lineUserId: targetLineUserId }, { pendingDocumentType: 'pod_image', pendingTripId: result.trip._id });
+        try {
+          await getLineClient().pushMessage(targetLineUserId, {
+            type: 'text',
+            text: [
+              '📢 ระบบเปิดช่องทางรับหลักฐานส่งงานแล้วครับ!',
+              '---------------------------------',
+              'กรุณาดำเนินการส่งข้อมูลในแชทนี้ดังนี้:',
+              '1. 📸 ส่งรูปถ่ายใบส่งของ (POD) ที่เซ็นรับแล้ว',
+              '2. 📹 ถ่ายวิดีโอใบส่งของจริงตามขั้นตอนเพื่อปิดงาน',
+              '---------------------------------',
+              'ขอบคุณครับพี่ 🙏'
+            ].join('\n')
+          });
+        } catch (err) {
+          console.error('Failed to push LINE message for request_pod:', err);
+        }
       }
     } else if (action === 'submit_pod_url') {
       const podUrl = typeof body.podUrl === 'string' ? body.podUrl.trim() : '';

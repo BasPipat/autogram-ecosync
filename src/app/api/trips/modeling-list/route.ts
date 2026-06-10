@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     const trips = await Trip.find({})
       .sort({ createdAt: -1 })
       .limit(50)
-      .select('tripId origin destination distance weight vehicleType')
+      .select('tripId origin destination distance weight vehicleType cargoType')
       .lean();
 
     return NextResponse.json(trips);

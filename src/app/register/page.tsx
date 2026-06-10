@@ -12,6 +12,8 @@ export default function RequestDemoPage() {
     companyName: '',
     email: '',
     phone: '',
+    password: '',
+    confirmPassword: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -20,13 +22,37 @@ export default function RequestDemoPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    const englishCompanyName = /^[A-Za-z0-9\s.,&'()/-]+$/;
+    const companyName = formData.companyName.trim().replace(/\s+/g, ' ');
+    if (!englishCompanyName.test(companyName)) {
+      setError('กรุณากรอกชื่อบริษัทเป็นภาษาอังกฤษเท่านั้น เช่น ACME LOGISTICS CO., LTD.');
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setError('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const res = await fetch('/api/leads', {
+      const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          name: formData.name,
+          companyName,
+          email: formData.email,
+          phone: formData.phone,
+          password: formData.password,
+        }),
       });
 
       const data = await res.json();
@@ -37,7 +63,6 @@ export default function RequestDemoPage() {
 
       setSuccess(true);
       
-      // Redirect after a short delay
       setTimeout(() => {
         router.push('/');
       }, 4000);
@@ -100,22 +125,22 @@ export default function RequestDemoPage() {
               </div>
             </div>
             <h2 className="text-2xl font-bold mb-3" style={{ color: 'var(--text-primary)' }}>
-              ส่งข้อมูลสำเร็จ
+              สมัครสมาชิกสำเร็จ
             </h2>
             <p className="text-[14px] leading-relaxed mb-6" style={{ color: 'var(--text-secondary)' }}>
-              เราได้รับข้อมูลของท่านแล้ว ทีมงานจะติดต่อกลับเพื่อทำการนัดหมายโดยเร็วที่สุด
+              ระบบสร้างบัญชีและตั้งค่าเริ่มต้นเป็นลูกค้าเงินสดแล้ว สามารถเข้าสู่ระบบด้วยอีเมลและรหัสผ่านที่สมัครไว้
             </p>
             <p className="text-[12px]" style={{ color: 'var(--text-tertiary)' }}>
-              กำลังพากลับไปยังหน้าหลัก...
+              กำลังพากลับไปยังหน้าเข้าสู่ระบบ...
             </p>
           </div>
         ) : (
           <>
             <h2 className="text-2xl font-bold text-center mb-2" style={{ color: 'var(--text-primary)' }}>
-              นัดหมายเพื่อสาธิตระบบ
+              สมัครเข้าใช้งานระบบ
             </h2>
             <p className="text-center text-[13px] mb-8" style={{ color: 'var(--text-tertiary)' }}>
-              Request a Demo - Autogram Eco-Sync
+              Company name must be English. Default payment term is Cash.
             </p>
 
             {error && (
@@ -145,7 +170,7 @@ export default function RequestDemoPage() {
                 </div>
                 <div>
                   <label className="block text-[12px] font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>
-                    ชื่อบริษัท
+                    ชื่อบริษัทภาษาอังกฤษ
                   </label>
                   <input
                     type="text"
@@ -153,9 +178,14 @@ export default function RequestDemoPage() {
                     onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
                     className="w-full px-4 py-3 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20"
                     style={inputStyle}
-                    placeholder="กรอกชื่อบริษัทของคุณ"
+                    placeholder="ACME LOGISTICS CO., LTD."
+                    pattern="[A-Za-z0-9\s.,&'()/-]+"
+                    title="กรุณากรอกชื่อบริษัทเป็นภาษาอังกฤษเท่านั้น"
                     required
                   />
+                  <p className="mt-1.5 text-[11px]" style={{ color: 'var(--text-tertiary)' }}>
+                    ระบบจะตั้งค่าเริ่มต้นเป็นชำระเงินสด
+                  </p>
                 </div>
                 <div>
                   <label className="block text-[12px] font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>
@@ -185,6 +215,36 @@ export default function RequestDemoPage() {
                     required
                   />
                 </div>
+                <div>
+                  <label className="block text-[12px] font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>
+                    รหัสผ่าน
+                  </label>
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full px-4 py-3 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    style={inputStyle}
+                    placeholder="อย่างน้อย 8 ตัวอักษร"
+                    minLength={8}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[12px] font-semibold mb-2" style={{ color: 'var(--text-secondary)' }}>
+                    ยืนยันรหัสผ่าน
+                  </label>
+                  <input
+                    type="password"
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    className="w-full px-4 py-3 text-[13px] outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    style={inputStyle}
+                    placeholder="กรอกรหัสผ่านอีกครั้ง"
+                    minLength={8}
+                    required
+                  />
+                </div>
               </div>
 
               <button
@@ -198,9 +258,9 @@ export default function RequestDemoPage() {
                 }}
               >
                 {loading ? (
-                  <><Loader2 className="animate-spin" size={18} /> กำลังส่งข้อมูล...</>
+                  <><Loader2 className="animate-spin" size={18} /> กำลังสมัครสมาชิก...</>
                 ) : (
-                  <>ส่งข้อมูล <ArrowRight size={18} /></>
+                  <>สมัครเข้าใช้งาน <ArrowRight size={18} /></>
                 )}
               </button>
             </form>

@@ -48,7 +48,7 @@ export interface ITrip extends Document {
   weight?: number;   
   carbon: number;    
 
-  cargoType?: 'ตู้' | 'พื้นเรียบ';
+  cargoType?: 'ตู้' | 'พื้นเรียบ' | 'โลวเบท';
   cargoName?: string;
   isPublic?: boolean;
 
@@ -80,6 +80,17 @@ export interface ITrip extends Document {
   companyName?: string;
   customerName?: string;
   podImageUrl?: string;
+
+  // Billing and Payment fields
+  paymentType?: 'credit' | 'cash';
+  paymentStatus?: 'unpaid' | 'pending_verification' | 'paid';
+  billingDate?: Date;
+  paymentDueDate?: Date;
+  paymentSlipUrl?: string;
+  paymentBatchId?: string;
+  jobSheetReleased?: boolean;
+  paymentTransRef?: string;
+  paymentTransTime?: Date;
 }
 
 const MapPinSchema = new Schema<IMapPin>({
@@ -166,13 +177,24 @@ const TripSchema = new Schema({
   companyName: { type: String }, 
   customerName: { type: String },
   podImageUrl: { type: String }, 
-  cargoType: { type: String, enum: ['ตู้', 'พื้นเรียบ'], default: 'ตู้' },
+  cargoType: { type: String, enum: ['ตู้', 'พื้นเรียบ', 'โลวเบท'], default: 'ตู้' },
   cargoName: { type: String },
   isPublic: { type: Boolean, default: false, index: true },
   originLocation: {
     type: { type: String, enum: ['Point'], default: 'Point' },
     coordinates: { type: [Number], default: [0, 0] }
-  }
+  },
+
+  // Billing and Payment fields
+  paymentType: { type: String, enum: ['credit', 'cash'], default: 'cash', index: true },
+  paymentStatus: { type: String, enum: ['unpaid', 'pending_verification', 'paid'], default: 'unpaid', index: true },
+  billingDate: { type: Date },
+  paymentDueDate: { type: Date },
+  paymentSlipUrl: { type: String },
+  paymentBatchId: { type: String, index: true },
+  jobSheetReleased: { type: Boolean, default: false, index: true },
+  paymentTransRef: { type: String, index: true },
+  paymentTransTime: { type: Date }
 }, { timestamps: true });
 
 TripSchema.index({ originLocation: '2dsphere' });

@@ -13,11 +13,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const token = await getSessionToken(req) as any;
     const { id } = await params;
 
-    // Security: Only internal roles OR the driver themselves can access
+    // Security: Only internal roles OR the driver themselves can access.
+    // Since LIFF is removed, the driver accesses their own profile URL directly via LINE.
     const isOwner = token?.role === 'system_owner' || token?.role === 'admin';
     const isSelf = token?.lineUserId === id;
+    const isDirectDriverAccess = !token && id && id.startsWith('U') && id.length === 33;
 
-    if (!token || (!isOwner && !isSelf)) {
+    if (!isOwner && !isSelf && !isDirectDriverAccess) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -40,11 +42,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
     // 4. Fetch Trip Stats
     const trips = await Trip.find({ lineUserId }).sort({ createdAt: -1 }).limit(10);
-    const totalTrips = await Trip.countDocuments({ lineUserId, status: 'completed' });
+    const totalTrips = await Trip.countDocuments({ lineUserId, status: 'Verified' });
     
     // Calculate total earnings (example logic)
-    const completedTrips = await Trip.find({ lineUserId, status: 'completed' });
-    const totalEarnings = completedTrips.reduce((sum, trip) => sum + (trip.freightPrice || 0), 0);
+    const completedTrips = await Trip.find({ lineUserId, status: 'Verified' });
+    const totalEarnings = completedTrips.reduce((sum, trip) => sum + (trip.acceptedFreightPrice || 0), 0);
+
 
     return NextResponse.json({
       driver,
@@ -68,11 +71,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const lineUserId = id;
 
-    // Security: Only system_owner OR the driver themselves can edit
+    // Security: Only system_owner OR the driver themselves can edit.
+    // Since LIFF is removed, the driver accesses their own profile URL directly via LINE.
     const isOwner = token?.role === 'system_owner' || token?.role === 'admin';
     const isSelf = token?.lineUserId === id;
+    const isDirectDriverAccess = !token && id && id.startsWith('U') && id.length === 33;
 
-    if (!token || (!isOwner && !isSelf)) {
+    if (!isOwner && !isSelf && !isDirectDriverAccess) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

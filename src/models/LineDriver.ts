@@ -40,6 +40,7 @@ export interface ILineDriver extends Document {
   sharedTruckId?: mongoose.Types.ObjectId;
   activeTripId?: mongoose.Types.ObjectId;
   activeJobOfferId?: mongoose.Types.ObjectId;
+  pendingTripId?: mongoose.Types.ObjectId;
   gpsConsentStatus: 'pending' | 'granted' | 'denied';
   gpsConsentAt?: Date;
   lastLocation?: ILineLocation;
@@ -51,6 +52,7 @@ export interface ILineDriver extends Document {
   isDocumentsVerified?: boolean;
   verifiedAt?: Date;
   verifiedBy?: mongoose.Types.ObjectId;
+  pendingJobOfferCode?: string;
 
   // CFO Relevant Fields
   vehicleType?: string;
@@ -107,6 +109,7 @@ const LineDriverSchema = new Schema<ILineDriver>({
   sharedTruckId: { type: Schema.Types.ObjectId, ref: 'SharedTruck', index: true },
   activeTripId: { type: Schema.Types.ObjectId, ref: 'Trip', index: true },
   activeJobOfferId: { type: Schema.Types.ObjectId, ref: 'JobOffer', index: true },
+  pendingTripId: { type: Schema.Types.ObjectId, ref: 'Trip', index: true },
   gpsConsentStatus: { type: String, enum: ['pending', 'granted', 'denied'], default: 'pending' },
   gpsConsentAt: { type: Date },
   lastLocation: { type: LineLocationSchema },
@@ -118,6 +121,7 @@ const LineDriverSchema = new Schema<ILineDriver>({
   isDocumentsVerified: { type: Boolean, default: false },
   verifiedAt: { type: Date },
   verifiedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  pendingJobOfferCode: { type: String, trim: true },
   
   vehicleType: { type: String },
   engineSize: { type: String },

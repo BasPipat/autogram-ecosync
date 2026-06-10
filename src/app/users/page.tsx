@@ -695,14 +695,14 @@ export default function ManageUsersPage() {
               <select className="w-full p-2.5 text-[13px] outline-none cursor-pointer" style={inputStyle}
                 value={inviteForm.role} onChange={e => setInviteForm({ ...inviteForm, role: e.target.value })}>
                 {isOwner(currentRole) && (
-                  <optgroup label="Autogram Internal">
+                  <optgroup label="SHIF Internal">
                     <option value="owner">System Owner</option>
                     <option value="admin">Admin</option>
                     <option value="operator">Operator</option>
                   </optgroup>
                 )}
                 {currentRole === 'admin' && (
-                  <optgroup label="Autogram">
+                  <optgroup label="SHIF">
                     <option value="admin">Admin</option>
                     <option value="operator">Operator</option>
                   </optgroup>
@@ -732,8 +732,8 @@ export default function ManageUsersPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left min-w-[1100px]">
             <thead>
-              <tr style={{ background: 'var(--bg-base)' }}>
-                {['User ID (Login)', 'ชื่อผู้ใช้', 'บริษัท', 'เบอร์โทร', 'อีเมล', 'Password ใหม่', 'Role', 'จัดการ'].map(h => (
+                            <tr style={{ background: 'var(--bg-base)' }}>
+                {['ชื่อผู้ใช้', 'บริษัท', 'เบอร์โทร', 'อีเมล', 'Password ใหม่', 'Role', 'จัดการ'].map(h => (
                   <th key={h} className="px-4 py-3 text-[10px] font-bold uppercase tracking-wider"
                     style={{ color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border)' }}>
                     {h}
@@ -744,14 +744,14 @@ export default function ManageUsersPage() {
             <tbody className="text-[13px]">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="p-12 text-center" style={{ color: 'var(--text-tertiary)' }}>
+                  <td colSpan={7} className="p-12 text-center" style={{ color: 'var(--text-tertiary)' }}>
                     <Loader2 className="inline animate-spin mr-2" size={16} />
                     กำลังดึงข้อมูล...
                   </td>
                 </tr>
               ) : displayedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-12 text-center" style={{ color: 'var(--text-tertiary)' }}>
+                  <td colSpan={7} className="p-12 text-center" style={{ color: 'var(--text-tertiary)' }}>
                     ไม่พบข้อมูลผู้ใช้งาน กรุณาตรวจสอบสิทธิ์ผู้ใช้ในฐานข้อมูล
                   </td>
                 </tr>
@@ -764,12 +764,6 @@ export default function ManageUsersPage() {
                       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--border-light)'; }}
                       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                     >
-                      <td className="px-4 py-3">
-                        {isEditing
-                          ? <input className="w-full p-2 text-[12px] outline-none" style={inputStyle} value={editForm.username} onChange={e => setEditForm({ ...editForm, username: e.target.value })} />
-                          : <span className="font-mono font-bold text-[12px]" style={{ color: '#3B82F6' }}>{user.username || 'ไม่ระบุ'}</span>
-                        }
-                      </td>
                       <td className="px-4 py-3">
                         {isEditing
                           ? <input className="w-full p-2 text-[12px] outline-none" style={inputStyle} value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
@@ -810,14 +804,14 @@ export default function ManageUsersPage() {
                               disabled={user.email === session?.user?.email && isOwner(user.role)}
                             >
                               {isOwner(currentRole) && (
-                                <optgroup label="Autogram Internal">
+                                <optgroup label="SHIF Internal">
                                   <option value="owner">System Owner</option>
                                   <option value="admin">Admin</option>
                                   <option value="operator">Operator</option>
                                 </optgroup>
                               )}
                               {currentRole === 'admin' && (
-                                <optgroup label="Autogram">
+                                <optgroup label="SHIF">
                                   <option value="admin">Admin</option>
                                   <option value="operator">Operator</option>
                                 </optgroup>

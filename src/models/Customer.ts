@@ -6,6 +6,10 @@ export interface ICustomer extends Document {
   address?: string;
   email?: string;
   phoneNumber?: string;
+  paymentType?: 'credit' | 'cash';
+  billingDay?: number;
+  paymentDay?: number;
+  creditDays?: number;
   companyId: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -17,6 +21,10 @@ const CustomerSchema = new Schema<ICustomer>({
   address: { type: String, trim: true },
   email: { type: String, trim: true, lowercase: true },
   phoneNumber: { type: String, trim: true },
+  paymentType: { type: String, enum: ['credit', 'cash'], default: 'cash' },
+  billingDay: { type: Number },
+  paymentDay: { type: Number },
+  creditDays: { type: Number },
   companyId: { type: Schema.Types.ObjectId, ref: 'Company', required: true, index: true },
 }, { timestamps: true });
 

@@ -38,6 +38,28 @@ interface CurrentPosition {
 }
 
 export default function DriverJobPage({ params }: { params: Promise<{ id: string }> }) {
+  const [apiKey, setApiKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/config')
+      .then(res => res.json())
+      .then(data => setApiKey(data.googleMapsApiKey || ''))
+      .catch(() => setApiKey(''));
+  }, []);
+
+  if (apiKey === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white">
+        <Loader2 className="animate-spin text-emerald-500 mb-4" size={32} />
+        <p className="ml-3 font-bold tracking-widest uppercase text-xs">Loading Mission...</p>
+      </div>
+    );
+  }
+
+  return <DriverJobContent params={params} googleMapsApiKey={apiKey} />;
+}
+
+function DriverJobContent({ params, googleMapsApiKey }: { params: Promise<{ id: string }>; googleMapsApiKey: string }) {
   const { id: tripId } = use(params);
   const [trip, setTrip] = useState<TripDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,7 +79,7 @@ export default function DriverJobPage({ params }: { params: Promise<{ id: string
 
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+    googleMapsApiKey: googleMapsApiKey,
     libraries,
   });
 

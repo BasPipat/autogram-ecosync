@@ -72,7 +72,7 @@ export default function SingleNewsPage({ params }: { params: Promise<{ id: strin
           </Link>
           <div className="flex items-center gap-2 opacity-60">
             <Leaf size={18} className="text-emerald-500" />
-            <span className="text-[14px] font-bold">Eco-Sync</span>
+            <span className="text-[14px] font-bold">SHIF</span>
           </div>
           <button className="w-10 h-10 rounded-full flex items-center justify-center bg-slate-50 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600 transition-all">
             <Share2 size={18} />
@@ -125,7 +125,7 @@ export default function SingleNewsPage({ params }: { params: Promise<{ id: strin
             <div dangerouslySetInnerHTML={{ __html: news.content.replace(/\n/g, '<br />') }} />
           ) : (
             <div className="space-y-6">
-              <p>นี่คือเนื้อหาจำลองสำหรับบทความข่าวสารของ Eco-Sync แพลตฟอร์มบริหารจัดการคาร์บอนที่ทันสมัยที่สุดสำหรับภาคอุตสาหกรรมไทย...</p>
+              <p>นี่คือเนื้อหาจำลองสำหรับบทความข่าวสารของ SHIF แพลตฟอร์มบริหารจัดการคาร์บอนที่ทันสมัยที่สุดสำหรับภาคอุตสาหกรรมไทย...</p>
               <p>ในปัจจุบัน มาตรฐานการรายงานด้านความยั่งยืน (ESG) และการคำนวณคาร์บอนฟุตพริ้นท์กำลังเป็นประเด็นสำคัญที่ทุกบริษัทขนส่งไม่สามารถมองข้ามได้ โดยเฉพาะมาตรฐานขององค์การบริหารจัดการก๊าซเรือนกระจก (องค์การมหาชน) หรือ TGO ที่มุ่งเน้นความโปร่งใสและตรวจสอบได้ในทุกขั้นตอน</p>
               <p>บทความนี้จะพาคุณไปทำความเข้าใจถึงความสำคัญของการนำเทคโนโลยี Carbon Intelligence เข้ามาประยุกต์ใช้ เพื่อสร้างความได้เปรียบในการแข่งขันในระยะยาว...</p>
             </div>
@@ -142,7 +142,7 @@ export default function SingleNewsPage({ params }: { params: Promise<{ id: strin
                   <Leaf size={20} />
                 </div>
                 <div>
-                  <p className="font-bold text-slate-900">Eco-Sync Editorial Team</p>
+                  <p className="font-bold text-slate-900">SHIF Editorial Team</p>
                   <p className="text-[12px] text-slate-500">Expert Insights on Sustainability</p>
                 </div>
               </div>

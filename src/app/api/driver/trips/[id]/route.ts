@@ -92,6 +92,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       trip.opsStatus = 'delivered';
       trip.deliveredAt = new Date();
       await trip.save();
+      if (trip.lineUserId) {
+        await LineDriver.findOneAndUpdate({ lineUserId: trip.lineUserId }, { activeTripId: undefined });
+      }
       return NextResponse.json({ message: 'Job completed successfully' });
     }
 

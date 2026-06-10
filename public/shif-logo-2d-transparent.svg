@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 740 220" width="100%" height="100%">
+  <!-- Styles for 2D Flat Design with Transparent Background -->
+  <defs>
+    <style>
+      .charcoal { fill: #3D424A; }
+      .neon-green { fill: #9EFF00; }
+      .s-stroke { stroke: #9EFF00; stroke-width: 26; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+    </style>
+  </defs>
+
+  <!-- Logo Group -->
+  <g transform="translate(10, 10)">
+    
+    <!-- ================= S (Flat Neon Outline) ================= -->
+    <!-- Curved, smooth 2D S shape matching the image outline -->
+    <path d="M 155, 38 C 90, 38 60, 40 60, 82 C 60, 124 155, 106 155, 148 C 155, 190 125, 192 60, 192" class="s-stroke" />
+
+    <!-- ================= H (2D Flat with Accents) ================= -->
+    <!-- Left pillar -->
+    <rect x="220" y="20" width="36" height="172" class="charcoal" />
+    <!-- Right pillar -->
+    <rect x="292" y="20" width="36" height="172" class="charcoal" />
+    <!-- Bridge -->
+    <rect x="256" y="88" width="36" height="36" class="charcoal" />
+    <!-- Vertical green lines on the left side of both pillars -->
+    <rect x="220" y="20" width="8" height="172" class="neon-green" />
+    <rect x="292" y="20" width="8" height="172" class="neon-green" />
+
+    <!-- ================= I (2D Flat with V-Cut & Pin) ================= -->
+    <!-- I stem with V-cut at the top -->
+    <path d="M 378,54 L 396,32 L 414,54 L 414,192 L 378,192 Z" class="charcoal" />
+    <!-- Vertical green line on the right side of I stem -->
+    <path d="M 406,44.2 L 414,54 L 414,192 L 406,192 Z" class="neon-green" />
+    <!-- Location Pin as dot of I -->
+    <path d="M 396,22 C 378,5 374,-4 374,-15 C 374,-28 384,-39 396,-39 C 408,-39 418,-28 418,-15 C 418,-4 414,5 396,22 Z M 396,-22 A 6.5,6.5 0 1,0 396,-9 A 6.5,6.5 0 1,0 396,-22 Z" 
+          class="neon-green" 
+          fill-rule="evenodd" 
+          transform="translate(0, 24)" />
+
+    <!-- ================= F (2D Flat with Angled Cuts) ================= -->
+    <!-- F main stem -->
+    <rect x="464" y="20" width="36" height="172" class="charcoal" />
+    <!-- Top slanted horizontal bar -->
+    <path d="M 500,20 L 596,20 L 572,56 L 500,56 Z" class="charcoal" />
+    <!-- Middle slanted horizontal bar -->
+    <path d="M 500,88 L 568,88 L 548,120 L 500,120 Z" class="charcoal" />
+    <!-- Green horizontal lines at the bottom of top and middle bars -->
+    <path d="M 500,48 L 577.3,48 L 572,56 L 500,56 Z" class="neon-green" />
+    <path d="M 500,112 L 553,112 L 548,120 L 500,120 Z" class="neon-green" />
+
+  </g>
+</svg>

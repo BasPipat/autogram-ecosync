@@ -62,8 +62,8 @@ export default function ManageUsersPage() {
 
   const displayedUsers = allUsers.filter(user => {
     if (!currentUser) return false;
-    const isAutogram = ['owner', 'admin', 'operator'].includes(currentUser.role);
-    if (isAutogram) return true;
+    const isShif = ['owner', 'admin', 'operator'].includes(currentUser.role);
+    if (isShif) return true;
     if (currentUser.role === 'corp_admin') return user.companyName === currentUser.companyName;
     return false;
   });
@@ -240,7 +240,7 @@ export default function ManageUsersPage() {
                           disabled={user.email === session?.user?.email && (user.role === 'owner' || user.role === 'admin')}
                         >
                           {['owner', 'admin', 'operator'].includes(currentUser?.role || '') && (
-                            <optgroup label="ฝั่ง Autogram">
+                            <optgroup label="ฝั่ง SHIF">
                               <option value="owner">Owner</option>
                               <option value="admin">Admin</option>
                               <option value="operator">Operator</option>

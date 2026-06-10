@@ -173,6 +173,12 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'ไม่พบคนขับ LINE' }, { status: 404 });
     }
 
+    // If approved, trigger assignPendingJobToDriver to process any pending job
+    if (nextStatus === 'approved') {
+      const { assignPendingJobToDriver } = await import('@/lib/line-booking');
+      await assignPendingJobToDriver(lineUserId);
+    }
+
     // 4. Update Database (SharedTruck)
     if (finalSharedTruckId) {
       await SharedTruck.findByIdAndUpdate(finalSharedTruckId, {

@@ -15,35 +15,12 @@ export default function MyMissionPage() {
     initialized.current = true;
 
     const run = async () => {
-      // ── Manual bypass for admin/testing ──────────────────────
       const params = new URLSearchParams(window.location.search);
-      const manualId = params.get('lineUserId');
-      if (manualId) {
-        await fetchMission(manualId);
-        return;
-      }
-
-      // ── LIFF flow (LIFF endpoint now points HERE directly) ───
-      const liffId = process.env.NEXT_PUBLIC_LINE_LIFF_ID || '2010054204-bv5oRtcL';
-      try {
-        setStatusMsg('กำลังเชื่อมต่อ LINE...');
-        const liff = (await import('@line/liff')).default;
-
-        await liff.init({ liffId, withLoginOnExternalBrowser: true });
-
-        if (liff.isLoggedIn()) {
-          setStatusMsg('กำลังค้นหาภารกิจ...');
-          const profile = await liff.getProfile();
-          await fetchMission(profile.userId);
-        } else {
-          setStatusMsg('กำลังนำไปยืนยันตัวตน...');
-          liff.login({
-            redirectUri: window.location.origin + '/driver/my-mission',
-          });
-        }
-      } catch (err: any) {
-        console.error('[MyMission] LIFF Error:', err);
-        setError(`เกิดปัญหาในการเชื่อมต่อ LINE\n[${err?.code || 'ERR'}] ${err?.message || String(err)}`);
+      const userId = params.get('lineUserId');
+      if (userId) {
+        await fetchMission(userId);
+      } else {
+        setError('ไม่พบข้อมูลการยืนยันตัวตนคนขับ\nกรุณาเข้าใช้งานผ่านปุ่มเมนูใน LINE OA ครับ');
       }
     };
 
@@ -70,7 +47,7 @@ export default function MyMissionPage() {
       }
 
       if (data.activeTripId) {
-        router.replace(`/trips/${userId}`);
+        router.replace(`/trips/${data.activeTripId}?lineUserId=${encodeURIComponent(userId)}`);
       } else {
         setError('ขณะนี้ยังไม่มีภารกิจที่กำลังดำเนินการครับ');
       }

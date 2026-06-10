@@ -24,11 +24,36 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     const query: any = { _id: new mongoose.Types.ObjectId(id) };
     if (!isInternalRole(token.role)) {
-      if (token.companyId) {
+      if (token.role === 'corp_admin' || token.role === 'coordinator') {
+        if (token.companyName) {
+          query.$or = [
+            { companyName: token.companyName },
+            { customerName: token.companyName }
+          ];
+        } else {
+          return NextResponse.json({ error: 'คุณไม่มีสิทธิ์เข้าถึงงานนี้' }, { status: 403 });
+        }
+      } else if (token.companyId) {
          try { query.companyId = new mongoose.Types.ObjectId(token.companyId); } catch {}
       } else {
          query.companyName = token.companyName;
       }
+    }
+
+    // Strip administrative/routing fields for customer users to prevent spoofing
+    if (!isInternalRole(token.role)) {
+      delete data.companyId;
+      delete data.companyName;
+      delete data.customerName;
+      delete data.driverId;
+      delete data.driverName;
+      delete data.licensePlate;
+      delete data.tailLicensePlate;
+      delete data.truckMasterId;
+      delete data.sharedTruckId;
+      delete data.lineUserId;
+      delete data.lineAssignmentStatus;
+      delete data.opsStatus;
     }
     
     // Extract coordinates for GeoJSON indexing and Pins
@@ -94,7 +119,16 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
     const query: any = { _id: new mongoose.Types.ObjectId(id) };
     if (!isInternalRole(token.role)) {
-      if (token.companyId) {
+      if (token.role === 'corp_admin' || token.role === 'coordinator') {
+        if (token.companyName) {
+          query.$or = [
+            { companyName: token.companyName },
+            { customerName: token.companyName }
+          ];
+        } else {
+          return NextResponse.json({ error: 'คุณไม่มีสิทธิ์เข้าถึงงานนี้' }, { status: 403 });
+        }
+      } else if (token.companyId) {
          try { query.companyId = new mongoose.Types.ObjectId(token.companyId); } catch {}
       } else {
          query.companyName = token.companyName;

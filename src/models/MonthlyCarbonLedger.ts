@@ -2,6 +2,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IMonthlyCarbonLedger extends Document {
   companyId?: mongoose.Types.ObjectId;
+  companyName?: string;
   year: number;
   month: number;
   monthKey: string;
@@ -14,6 +15,7 @@ export interface IMonthlyCarbonLedger extends Document {
 
 const MonthlyCarbonLedgerSchema = new Schema<IMonthlyCarbonLedger>({
   companyId: { type: Schema.Types.ObjectId, ref: 'Company', index: true },
+  companyName: { type: String, index: true },
   year: { type: Number, required: true, index: true },
   month: { type: Number, required: true, index: true },
   monthKey: { type: String, required: true },
@@ -24,8 +26,8 @@ const MonthlyCarbonLedgerSchema = new Schema<IMonthlyCarbonLedger>({
   generatedAt: { type: Date, required: true, default: Date.now },
 }, { timestamps: true });
 
-MonthlyCarbonLedgerSchema.index({ companyId: 1, year: 1, month: 1 }, { unique: true });
-MonthlyCarbonLedgerSchema.index({ monthKey: 1, companyId: 1 });
+MonthlyCarbonLedgerSchema.index({ companyId: 1, companyName: 1, year: 1, month: 1 }, { unique: true });
+MonthlyCarbonLedgerSchema.index({ monthKey: 1, companyId: 1, companyName: 1 });
 
 export const MonthlyCarbonLedger =
   mongoose.models.MonthlyCarbonLedger ||

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!-- SHIF Icon — S with Infinity Symbol -->
+
+  <!-- Charcoal S body -->
+  <path d="M 40,25 L 78,25 Q 88,25 88,35 L 88,50 Q 88,60 78,60 L 40,60 Q 30,60 30,70 L 30,85 Q 30,95 40,95 L 78,95" 
+        fill="none" stroke="#3D424A" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Green infinity ∞ symbol -->
+  <g transform="translate(32, 40)">
+    <path d="M 0,14 C 0,6 6,0 14,0 C 22,0 28,6 28,14 C 28,22 22,28 14,28 C 6,28 0,22 0,14 Z" 
+          fill="none" stroke="#9EFF00" stroke-width="5" stroke-linecap="round"/>
+    <path d="M 28,14 C 28,6 34,0 42,0 C 50,0 56,6 56,14 C 56,22 50,28 42,28 C 34,28 28,22 28,14 Z" 
+          fill="none" stroke="#9EFF00" stroke-width="5" stroke-linecap="round"/>
+  </g>
+</svg>

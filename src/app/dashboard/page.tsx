@@ -5,11 +5,42 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { 
   Leaf, Truck, CheckCircle, Loader2, UploadCloud, AlertCircle, 
   Navigation, MapPin, Battery, Activity, ShieldCheck, Map as MapIcon,
-  LocateFixed, Settings2
+  LocateFixed, Settings2, Clock, User, ExternalLink
 } from 'lucide-react';
 import { useJsApiLoader, GoogleMap, Marker, InfoWindow } from '@react-google-maps/api';
 import { getPusherClient } from '@/lib/pusher';
 import { ChevronDown, ChevronUp, Radio } from 'lucide-react';
+
+const LIVE_STATUS_CONFIG: Record<string, { text: string; color: string; dot: string }> = {
+  accepted:            { text: 'รับงานแล้ว',        color: 'blue',    dot: 'bg-blue-400' },
+  en_route_pickup:     { text: 'ไปรับสินค้า',       color: 'orange',  dot: 'bg-orange-400' },
+  arrived_pickup:      { text: 'ถึงจุดรับ',         color: 'amber',   dot: 'bg-amber-400' },
+  en_route_dropoff:    { text: 'ไปส่งสินค้า',       color: 'indigo',  dot: 'bg-indigo-400' },
+  delivered:           { text: 'ส่งของสำเร็จ',      color: 'green',   dot: 'bg-emerald-400' },
+  documents_submitted: { text: 'ส่งเอกสารแล้ว',    color: 'emerald', dot: 'bg-teal-400' },
+  payment_requested:   { text: 'รอจ่ายเงิน',        color: 'orange',  dot: 'bg-orange-500' },
+  paid:                { text: 'จ่ายเงินแล้ว',      color: 'slate',   dot: 'bg-slate-400' },
+};
+
+function getStatusStep(opsStatus: string): number {
+  const map: Record<string, number> = {
+    accepted: 1, en_route_pickup: 2, arrived_pickup: 3,
+    en_route_dropoff: 4, delivered: 5, documents_submitted: 5,
+    payment_requested: 5, paid: 5,
+  };
+  return map[opsStatus] ?? 1;
+}
+
+function getTimeSince(dateString?: string) {
+  if (!dateString) return '-';
+  const diffMs = Date.now() - new Date(dateString).getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'เมื่อกี้';
+  if (diffMins < 60) return `${diffMins} นาทีที่แล้ว`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours} ชม.ที่แล้ว`;
+  return new Date(dateString).toLocaleDateString('th-TH');
+}
 import ConfirmModal from '@/components/ConfirmModal';
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
@@ -64,10 +95,12 @@ interface CurrentPosition {
 export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({ totalTrips: 0, totalCarbon: "0.00", verifiedPODs: 0 });
   const [trips, setTrips] = useState<TripData[]>([]);
+  const [liveTrips, setLiveTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
   const [statusBreakdown, setStatusBreakdown] = useState<StatusBreakdown[]>([]);
   const [carbonChart, setCarbonChart] = useState<CarbonChartPoint[]>([]);
+  const [userRole, setUserRole] = useState<string>('');
 
   // Modal states
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -102,8 +135,10 @@ export default function Dashboard() {
       if (!data.error) {
         setStats(data.stats);
         setTrips(data.recentTrips || []);
+        setLiveTrips(data.liveTrips || []);
         setStatusBreakdown(data.statusBreakdown || []);
         setCarbonChart(data.carbonChart || []);
+        if (data.userRole) setUserRole(data.userRole);
         if (data.activeUnits) {
           // Merge with any real-time updates that might have arrived before fetch completed
           setActiveUnits(prev => ({ ...data.activeUnits, ...prev }));
@@ -231,9 +266,9 @@ export default function Dashboard() {
       accent: '#10B981'
     },
     {
-      label: 'Active Logistics',
+      label: 'Total Logistics',
       value: stats.totalTrips,
-      unit: 'Trips in Progress',
+      unit: 'Total Trips in System',
       icon: Truck,
       gradient: 'linear-gradient(135deg, #3B82F6, #2563EB)',
       iconBg: '#EFF6FF',
@@ -316,133 +351,6 @@ export default function Dashboard() {
               </div>
             );
           })}
-        </div>
-
-        {/* --- LIVE GPS TRACKING SECTION (NEW) --- */}
-        <div className="px-8 mt-8 animate-fade-in">
-          <div className="bg-white rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 overflow-hidden transition-all duration-500">
-            <div className="p-8 border-b border-slate-50 flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className={`w-2 h-2 rounded-full ${Object.keys(activeUnits).length > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></div>
-                  <h3 className="text-lg font-black text-slate-800">Fleet Mission Control</h3>
-                </div>
-                <p className="text-[12px] font-medium text-slate-400">Real-time GPS tracking & route synchronization</p>
-              </div>
-
-              <button
-                onClick={() => setIsMapExpanded(!isMapExpanded)}
-                className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-slate-900 text-white font-black text-[13px] hover:bg-black transition-all shadow-lg shadow-slate-200"
-              >
-                {isMapExpanded ? <ChevronUp size={18} /> : <Radio size={18} className="animate-pulse" />}
-                {isMapExpanded ? 'HIDE LIVE MONITOR' : 'SHOW LIVE MONITOR'}
-              </button>
-            </div>
-
-            {isMapExpanded && (
-              <div className="animate-fade-in">
-
-                <div className="p-6 relative">
-                  <div className="absolute top-10 left-10 z-10 flex flex-col gap-2 pointer-events-none">
-                    {Object.keys(activeUnits).length > 0 && (
-                      <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl border border-emerald-100 shadow-xl flex items-center gap-3 animate-slide-up">
-                        <div className="p-2 bg-emerald-50 rounded-xl">
-                          <Radio size={16} className="text-emerald-500 animate-pulse" />
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Live Fleet</p>
-                          <p className="text-sm font-black text-slate-800">
-                            {Object.keys(activeUnits).length} <span className="text-[10px] text-slate-400">Active Units</span>
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="rounded-[28px] overflow-hidden border border-slate-100 shadow-inner h-[400px] bg-slate-50 relative group">
-                    {!isLoaded ? (
-                      <div className="absolute inset-0 flex items-center justify-center flex-col gap-4">
-                        <Loader2 className="animate-spin text-emerald-500" />
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Warming Satellite Engines...</p>
-                      </div>
-                    ) : (
-                      <GoogleMap
-                        mapContainerStyle={{ width: '100%', height: '100%' }}
-                        center={selectedUnitId ? { lat: activeUnits[selectedUnitId].lat, lng: activeUnits[selectedUnitId].lng } : { lat: 13.7563, lng: 100.5018 }}
-                        zoom={10}
-                        options={{
-                          disableDefaultUI: true,
-                          zoomControl: true,
-                          styles: [
-                            { elementType: "geometry", stylers: [{ color: "#f8fafc" }] },
-                            { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
-                            { featureType: "water", elementType: "geometry", stylers: [{ color: "#e2e8f0" }] },
-                            { featureType: "poi", stylers: [{ visibility: "off" }] }
-                          ]
-                        }}
-                      >
-                        {Object.values(activeUnits).map((unit) => (
-                          <Marker
-                            key={unit.tripId}
-                            position={{ lat: unit.lat, lng: unit.lng }}
-                            onClick={() => setSelectedUnitId(unit.tripId)}
-                            onMouseOver={() => setHoveredUnitId(unit.tripId)}
-                            onMouseOut={() => setHoveredUnitId(null)}
-                            icon={{
-                              path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z",
-                              fillColor: selectedUnitId === unit.tripId ? "#3B82F6" : "#10b981",
-                              fillOpacity: 1,
-                              strokeWeight: 4,
-                              strokeColor: "#ffffff",
-                              scale: 2.5,
-                              anchor: (typeof window !== 'undefined' && window.google) ? new window.google.maps.Point(12, 22) : { x: 12, y: 22 } as any,
-                            }}
-                          >
-                            {hoveredUnitId === unit.tripId && (
-                              <InfoWindow
-                                position={{ lat: unit.lat, lng: unit.lng }}
-                                options={{
-                                  pixelOffset: (typeof window !== 'undefined' && window.google) ? new window.google.maps.Size(0, -45) : undefined,
-                                  disableAutoPan: true,
-                                }}
-                              >
-                                <div className="p-1 min-w-[120px]">
-                                  <p className="text-xs font-black text-slate-800 m-0 leading-tight">{unit.driverName || 'ไม่ระบุชื่อ'}</p>
-                                  <p className="text-[10px] font-bold text-slate-500 mt-1 mb-0 uppercase tracking-wider">{unit.licensePlate || 'ไม่ระบุทะเบียน'}</p>
-                                </div>
-                              </InfoWindow>
-                            )}
-                          </Marker>
-                        ))}
-                      </GoogleMap>
-                    )}
-                  </div>
-                  
-                  <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100/50">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Monitor Status</p>
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${Object.keys(activeUnits).length > 0 ? 'bg-emerald-50 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-300'}`}></div>
-                        <span className="text-xs font-black text-slate-700 uppercase tracking-tighter">
-                          {Object.keys(activeUnits).length > 0 ? 'Fleet Sync active' : 'Awaiting Signals'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100/50">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Selected Unit</p>
-                      <span className="text-xs font-black text-slate-700 uppercase tracking-tighter">{selectedUnitId || 'None'}</span>
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100/50">
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Last Update</p>
-                      <span className="text-xs font-black text-slate-700 uppercase tracking-tighter">
-                        {selectedUnitId && activeUnits[selectedUnitId] ? new Date(activeUnits[selectedUnitId].lastUpdate).toLocaleTimeString() : '--:--:--'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Charts Section */}
@@ -532,97 +440,136 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Recent Activity Feed */}
-        <div className="px-8 mt-8 animate-fade-in">
+        {/* Active Trips Status Panel — below charts */}
+        <div className="px-8 mt-6 animate-fade-in">
           <div className="bg-white rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 overflow-hidden">
             <div className="px-8 py-6 flex items-center justify-between border-b border-slate-50">
               <div>
-                <h3 className="text-lg font-black text-slate-800">Operational Timeline</h3>
-                <p className="text-[12px] font-medium text-slate-400">Latest logistics movements & carbon data</p>
+                <h3 className="text-lg font-black text-slate-800">สถานะงานในระบบ</h3>
+                <p className="text-[12px] font-medium text-slate-400">ติดตามความคืบหน้างานที่กำลังดำเนินการอยู่</p>
               </div>
-              <div className="px-4 py-1.5 rounded-full bg-slate-50 border border-slate-100">
-                <span className="text-[11px] font-black text-slate-400 uppercase tracking-tighter">
-                  {trips.length} Total Sessions
+              <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 border border-blue-100/50">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                <span className="text-[11px] font-black text-blue-600 uppercase tracking-tighter">
+                  {liveTrips.length} งานดำเนินการอยู่
                 </span>
               </div>
             </div>
-            
-            <div className="divide-y divide-slate-50">
-              {trips.length === 0 ? (
-                <div className="py-24 text-center">
-                  <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
-                    <Truck size={32} className="text-slate-200" />
-                  </div>
-                  <p className="text-slate-400 font-bold text-sm">No activity recorded today</p>
+
+            {liveTrips.length === 0 ? (
+              <div className="py-16 text-center">
+                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
+                  <Truck size={24} className="text-slate-300" />
                 </div>
-              ) : (
-                trips.map((trip) => (
-                  <div key={trip.id} className="group px-8 py-6 hover:bg-slate-50/50 transition-all duration-300">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div className="flex items-center gap-5">
-                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border shadow-sm ${
-                          trip.status === 'Verified' ? 'bg-emerald-50 border-emerald-100 text-emerald-500' : 
-                          trip.status === 'Pending' ? 'bg-orange-50 border-orange-100 text-orange-500' : 
-                          'bg-slate-50 border-slate-100 text-slate-400'
-                        }`}>
-                          <Truck size={20} />
+                <p className="text-slate-400 font-bold text-sm">ไม่มีงานที่กำลังดำเนินการอยู่ในขณะนี้</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-6">
+                {liveTrips.map((trip: any) => {
+                  // For client roles (corp_admin/coordinator), mask payment statuses
+                  const isClientRole = userRole === 'corp_admin' || userRole === 'coordinator';
+                  const displayStatus = (isClientRole && (trip.opsStatus === 'payment_requested' || trip.opsStatus === 'paid'))
+                    ? 'job_done'
+                    : trip.opsStatus;
+
+                  const DONE_CFG = { text: 'จบงาน', color: 'emerald', dot: 'bg-emerald-400' };
+                  const cfg = displayStatus === 'job_done'
+                    ? DONE_CFG
+                    : (LIVE_STATUS_CONFIG[trip.opsStatus] ?? { text: trip.opsStatus || 'กำลังดำเนินการ', color: 'slate', dot: 'bg-slate-400' });
+
+                  const step = getStatusStep(trip.opsStatus);
+                  const isPaymentUrgent = !isClientRole && trip.opsStatus === 'payment_requested';
+                  const isDone = displayStatus === 'job_done';
+                  const CardComponent = isDone ? 'div' : 'a';
+
+                  return (
+                    <CardComponent
+                      key={trip._id}
+                      {...(!isDone ? {
+                        href: `/trips/${trip._id}`,
+                        target: '_blank',
+                        rel: 'noreferrer'
+                      } : {})}
+                      className={`relative flex flex-col justify-between rounded-2xl border p-5 ${
+                        isDone 
+                          ? 'border-slate-100 bg-white' 
+                          : `transition-all duration-300 hover:shadow-lg hover:border-blue-200 hover:no-underline group ${
+                              isPaymentUrgent ? 'border-orange-200 bg-orange-50/30' : 'border-slate-100 bg-white'
+                            }`
+                      }`}
+                    >
+                      {/* Header */}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="relative flex h-2.5 w-2.5">
+                            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${cfg.dot}`} />
+                            <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${cfg.dot}`} />
+                          </span>
+                          <span className="text-[12px] font-black text-slate-800 font-mono tracking-tighter">{trip.tripId}</span>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="font-black text-[15px] text-slate-800">{trip.id}</p>
-                            <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tighter border ${
-                              trip.status === 'Verified' ? 'bg-emerald-100/50 border-emerald-200 text-emerald-700' : 
-                              trip.status === 'Pending' ? 'bg-orange-100/50 border-orange-200 text-orange-700' : 
-                              'bg-slate-100 border-slate-200 text-slate-500'
-                            }`}>
-                              {trip.status}
-                            </span>
-                          </div>
-                          <p className="text-[13px] font-bold text-slate-400">
-                            {trip.origin} <span className="mx-1 text-slate-300">→</span> {trip.dest}
-                          </p>
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                          isPaymentUrgent ? 'bg-orange-100 text-orange-700' :
+                          displayStatus === 'job_done' ? 'bg-emerald-50 text-emerald-700' :
+                          'bg-blue-50 text-blue-600'
+                        }`}>
+                          {cfg.text}
+                        </span>
+                      </div>
+
+                      {/* Company Badge — visible to internal roles only */}
+                      {(userRole === 'system_owner' || userRole === 'owner') && (trip.companyName || trip.customerName) && (
+                        <div className="mb-2">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 border border-violet-100 text-[9px] font-black text-violet-600 uppercase tracking-wider truncate max-w-full">
+                            🏢 {trip.companyName || trip.customerName}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Driver */}
+                      <div className="flex items-center gap-2 mb-3 bg-slate-50 px-3 py-2 rounded-xl">
+                        <User size={12} className="text-slate-400 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-black text-slate-700 truncate">{trip.driverName || 'ไม่ระบุชื่อ'}</p>
+                          <p className="text-[10px] font-bold text-slate-400 truncate">{trip.licensePlate || 'ไม่ระบุทะเบียน'}{trip.tailLicensePlate ? ` | ${trip.tailLicensePlate}` : ''}</p>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between md:justify-end gap-6 md:gap-12">
-                        <div className="text-right">
-                          <p className="text-[14px] font-black text-slate-700">{trip.carbon} <span className="text-[10px] text-slate-400">kgCO₂e</span></p>
-                          <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Carbon Impact</p>
+                      {/* Route */}
+                      <div className="space-y-1.5 mb-4 pl-3 border-l-2 border-dashed border-slate-200 ml-1">
+                        <div>
+                          <p className="text-[9px] font-black text-slate-400 uppercase leading-none">Origin</p>
+                          <p className="text-[11px] font-bold text-slate-600 truncate">{trip.origin}</p>
                         </div>
-                        
-                        <div className="flex gap-2">
-                          {trip.status === 'No POD' ? (
-                            <button
-                              onClick={() => handleOpenUploadModal(trip.id)}
-                              className="px-5 py-2 rounded-xl text-[12px] font-black bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95"
-                            >
-                              Upload POD
-                            </button>
-                          ) : trip.status === 'Pending' ? (
-                            <button
-                              onClick={() => handleOpenVerifyModal(trip.id)}
-                              className="px-5 py-2 rounded-xl text-[12px] font-black bg-white border-2 border-orange-100 text-orange-600 hover:bg-orange-50 transition-all active:scale-95"
-                            >
-                              Verify Job
-                            </button>
-                          ) : (
-                            <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-600">
-                              <CheckCircle size={14} />
-                              <span className="text-[11px] font-black uppercase tracking-tighter">Approved</span>
-                            </div>
-                          )}
+                        <div>
+                          <p className="text-[9px] font-black text-slate-400 uppercase leading-none">Destination</p>
+                          <p className="text-[11px] font-bold text-slate-600 truncate">{trip.destination}</p>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            
-            <div className="px-8 py-4 bg-slate-50/50 flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-slate-300"></div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">Precision Calculated using Eco-Sync Standard v2.1</p>
-            </div>
+
+                      {/* Footer Progress */}
+                      <div className="border-t border-slate-100 pt-3">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-[10px] text-slate-400 font-bold">{getTimeSince(trip.gpsSession?.lastPingAt || trip.updatedAt)}</span>
+                          <span className="text-[10px] text-slate-500 font-black">Step {step}/5</span>
+                        </div>
+                        <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              isPaymentUrgent ? 'bg-orange-400' : 'bg-blue-500'
+                            }`}
+                            style={{ width: `${(step / 5) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {!isDone && (
+                        <ExternalLink size={12} className="absolute top-4 right-4 text-slate-300 group-hover:text-blue-400 transition-colors" />
+                      )}
+                    </CardComponent>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 

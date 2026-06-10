@@ -42,6 +42,12 @@ export async function POST(request: NextRequest) {
       { upsert: true, new: true }
     );
 
+    // 4. Update Trip status and podImageUrl to keep in sync
+    await Trip.findOneAndUpdate(
+      { tripId },
+      { status: 'Pending', podImageUrl }
+    );
+
     return NextResponse.json({
       message: 'อัปโหลดหลักฐานใบส่งของสำเร็จ',
       vaultData: newVaultEntry

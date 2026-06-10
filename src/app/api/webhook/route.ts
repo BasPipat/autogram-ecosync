@@ -24,7 +24,7 @@ import { analyzeDriverDocuments } from '@/lib/gemini';
 import { Setting } from '@/models/Setting';
 
 const PAYMENT_NOTIFY_LINE_USER_ID = process.env.LINE_PAYMENT_NOTIFY_USER_ID || process.env.LINE_ADMIN_USER_ID || '';
-const DRIVER_ACTIVE_STATUSES = ['accepted', 'in_progress', 'arrived_pickup', 'en_route_pickup', 'en_route_dropoff', 'delivered', 'documents_submitted'];
+const DRIVER_ACTIVE_STATUSES = ['accepted', 'in_progress', 'arrived_pickup', 'en_route_pickup', 'en_route_dropoff', 'delivered'];
 
 function sourceUserId(event: WebhookEvent) {
   return event.source.type === 'user' ? event.source.userId : event.source.userId;
@@ -1290,24 +1290,14 @@ async function saveMediaDocument(
   if (documentType === 'delivery_documents_video' && activeTrip) {
     const trip = await Trip.findByIdAndUpdate(activeTrip._id, {
       deliveryDocumentVideoMessageId: lineMessageId,
-      lineAssignmentStatus: 'payment_requested',
-      opsStatus: 'payment_requested',
+      lineAssignmentStatus: 'documents_submitted',
+      opsStatus: 'documents_submitted',
     }, { new: true });
 
-    if (PAYMENT_NOTIFY_LINE_USER_ID && trip) {
-      await getLineClient().pushMessage(PAYMENT_NOTIFY_LINE_USER_ID, {
-        type: 'text',
-        text: [
-          'แจ้งเตือนจ่ายเงินรถร่วม',
-          `รหัสงาน: ${trip.tripId}`,
-          `คนขับ: ${trip.driverName || driver.displayName || lineUserId}`,
-          `ทะเบียน: ${trip.licensePlate || '-'} / ${trip.tailLicensePlate || '-'}`,
-          `จำนวนเงิน: ${currency(trip.acceptedFreightPrice || 0)}`,
-        ].join('\n'),
-      });
-    }
-
-    await getLineClient().replyMessage(replyToken, { type: 'text', text: 'รับวิดีโอเอกสารแล้วครับ ระบบแจ้งทีมงานเพื่อดำเนินการจ่ายเงินเรียบร้อย' });
+    await getLineClient().replyMessage(replyToken, {
+      type: 'text',
+      text: 'รับวิดีโอเอกสารแล้วครับ ระบบได้ส่งเอกสารให้เจ้าหน้าที่ตรวจสอบความถูกต้องแล้ว'
+    });
     return;
   }
 
